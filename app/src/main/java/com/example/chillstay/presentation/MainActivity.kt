@@ -1,4 +1,4 @@
-package com.example.chillstay
+package com.example.chillstay.presentation
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
