@@ -7,6 +7,7 @@ interface UserRepository {
     suspend fun createUser(user: User): User
     suspend fun updateUser(user: User): User
     suspend fun deleteUser(id: String)
+    suspend fun getUserByEmail(email: String): User?
 }
 
 
