@@ -18,19 +18,19 @@ class HomeViewModel(
     private val getSampleItems: GetSampleItems
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(HomeUiState())
-    val state: StateFlow<HomeUiState> = _state
+    private val _uiState = MutableStateFlow(HomeUiState())
+    val uiState: StateFlow<HomeUiState> = _uiState
 
     init {
         load()
     }
 
     private fun load() {
-        _state.value = _state.value.copy(isLoading = true, error = null)
+        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
         viewModelScope.launch {
             runCatching { getSampleItems() }
-                .onSuccess { _state.value = HomeUiState(isLoading = false, items = it) }
-                .onFailure { _state.value = HomeUiState(isLoading = false, error = it.message) }
+                .onSuccess { _uiState.value = HomeUiState(isLoading = false, items = it) }
+                .onFailure { _uiState.value = HomeUiState(isLoading = false, error = it.message) }
         }
     }
 }

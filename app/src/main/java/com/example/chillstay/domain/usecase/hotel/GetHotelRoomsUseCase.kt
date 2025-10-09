@@ -27,3 +27,4 @@ class GetHotelRoomsUseCase constructor(
         }
     }
 }
+

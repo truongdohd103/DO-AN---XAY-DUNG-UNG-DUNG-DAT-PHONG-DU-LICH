@@ -47,3 +47,4 @@ class CreateReviewUseCase constructor(
         }
     }
 }
+

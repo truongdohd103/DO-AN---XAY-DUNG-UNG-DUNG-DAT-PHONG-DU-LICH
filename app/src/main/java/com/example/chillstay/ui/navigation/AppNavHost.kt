@@ -1,22 +1,53 @@
 package com.example.chillstay.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.example.chillstay.core.common.OnboardingManager
 import com.example.chillstay.ui.auth.AuthenticationScreen
 import com.example.chillstay.ui.auth.SignInScreen
 import com.example.chillstay.ui.auth.SignUpScreen
 import com.example.chillstay.ui.home.HomeScreen
 import com.example.chillstay.ui.home.HomeViewModel
+import com.example.chillstay.ui.welcome.WelcomeScreen
+import com.example.chillstay.ui.welcome.CarouselScreen
 
 @Composable
 fun AppNavHost(
     navController: NavHostController,
-    startDestination: String = Routes.AUTHENTICATION,
+    startDestination: String = Routes.WELCOME,
     homeViewModel: HomeViewModel
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
+        composable(Routes.WELCOME) {
+            WelcomeScreen(
+                onGetStartedClick = {
+                    OnboardingManager.markWelcomeSeen(navController.context)
+                    navController.navigate(Routes.CAROUSEL) {
+                        popUpTo(Routes.WELCOME) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Routes.CAROUSEL) {
+            CarouselScreen(
+                onNextClick = {
+                    OnboardingManager.markOnboardingDone(navController.context)
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.CAROUSEL) { inclusive = true }
+                    }
+                },
+                onSkipClick = {
+                    OnboardingManager.markOnboardingDone(navController.context)
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.CAROUSEL) { inclusive = true }
+                    }
+                }
+            )
+        }
         composable(Routes.AUTHENTICATION) {
             AuthenticationScreen(
                 onSignInClick = { navController.navigate(Routes.SIGN_IN) },

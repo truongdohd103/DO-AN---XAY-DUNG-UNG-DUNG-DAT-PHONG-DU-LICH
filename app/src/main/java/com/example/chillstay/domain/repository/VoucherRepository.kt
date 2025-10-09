@@ -9,3 +9,4 @@ interface VoucherRepository {
     suspend fun createVoucher(voucher: Voucher): Voucher
     suspend fun updateVoucher(voucher: Voucher): Voucher
 }
+

@@ -9,3 +9,4 @@ interface ReviewRepository {
     suspend fun updateReview(review: Review): Review
     suspend fun deleteReview(reviewId: String): Boolean
 }
+

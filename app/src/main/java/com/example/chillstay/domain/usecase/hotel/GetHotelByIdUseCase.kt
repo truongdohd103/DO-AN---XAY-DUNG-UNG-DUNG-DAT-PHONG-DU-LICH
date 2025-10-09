@@ -21,3 +21,4 @@ class GetHotelByIdUseCase constructor(
         }
     }
 }
+
