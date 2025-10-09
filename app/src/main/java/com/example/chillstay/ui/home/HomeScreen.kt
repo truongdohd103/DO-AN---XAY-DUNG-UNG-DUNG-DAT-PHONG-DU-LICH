@@ -123,11 +123,6 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(80.dp)) // Space for bottom navigation
             }
         }
-        
-        // Bottom Navigation
-        BottomNavigation(
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
     }
 }
 

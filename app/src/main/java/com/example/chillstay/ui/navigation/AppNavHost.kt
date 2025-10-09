@@ -10,8 +10,8 @@ import com.example.chillstay.core.common.OnboardingManager
 import com.example.chillstay.ui.auth.AuthenticationScreen
 import com.example.chillstay.ui.auth.SignInScreen
 import com.example.chillstay.ui.auth.SignUpScreen
-import com.example.chillstay.ui.home.HomeScreen
 import com.example.chillstay.ui.home.HomeViewModel
+import com.example.chillstay.ui.main.MainScreen
 import com.example.chillstay.ui.welcome.WelcomeScreen
 import com.example.chillstay.ui.welcome.CarouselScreen
 
@@ -36,13 +36,13 @@ fun AppNavHost(
             CarouselScreen(
                 onNextClick = {
                     OnboardingManager.markOnboardingDone(navController.context)
-                    navController.navigate(Routes.HOME) {
+                    navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.CAROUSEL) { inclusive = true }
                     }
                 },
                 onSkipClick = {
                     OnboardingManager.markOnboardingDone(navController.context)
-                    navController.navigate(Routes.HOME) {
+                    navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.CAROUSEL) { inclusive = true }
                     }
                 }
@@ -62,7 +62,7 @@ fun AppNavHost(
                 onSignInClick = { email, password -> 
                     // Simple demo authentication
                     if (email.isNotBlank() && password.isNotBlank()) {
-                        navController.navigate(Routes.HOME) {
+                        navController.navigate(Routes.MAIN) {
                             popUpTo(Routes.AUTHENTICATION) { inclusive = true }
                         }
                     }
@@ -80,7 +80,7 @@ fun AppNavHost(
                 onSignInClick = { email, password -> 
                     // Simple demo authentication
                     if (email.isNotBlank() && password.isNotBlank()) {
-                        navController.navigate(Routes.HOME) {
+                        navController.navigate(Routes.MAIN) {
                             popUpTo(Routes.AUTHENTICATION) { inclusive = true }
                         }
                     }
@@ -106,8 +106,11 @@ fun AppNavHost(
                 onFacebookClick = { /* TODO: Implement Facebook auth */ }
             )
         }
-        composable(Routes.HOME) { 
-            HomeScreen(viewModel = homeViewModel) 
+        composable(Routes.MAIN) {
+            MainScreen(
+                homeViewModel = homeViewModel,
+                onBackClick = { navController.popBackStack() }
+            )
         }
     }
 }
