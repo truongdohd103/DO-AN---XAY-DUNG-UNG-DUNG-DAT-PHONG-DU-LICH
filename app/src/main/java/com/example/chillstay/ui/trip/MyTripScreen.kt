@@ -2,6 +2,7 @@ package com.example.chillstay.ui.trip
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,7 +21,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun MyTripScreen(
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onHotelClick: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(0) }
 
@@ -52,7 +54,8 @@ fun MyTripScreen(
                     totalPrice = 320,
                     status = "Confirmed",
                     statusColor = Color(0xFF1AB6B6),
-                    gradientColors = listOf(Color(0xFF1AB6B6), Color(0xFF159999))
+                    gradientColors = listOf(Color(0xFF1AB6B6), Color(0xFF159999)),
+                    onClick = onHotelClick
                 )
             }
             item {
@@ -63,7 +66,8 @@ fun MyTripScreen(
                     totalPrice = 850,
                     status = "Completed",
                     statusColor = Color(0xFF666666),
-                    gradientColors = listOf(Color(0xFF666666), Color(0xFF444444))
+                    gradientColors = listOf(Color(0xFF666666), Color(0xFF444444)),
+                    onClick = onHotelClick
                 )
             }
             item {
@@ -116,12 +120,14 @@ fun TripCard(
     totalPrice: Int,
     status: String,
     statusColor: Color,
-    gradientColors: List<Color>
+    gradientColors: List<Color>,
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(165.dp),
+            .height(165.dp)
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
         border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF1AB6B6))

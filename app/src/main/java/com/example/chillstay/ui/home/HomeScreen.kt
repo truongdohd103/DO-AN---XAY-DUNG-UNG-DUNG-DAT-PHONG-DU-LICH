@@ -39,7 +39,8 @@ import com.example.chillstay.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel
+    viewModel: HomeViewModel,
+    onHotelClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
@@ -80,7 +81,7 @@ fun HomeScreen(
             
             item {
                 // Hotel Cards
-                HotelCardsSection()
+                HotelCardsSection(onHotelClick = onHotelClick)
             }
             
             item {
@@ -238,7 +239,9 @@ fun CategoryTabs() {
 }
 
 @Composable
-fun HotelCardsSection() {
+fun HotelCardsSection(
+    onHotelClick: () -> Unit = {}
+) {
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -251,7 +254,8 @@ fun HotelCardsSection() {
                 location = if (index == 0) "Miami, USA - 20 km to beach" else "Bali, Indonesia",
                 price = if (index == 0) "$299" else "$199",
                 rating = if (index == 0) null else 4.9f,
-                imageUrl = "https://placehold.co/280x180"
+                imageUrl = "https://placehold.co/280x180",
+                onClick = onHotelClick
             )
         }
     }
@@ -263,12 +267,14 @@ fun HotelCard(
     location: String,
     price: String,
     rating: Float?,
-    imageUrl: String
+    imageUrl: String,
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .width(280.dp)
-            .height(339.dp),
+            .height(339.dp)
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {

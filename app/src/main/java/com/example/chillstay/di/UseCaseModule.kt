@@ -37,6 +37,8 @@ import com.example.chillstay.domain.usecase.notification.GetUserNotificationsUse
 import com.example.chillstay.domain.usecase.notification.MarkNotificationAsReadUseCase
 import com.example.chillstay.domain.usecase.notification.MarkAllNotificationsAsReadUseCase
 
+import com.example.chillstay.domain.repository.VoucherRepository
+import com.example.chillstay.domain.repository.BookingRepository
 import org.koin.dsl.module
 
 val useCaseModule = module {
@@ -72,8 +74,8 @@ val useCaseModule = module {
     factory { GetHotelReviewsUseCase(get()) }
     
     // Voucher use cases
-    factory { GetAvailableVouchersUseCase(get()) }
-    factory { ApplyVoucherToBookingUseCase(get(), get()) }
+    factory { GetAvailableVouchersUseCase(get<VoucherRepository>()) }
+    factory { ApplyVoucherToBookingUseCase(get<VoucherRepository>(), get<BookingRepository>()) }
     
     // Notification use cases
     factory { GetUserNotificationsUseCase(get()) }

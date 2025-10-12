@@ -18,3 +18,4 @@ class GetHotelsUseCase constructor(
     }
 }
 
+

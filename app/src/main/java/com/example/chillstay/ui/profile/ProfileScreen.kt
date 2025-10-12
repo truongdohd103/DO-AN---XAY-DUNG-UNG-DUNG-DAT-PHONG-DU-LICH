@@ -77,14 +77,14 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
-                    text = "John Doe",
+                    text = "Demo",
                     color = Color(0xFF212121),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 
                 Text(
-                    text = "john.doe@example.com",
+                    text = "demo@chillstay.com",
                     color = Color(0xFF424242),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold

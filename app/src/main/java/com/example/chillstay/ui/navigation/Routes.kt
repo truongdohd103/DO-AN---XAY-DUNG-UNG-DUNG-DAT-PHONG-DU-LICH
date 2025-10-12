@@ -8,4 +8,7 @@ object Routes {
     const val AUTHENTICATION = "authentication"
     const val SIGN_IN = "sign_in"
     const val SIGN_UP = "sign_up"
+    const val HOTEL_DETAIL = "hotel_detail"
+    const val ROOM = "room"
+    const val BOOKING = "booking"
 }

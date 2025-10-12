@@ -9,3 +9,4 @@ interface BookmarkRepository {
     suspend fun isBookmarked(userId: String, hotelId: String): Boolean
 }
 
+

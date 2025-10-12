@@ -1,10 +1,10 @@
 package com.example.chillstay.domain.usecase.voucher
 
 import com.example.chillstay.domain.model.Voucher
+import com.example.chillstay.domain.model.VoucherStatus
 import com.example.chillstay.domain.repository.VoucherRepository
 import com.example.chillstay.core.common.Result
-import java.time.Instant
-
+import java.util.Date
 
 class GetAvailableVouchersUseCase constructor(
     private val voucherRepository: VoucherRepository
@@ -14,17 +14,17 @@ class GetAvailableVouchersUseCase constructor(
         hotelId: String? = null
     ): Result<List<Voucher>> {
         return try {
-            val now = Instant.now()
+            val now = Date()
             val vouchers = voucherRepository.getVouchers()
                 .filter { voucher ->
                     // Filter by status
-                    voucher.status == "ACTIVE" &&
+                    voucher.status == VoucherStatus.ACTIVE &&
                     // Filter by validity period
-                    voucher.validFrom.isBefore(now) &&
-                    voucher.validTo.isAfter(now) &&
+                    voucher.validFrom.before(now) &&
+                    voucher.validTo.after(now) &&
                     // Filter by hotel if specified
-                    (hotelId == null || voucher.applyForHotel.isEmpty() || 
-                     voucher.applyForHotel.any { it.id == hotelId })
+                    (hotelId == null || voucher.applyForHotel == null || 
+                     voucher.applyForHotel.contains(hotelId))
                 }
             
             Result.success(vouchers)
@@ -33,4 +33,5 @@ class GetAvailableVouchersUseCase constructor(
         }
     }
 }
+
 

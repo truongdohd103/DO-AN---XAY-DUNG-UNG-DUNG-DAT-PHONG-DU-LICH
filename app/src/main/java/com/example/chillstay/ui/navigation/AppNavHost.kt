@@ -14,6 +14,9 @@ import com.example.chillstay.ui.home.HomeViewModel
 import com.example.chillstay.ui.main.MainScreen
 import com.example.chillstay.ui.welcome.WelcomeScreen
 import com.example.chillstay.ui.welcome.CarouselScreen
+import com.example.chillstay.ui.hoteldetail.HotelDetailScreen
+import com.example.chillstay.ui.room.RoomScreen
+import com.example.chillstay.ui.booking.BookingScreen
 
 @Composable
 fun AppNavHost(
@@ -109,6 +112,24 @@ fun AppNavHost(
         composable(Routes.MAIN) {
             MainScreen(
                 homeViewModel = homeViewModel,
+                onBackClick = { navController.popBackStack() },
+                onHotelClick = { navController.navigate(Routes.HOTEL_DETAIL) }
+            )
+        }
+        composable(Routes.HOTEL_DETAIL) {
+            HotelDetailScreen(
+                onBackClick = { navController.popBackStack() },
+                onChooseRoomClick = { navController.navigate(Routes.ROOM) }
+            )
+        }
+        composable(Routes.ROOM) {
+            RoomScreen(
+                onBackClick = { navController.popBackStack() },
+                onBookNowClick = { navController.navigate(Routes.BOOKING) }
+            )
+        }
+        composable(Routes.BOOKING) {
+            BookingScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }

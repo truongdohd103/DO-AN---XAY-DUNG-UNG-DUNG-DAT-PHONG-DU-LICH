@@ -15,7 +15,8 @@ import com.example.chillstay.ui.profile.ProfileScreen
 @Composable
 fun MainScreen(
     homeViewModel: HomeViewModel,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onHotelClick: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     
@@ -32,13 +33,13 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (selectedTab) {
-                0 -> HomeScreen(viewModel = homeViewModel)
-                1 -> VoucherScreen(onBackClick = onBackClick)
-                2 -> MyBookmarkScreen(onBackClick = onBackClick)
-                3 -> MyTripScreen(onBackClick = onBackClick)
-                4 -> ProfileScreen(onBackClick = onBackClick)
-            }
+                when (selectedTab) {
+                    0 -> HomeScreen(viewModel = homeViewModel, onHotelClick = onHotelClick)
+                    1 -> VoucherScreen(onBackClick = onBackClick)
+                    2 -> MyBookmarkScreen(onBackClick = onBackClick, onHotelClick = onHotelClick)
+                    3 -> MyTripScreen(onBackClick = onBackClick, onHotelClick = onHotelClick)
+                    4 -> ProfileScreen(onBackClick = onBackClick)
+                }
         }
     }
 }

@@ -28,3 +28,4 @@ class GetHotelRoomsUseCase constructor(
     }
 }
 
+

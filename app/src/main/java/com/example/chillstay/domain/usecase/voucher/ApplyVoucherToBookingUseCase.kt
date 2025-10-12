@@ -3,8 +3,8 @@ package com.example.chillstay.domain.usecase.voucher
 import com.example.chillstay.domain.repository.VoucherRepository
 import com.example.chillstay.domain.repository.BookingRepository
 import com.example.chillstay.core.common.Result
-import java.time.Instant
-
+import com.example.chillstay.domain.model.VoucherStatus
+import java.util.Date
 
 class ApplyVoucherToBookingUseCase constructor(
     private val voucherRepository: VoucherRepository,
@@ -29,28 +29,27 @@ class ApplyVoucherToBookingUseCase constructor(
                 return Result.failure(Exception("Voucher not found"))
             }
             
-            val now = Instant.now()
-            if (voucher.status != "ACTIVE") {
+            val now = Date()
+            if (voucher.status != VoucherStatus.ACTIVE) {
                 return Result.failure(Exception("Voucher is not active"))
             }
             
-            if (voucher.validFrom.isAfter(now) || voucher.validTo.isBefore(now)) {
+            if (voucher.validFrom.after(now) || voucher.validTo.before(now)) {
                 return Result.failure(Exception("Voucher is not valid at this time"))
             }
             
             // Check if voucher applies to this hotel
-            if (voucher.applyForHotel.isNotEmpty()) {
+            if (voucher.applyForHotel != null && voucher.applyForHotel.isNotEmpty()) {
                 val hotelId = bookingRepository.getBookingHotelId(bookingId)
-                if (hotelId == null || !voucher.applyForHotel.any { it.id == hotelId }) {
+                if (hotelId == null || !voucher.applyForHotel.contains(hotelId)) {
                     return Result.failure(Exception("Voucher does not apply to this hotel"))
                 }
             }
             
             // Calculate discount amount
             val discountAmount = when (voucher.type) {
-                "PERCENTAGE" -> booking.price * (voucher.value / 100.0)
-                "FIXED" -> voucher.value
-                else -> 0.0
+                com.example.chillstay.domain.model.VoucherType.PERCENTAGE -> booking.price * (voucher.value / 100.0)
+                com.example.chillstay.domain.model.VoucherType.FIXED_AMOUNT -> voucher.value
             }
             
             // Ensure discount doesn't exceed booking price
@@ -62,4 +61,5 @@ class ApplyVoucherToBookingUseCase constructor(
         }
     }
 }
+
 

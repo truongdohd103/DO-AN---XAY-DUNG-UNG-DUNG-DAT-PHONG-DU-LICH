@@ -1,6 +1,7 @@
 package com.example.chillstay.ui.bookmark
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,7 +21,8 @@ import coil.compose.AsyncImage
 
 @Composable
 fun MyBookmarkScreen(
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onHotelClick: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier
@@ -38,7 +40,8 @@ fun MyBookmarkScreen(
                 reviews = 45,
                 originalPrice = 700,
                 discountedPrice = 599,
-                voucherApplied = 100
+                voucherApplied = 100,
+                onClick = onHotelClick
             )
         }
         item {
@@ -50,7 +53,8 @@ fun MyBookmarkScreen(
                 reviews = 45,
                 originalPrice = 700,
                 discountedPrice = 599,
-                voucherApplied = 100
+                voucherApplied = 100,
+                onClick = onHotelClick
             )
         }
         item {
@@ -62,7 +66,8 @@ fun MyBookmarkScreen(
                 reviews = 45,
                 originalPrice = 700,
                 discountedPrice = 599,
-                voucherApplied = 100
+                voucherApplied = 100,
+                onClick = onHotelClick
             )
         }
     }
@@ -77,12 +82,14 @@ fun RecentlyBookedCard(
     reviews: Int,
     originalPrice: Int,
     discountedPrice: Int,
-    voucherApplied: Int
+    voucherApplied: Int,
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(266.dp),
+            .height(266.dp)
+            .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA))
     ) {

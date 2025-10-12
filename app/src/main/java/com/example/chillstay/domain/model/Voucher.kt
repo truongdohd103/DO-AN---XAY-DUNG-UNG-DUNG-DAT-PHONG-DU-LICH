@@ -1,18 +1,29 @@
 package com.example.chillstay.domain.model
 
-import java.time.Instant
+import java.util.Date
 
 data class Voucher(
     val id: String,
     val code: String,
     val title: String,
     val description: String,
-    val type: String,
+    val type: VoucherType,
     val value: Double,
-    val validFrom: Instant,
-    val validTo: Instant,
-    val status: String,
-    val applyForHotel: List<Hotel> = emptyList()
+    val status: VoucherStatus,
+    val validFrom: Date,
+    val validTo: Date,
+    val applyForHotel: List<String>? = null, // null means apply for all hotels
+    val createdAt: Date,
+    val updatedAt: Date
 )
 
+enum class VoucherType {
+    PERCENTAGE,
+    FIXED_AMOUNT
+}
 
+enum class VoucherStatus {
+    ACTIVE,
+    INACTIVE,
+    EXPIRED
+}
