@@ -18,6 +18,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.chillstay.domain.model.Booking
+import com.example.chillstay.domain.model.Hotel
+import com.example.chillstay.domain.model.Room
+import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
+import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
+import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
+import com.google.firebase.auth.FirebaseAuth
+import org.koin.androidx.compose.get
 
 @Composable
 fun MyTripScreen(
@@ -25,6 +33,49 @@ fun MyTripScreen(
     onHotelClick: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(0) }
+    val getUserBookingsUseCase: GetUserBookingsUseCase = get()
+    val getRoomByIdUseCase: GetRoomByIdUseCase = get()
+    val getHotelByIdUseCase: GetHotelByIdUseCase = get()
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+    var bookings by remember { mutableStateOf<List<Booking>>(emptyList()) }
+    var roomMap by remember { mutableStateOf<Map<String, Room>>(emptyMap()) }
+    var hotelMap by remember { mutableStateOf<Map<String, Hotel>>(emptyMap()) }
+
+    LaunchedEffect(currentUserId, selectedTab) {
+        val status = when (selectedTab) {
+            1 -> "UPCOMING"
+            2 -> "COMPLETED"
+            3 -> "CANCELLED"
+            else -> null
+        }
+        if (currentUserId != null) {
+            runCatching { getUserBookingsUseCase(currentUserId, status) }
+                .onSuccess { result ->
+                    val list = when (result) {
+                        is com.example.chillstay.core.common.Result.Success -> result.data
+                        is com.example.chillstay.core.common.Result.Error -> emptyList()
+                    }
+                    bookings = list
+                    // Fetch rooms and hotels for display
+                    val rooms = mutableMapOf<String, Room>()
+                    val hotels = mutableMapOf<String, Hotel>()
+                    for (b in list) {
+                        runCatching { getRoomByIdUseCase(b.roomId) }
+                            .onSuccess { r ->
+                                when (r) {
+                                    is com.example.chillstay.core.common.Result.Success -> rooms[r.data.id] = r.data
+                                    is com.example.chillstay.core.common.Result.Error -> {}
+                                }
+                            }
+                    }
+                    // For each room, fetch hotel if hotelId exists in Room detail (assume detail may include)
+                    // NOTE: Room model không có hotelId hiện tại -> cần lấy từ schema rooms: field `hotelId`
+                    // Đã bổ sung hotelId vào Room model; có thể fetch Hotel khi cần.
+                    roomMap = rooms
+                    hotelMap = hotels
+                }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -46,44 +97,21 @@ fun MyTripScreen(
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
+            items(bookings.size) { index ->
+                val booking = bookings[index]
+                val room = roomMap[booking.roomId]
+                val hotelName = room?.detail?.name ?: booking.roomId
+                val location = ""
                 TripCard(
-                    hotelName = "Grand Hotel Saigon",
-                    location = "Ho Chi Minh City, Vietnam",
-                    dates = "Dec 15-18, 2024 • 3 nights",
-                    totalPrice = 320,
-                    status = "Confirmed",
+                    hotelName = hotelName,
+                    location = location,
+                    dates = "${booking.dateFrom} - ${booking.dateTo}",
+                    totalPrice = booking.price.toInt(),
+                    status = booking.status.name,
                     statusColor = Color(0xFF1AB6B6),
                     gradientColors = listOf(Color(0xFF1AB6B6), Color(0xFF159999)),
                     onClick = onHotelClick
                 )
-            }
-            item {
-                TripCard(
-                    hotelName = "Fusion Resort Phu Quoc",
-                    location = "Phu Quoc Island, Vietnam",
-                    dates = "Nov 20-25, 2024 • 5 nights",
-                    totalPrice = 850,
-                    status = "Completed",
-                    statusColor = Color(0xFF666666),
-                    gradientColors = listOf(Color(0xFF666666), Color(0xFF444444)),
-                    onClick = onHotelClick
-                )
-            }
-            item {
-                Button(
-                    onClick = { /* TODO: Load more trips */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(43.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFF1AB6B6)
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF1AB6B6)),
-                    shape = RoundedCornerShape(25.dp)
-                ) {
-                    Text(text = "Load More Trips", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                }
             }
         }
     }

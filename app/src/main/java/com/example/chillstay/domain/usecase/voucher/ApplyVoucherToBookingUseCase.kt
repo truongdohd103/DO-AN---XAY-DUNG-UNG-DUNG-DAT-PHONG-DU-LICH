@@ -20,7 +20,7 @@ class ApplyVoucherToBookingUseCase constructor(
                 return Result.failure(Exception("Booking not found"))
             }
             
-            if (booking.status != "PENDING") {
+            if (booking.status != com.example.chillstay.domain.model.BookingStatus.PENDING) {
                 return Result.failure(Exception("Cannot apply voucher to non-pending booking"))
             }
             

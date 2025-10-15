@@ -40,9 +40,9 @@ import com.example.chillstay.R
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onHotelClick: () -> Unit = {}
+    onHotelClick: (String) -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
     
     Box(
         modifier = Modifier.fillMaxSize()
@@ -71,8 +71,11 @@ fun HomeScreen(
             }
             
             item {
-                // Category Tabs
-                CategoryTabs()
+                // Category Tabs (horizontal scroll)
+                CategoryTabs(
+                    selected = uiState.selectedCategory,
+                    onSelect = { viewModel.handleIntent(HomeIntent.ChangeHotelCategory(it)) }
+                )
             }
             
             item {
@@ -80,25 +83,41 @@ fun HomeScreen(
             }
             
             item {
-                // Hotel Cards
-                HotelCardsSection(onHotelClick = onHotelClick)
+                // Horizontal list of hotels per selected category
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    items(uiState.hotels.size) { index ->
+                        val hotel = uiState.hotels[index]
+                        val minPrice = hotel.rooms.minByOrNull { it.price }?.price
+                        HotelCard(
+                            title = hotel.name,
+                            location = "${hotel.city}, ${hotel.country}",
+                            price = minPrice?.let { "$${it.toInt()}" },
+                            rating = hotel.rating.toFloat(),
+                            reviews = hotel.numberOfReviews,
+                            imageUrl = hotel.imageUrl,
+                            onClick = { onHotelClick(hotel.id) }
+                        )
+                    }
+                }
             }
             
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
-            item {
-                // Hotel Promotions
-                HotelPromotionsSection()
-            }
+            // Removed PopularHotelsSection; list above handles vertical scroll
             
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
             item {
-                // VIP Status
+                // VIP Status (UI static for now)
                 VipStatusSection()
             }
             
@@ -107,7 +126,7 @@ fun HomeScreen(
             }
             
             item {
-                // Continue Planning
+                // Continue Planning (UI static for now)
                 ContinuePlanningSection()
             }
             
@@ -115,9 +134,11 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
-            item {
-                // Recently Booked
-                RecentlyBookedSection()
+            if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null) {
+                item {
+                    // Recently Booked (only when signed in and has data)
+                    RecentlyBookedSection()
+                }
             }
             
             item {
@@ -201,35 +222,33 @@ fun SearchBar() {
 }
 
 @Composable
-fun CategoryTabs() {
-    var selectedTab by remember { mutableStateOf(0) }
-    
-    Row(
+fun CategoryTabs(selected: Int, onSelect: (Int) -> Unit) {
+    val tabs = listOf("Popular", "Recommended", "Trending")
+    LazyRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        val tabs = listOf("Popular", "Recommended", "Trending")
-        
-        tabs.forEachIndexed { index, tab ->
+        items(tabs.size) { index ->
+            val tab = tabs[index]
             Box(
                 modifier = Modifier
                     .background(
-                        color = if (selectedTab == index) Color(0xFF1AB6B6) else Color.Transparent,
+                        color = if (selected == index) Color(0xFF1AB6B6) else Color.Transparent,
                         shape = RoundedCornerShape(20.dp)
                     )
                     .border(
                         width = 1.dp,
-                        color = if (selectedTab == index) Color(0xFF1AB65C) else Color(0xFFE0E0E0),
+                        color = if (selected == index) Color(0xFF1AB65C) else Color(0xFFE0E0E0),
                         shape = RoundedCornerShape(20.dp)
                     )
-                    .clickable { selectedTab = index }
+                    .clickable { onSelect(index) }
                     .padding(horizontal = 21.dp, vertical = 13.dp)
             ) {
                 Text(
                     text = tab,
-                    color = if (selectedTab == index) Color.White else Color(0xFF757575),
+                    color = if (selected == index) Color.White else Color(0xFF757575),
                     fontSize = 13.5.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -240,7 +259,8 @@ fun CategoryTabs() {
 
 @Composable
 fun HotelCardsSection(
-    onHotelClick: () -> Unit = {}
+    hotels: List<com.example.chillstay.domain.model.Hotel> = emptyList(),
+    onHotelClick: (String) -> Unit = {}
 ) {
     LazyRow(
         modifier = Modifier
@@ -248,15 +268,53 @@ fun HotelCardsSection(
             .padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        items(2) { index ->
+        items(hotels.size) { index ->
+            val hotel = hotels[index]
+            // Compute minimum room price if rooms are embedded; otherwise, omit price
+            val minPrice = hotel.rooms.minByOrNull { it.price }?.price
             HotelCard(
-                title = if (index == 0) "Luxury Resort & Spa" else "Ocean View Hotel",
-                location = if (index == 0) "Miami, USA - 20 km to beach" else "Bali, Indonesia",
-                price = if (index == 0) "$299" else "$199",
-                rating = if (index == 0) null else 4.9f,
-                imageUrl = "https://placehold.co/280x180",
-                onClick = onHotelClick
+                title = hotel.name,
+                location = "${hotel.city}, ${hotel.country}",
+                price = minPrice?.let { "$${it.toInt()}" },
+                rating = hotel.rating.toFloat(),
+                reviews = hotel.numberOfReviews,
+                imageUrl = hotel.imageUrl,
+                onClick = { onHotelClick(hotel.id) }
             )
+        }
+    }
+}
+
+@Composable
+fun PopularHotelsSection(
+    hotels: List<com.example.chillstay.domain.model.Hotel>,
+    onHotelClick: (String) -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+    ) {
+        Text(
+            text = "Popular Hotels",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF212121)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            items(hotels.size) { index ->
+                val hotel = hotels[index]
+                HotelCard(
+                    title = hotel.name,
+                    location = "${hotel.city}, ${hotel.country}",
+                    price = hotel.rooms.minByOrNull { it.price }?.price?.let { "$${it.toInt()}" },
+                    rating = hotel.rating.toFloat(),
+                    reviews = hotel.numberOfReviews,
+                    imageUrl = hotel.imageUrl,
+                    onClick = { onHotelClick(hotel.id) }
+                )
+            }
         }
     }
 }
@@ -265,8 +323,9 @@ fun HotelCardsSection(
 fun HotelCard(
     title: String,
     location: String,
-    price: String,
+    price: String?,
     rating: Float?,
+    reviews: Int?,
     imageUrl: String,
     onClick: () -> Unit = {}
 ) {
@@ -342,27 +401,38 @@ fun HotelCard(
                                 )
                             }
                         }
+
+                        if (reviews != null) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "(${reviews})",
+                                fontSize = 12.sp,
+                                color = Color(0xFF757575)
+                            )
+                        }
                     }
                     
                     Spacer(modifier = Modifier.height(8.dp))
                 }
                 
-                Row(
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(
-                        text = price,
-                        fontSize = 19.38.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1AB6B6)
-                    )
-                    
-                    Text(
-                        text = "/night",
-                        fontSize = 12.91.sp,
-                        color = Color(0xFF757575),
-                        modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
-                    )
+                if (!price.isNullOrBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Text(
+                            text = price,
+                            fontSize = 19.38.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1AB6B6)
+                        )
+                        
+                        Text(
+                            text = "/night",
+                            fontSize = 12.91.sp,
+                            color = Color(0xFF757575),
+                            modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
+                        )
+                    }
                 }
             }
         }

@@ -17,7 +17,6 @@ import coil.compose.AsyncImage
 
 @Composable
 fun CarouselScreen(
-    onNextClick: () -> Unit = {},
     onSkipClick: () -> Unit = {}
 ) {
     Card(
@@ -66,34 +65,6 @@ fun CarouselScreen(
                     modifier = Modifier.padding(bottom = 32.dp)
                 )
                 
-                // Page indicators
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(bottom = 32.dp)
-                ) {
-                    // Active indicator
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(
-                                color = Color(0xFF1AB6B6),
-                                shape = CircleShape
-                            )
-                    )
-                    
-                    // Inactive indicators
-                    repeat(2) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(
-                                    color = Color(0xFFE0E0E0),
-                                    shape = CircleShape
-                                )
-                        )
-                    }
-                }
-                
                 // Buttons
                 Column(
                     modifier = Modifier
@@ -101,25 +72,6 @@ fun CarouselScreen(
                         .padding(top = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Next button
-                    Button(
-                        onClick = onNextClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF1AB6B6)
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = "Next",
-                            color = Color.White,
-                            fontSize = 15.25.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    
                     // Skip button
                     OutlinedButton(
                         onClick = onSkipClick,

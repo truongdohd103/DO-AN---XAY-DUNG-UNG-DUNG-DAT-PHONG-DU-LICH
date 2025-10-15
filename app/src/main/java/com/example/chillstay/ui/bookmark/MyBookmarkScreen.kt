@@ -18,12 +18,46 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.chillstay.domain.model.Bookmark
+import com.example.chillstay.domain.model.Hotel
+import com.example.chillstay.domain.usecase.bookmark.GetUserBookmarksUseCase
+import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
+import com.google.firebase.auth.FirebaseAuth
+import org.koin.androidx.compose.get
 
 @Composable
 fun MyBookmarkScreen(
     onBackClick: () -> Unit = {},
-    onHotelClick: () -> Unit = {}
+    onHotelClick: (String) -> Unit = {}
 ) {
+    val getUserBookmarksUseCase: GetUserBookmarksUseCase = get()
+    val getHotelByIdUseCase: GetHotelByIdUseCase = get()
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+    var hotels by remember { mutableStateOf<List<Hotel>>(emptyList()) }
+
+    LaunchedEffect(currentUserId) {
+        if (currentUserId != null) {
+            runCatching { getUserBookmarksUseCase(currentUserId) }
+                .onSuccess { result ->
+                    val bookmarks = when (result) {
+                        is com.example.chillstay.core.common.Result.Success -> result.data
+                        is com.example.chillstay.core.common.Result.Error -> emptyList()
+                    }
+                    val fetched = mutableListOf<Hotel>()
+                    for (bm in bookmarks) {
+                        runCatching { getHotelByIdUseCase(bm.hotelId) }
+                            .onSuccess { res ->
+                                when (res) {
+                                    is com.example.chillstay.core.common.Result.Success -> fetched.add(res.data)
+                                    is com.example.chillstay.core.common.Result.Error -> {}
+                                }
+                            }
+                    }
+                    hotels = fetched
+                }
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -31,43 +65,19 @@ fun MyBookmarkScreen(
             .padding(horizontal = 21.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
+        items(hotels.size) { index ->
+            val hotel = hotels[index]
             RecentlyBookedCard(
-                imageUrl = "https://placehold.co/287x161",
-                name = "Beachfront Villa",
-                location = "Maldives - 10 km to center",
-                rating = 4.9,
-                reviews = 45,
-                originalPrice = 700,
-                discountedPrice = 599,
-                voucherApplied = 100,
-                onClick = onHotelClick
-            )
-        }
-        item {
-            RecentlyBookedCard(
-                imageUrl = "https://placehold.co/287x159",
-                name = "City Center Hotel",
-                location = "New York, USA - 20 km to center",
-                rating = 4.9,
-                reviews = 45,
-                originalPrice = 700,
-                discountedPrice = 599,
-                voucherApplied = 100,
-                onClick = onHotelClick
-            )
-        }
-        item {
-            RecentlyBookedCard(
-                imageUrl = "https://placehold.co/287x160",
-                name = "Mountain Resort",
-                location = "Swiss Alps - 10 km to center",
-                rating = 4.9,
-                reviews = 45,
-                originalPrice = 700,
-                discountedPrice = 599,
-                voucherApplied = 100,
-                onClick = onHotelClick
+                imageUrl = hotel.imageUrl,
+                name = hotel.name,
+                location = "${hotel.city}, ${hotel.country}",
+                rating = hotel.rating,
+                reviews = hotel.numberOfReviews,
+                // Giá/voucher hiện không có trong schema bookmark/hotel: ẩn hoặc set 0
+                originalPrice = 0,
+                discountedPrice = 0,
+                voucherApplied = 0,
+                onClick = { onHotelClick(hotel.id) }
             )
         }
     }
