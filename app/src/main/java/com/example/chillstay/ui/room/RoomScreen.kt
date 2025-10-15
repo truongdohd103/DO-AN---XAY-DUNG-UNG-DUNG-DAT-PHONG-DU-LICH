@@ -19,13 +19,20 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.chillstay.domain.model.Room
+import org.koin.androidx.compose.get
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoomScreen(
+    hotelId: String = "",
     onBackClick: () -> Unit = {},
-    onBookNowClick: () -> Unit = {}
+    onBookNowClick: (String, String, String, String) -> Unit = { _, _, _, _ -> }
 ) {
+    val viewModel: RoomViewModel = get()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(hotelId) { if (hotelId.isNotEmpty()) viewModel.handleIntent(RoomIntent.LoadRooms(hotelId)) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -43,7 +50,7 @@ fun RoomScreen(
                         
                         Column {
                             Text(
-                                text = "Luxury Resort & Spa",
+                                text = uiState.hotelName ?: "",
                                 color = Color(0xFF212121),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -91,61 +98,41 @@ fun RoomScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
-            item {
-                // Basic Triple Room
+            items(uiState.rooms.size) { index ->
+                val room = uiState.rooms[index]
                 RoomCard(
-                    title = "Basic Triple Room",
-                    imageUrl = "https://placehold.co/374x250",
-                    size = "29 m²/312 ft²",
-                    maxAdults = "Max 3 adults",
-                    beds = "3 single beds",
+                    roomId = room.id,
+                    title = room.detail?.name ?: room.type,
+                    imageUrl = room.imageUrl,
+                    size = room.detail?.size?.let { "${it.toInt()} m²" } ?: "",
+                    maxAdults = "Max ${room.capacity} adults",
+                    beds = room.type,
                     amenities = listOf(
                         "📶 Internet access – wireless",
                         "🚭 Non-smoking",
                         "📺 TV",
                         "❄️ Air conditioning"
                     ),
-                    breakfastInfo = "Breakfast available ($25 / person)",
-                    refundable = "Non-refundable (Low price!)",
+                    breakfastInfo = "",
+                    refundable = "",
                     paymentType = "Pay at hotel",
-                    originalPrice = 799,
-                    discount = 28,
-                    finalPrice = 599,
-                    roomsLeft = 4,
-                    onBookNowClick = onBookNowClick
+                    originalPrice = 0,
+                    discount = 0,
+                    finalPrice = room.price.toInt(),
+                    roomsLeft = if (room.isAvailable) 5 else 0,
+                    isSoldOut = !room.isAvailable,
+                    onBookNowClick = { roomId, dateFrom, dateTo, _ ->
+                        onBookNowClick(hotelId, roomId, dateFrom, dateTo)
+                    }
                 )
+                Spacer(modifier = Modifier.height(16.dp))
             }
             
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
-            item {
-                // Interior Double or Twin Room
-                RoomCard(
-                    title = "Interior Double or Twin Room",
-                    subtitle = "Double with Extra Bed",
-                    imageUrl = "https://placehold.co/334x223",
-                    size = "20 m²/215 ft²",
-                    maxAdults = "Max 3 adults",
-                    beds = "2 double bed",
-                    amenities = listOf(
-                        "📶 Internet access – wireless",
-                        "🚭 Non-smoking",
-                        "📺 TV",
-                        "❄️ Air conditioning"
-                    ),
-                    breakfastInfo = "Breakfast available ($25 / person)",
-                    refundable = "Non-refundable (Low price!)",
-                    paymentType = "Pay at hotel",
-                    originalPrice = 899,
-                    discount = 15,
-                    finalPrice = 764,
-                    roomsLeft = 0,
-                    isSoldOut = true,
-                    onBookNowClick = onBookNowClick
-                )
-            }
+            
             
             item {
                 Spacer(modifier = Modifier.height(100.dp))
@@ -234,6 +221,7 @@ fun FilterChip(
 
 @Composable
 fun RoomCard(
+    roomId: String,
     title: String,
     subtitle: String = "",
     imageUrl: String,
@@ -249,7 +237,7 @@ fun RoomCard(
     finalPrice: Int,
     roomsLeft: Int,
     isSoldOut: Boolean = false,
-    onBookNowClick: () -> Unit
+    onBookNowClick: (String, String, String, String) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -538,7 +526,9 @@ fun RoomCard(
                             )
                             
                             Button(
-                                onClick = onBookNowClick,
+                                onClick = { 
+                                    onBookNowClick(roomId, "2024-12-25", "2024-12-28", "2024-12-30")
+                                },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color(0xFF1AB6B6)
                                 ),

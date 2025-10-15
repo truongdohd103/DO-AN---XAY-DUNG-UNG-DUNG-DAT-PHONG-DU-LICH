@@ -15,11 +15,11 @@ class CancelBookingUseCase constructor(
             }
             
             // Check if booking can be cancelled
-            if (booking.status == "CANCELLED") {
+            if (booking.status == com.example.chillstay.domain.model.BookingStatus.CANCELLED) {
                 return Result.failure(Exception("Booking is already cancelled"))
             }
             
-            if (booking.status == "COMPLETED") {
+            if (booking.status == com.example.chillstay.domain.model.BookingStatus.CHECKED_OUT) {
                 return Result.failure(Exception("Cannot cancel completed booking"))
             }
             

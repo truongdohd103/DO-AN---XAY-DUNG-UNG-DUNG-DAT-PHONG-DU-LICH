@@ -1,13 +1,12 @@
 package com.example.chillstay.domain.model
 
 data class HotelDetail(
-    val hotel: Hotel,
-    val address: Address,
-    val description: String,
+    val address: Address? = null,
+    val description: String = "",
     val photoUrls: List<String> = emptyList(),
-    val hotelInformation: HotelInformation,
+    val hotelInformation: HotelInformation? = null,
     val facilities: List<String> = emptyList(),
-    val location: Location,
+    val location: Location? = null,
     val reviews: List<Review> = emptyList()
 )
 

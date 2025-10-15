@@ -13,6 +13,7 @@ import com.example.chillstay.R
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import org.koin.compose.koinInject
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -20,26 +21,77 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import org.koin.androidx.compose.get
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingScreen(
+    hotelId: String = "",
+    roomId: String = "",
+    dateFrom: String = "",
+    dateTo: String = "",
     onBackClick: () -> Unit = {}
 ) {
-    var rooms by remember { mutableStateOf(1) }
-    var adults by remember { mutableStateOf(2) }
-    var children by remember { mutableStateOf(1) }
-    var selectedPaymentMethod by remember { mutableStateOf(0) } // 0: Credit Card, 1: Digital Wallet
-    var highFloor by remember { mutableStateOf(false) }
-    var quietRoom by remember { mutableStateOf(false) }
-    var extraPillows by remember { mutableStateOf(false) }
-    var airportShuttle by remember { mutableStateOf(false) }
+    val viewModel: BookingViewModel = koinInject()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
     
+    // Load booking data when screen opens
+    LaunchedEffect(hotelId, roomId, dateFrom, dateTo) {
+        if (hotelId.isNotEmpty() && roomId.isNotEmpty() && dateFrom.isNotEmpty() && dateTo.isNotEmpty()) {
+            val fromDate = java.time.LocalDate.parse(dateFrom)
+            val toDate = java.time.LocalDate.parse(dateTo)
+            viewModel.handleIntent(BookingIntent.LoadBookingData(hotelId, roomId, fromDate, toDate))
+        }
+    }
     var cardNumber by remember { mutableStateOf("1234 5678 9012 3456") }
     var expiryDate by remember { mutableStateOf("MM/YY") }
     var cvv by remember { mutableStateOf("123") }
     var cardholderName by remember { mutableStateOf("John Doe") }
-    var specialRequests by remember { mutableStateOf("Any special requests or notes for the hotel (early check-in, late check-out, dietary requirements, etc.)") }
+    
+    // Show loading state
+    if (uiState.isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = Color(0xFF1AB6B6))
+        }
+        return
+    }
+    
+    // Show error state
+    if (uiState.error != null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Error: ${uiState.error}",
+                    color = Color.Red,
+                    fontSize = 16.sp
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { 
+                        if (hotelId.isNotEmpty() && roomId.isNotEmpty() && dateFrom.isNotEmpty() && dateTo.isNotEmpty()) {
+                            val fromDate = java.time.LocalDate.parse(dateFrom)
+                            val toDate = java.time.LocalDate.parse(dateTo)
+                            viewModel.handleIntent(BookingIntent.LoadBookingData(hotelId, roomId, fromDate, toDate))
+                        }
+                    }
+                ) {
+                    Text("Retry")
+                }
+            }
+        }
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -54,7 +106,7 @@ fun BookingScreen(
                         )
                         
                         Text(
-                            text = "Ocean View Hotel - Bali, Indonesia",
+                            text = "${uiState.hotel?.name ?: "Hotel"} - ${uiState.hotel?.city ?: "City"}, ${uiState.hotel?.country ?: "Country"}",
                             color = Color.White.copy(alpha = 0.9f),
                             fontSize = 14.sp
                         )
@@ -88,12 +140,16 @@ fun BookingScreen(
             item {
                 // Stay Details
                 StayDetailsSection(
-                    rooms = rooms,
-                    adults = adults,
-                    children = children,
-                    onRoomsChange = { rooms = it },
-                    onAdultsChange = { adults = it },
-                    onChildrenChange = { children = it }
+                    hotel = uiState.hotel,
+                    room = uiState.room,
+                    dateFrom = uiState.dateFrom,
+                    dateTo = uiState.dateTo,
+                    rooms = uiState.rooms,
+                    adults = uiState.adults,
+                    children = uiState.children,
+                    onRoomsChange = { viewModel.handleIntent(BookingIntent.UpdateGuests(uiState.adults, uiState.children, it)) },
+                    onAdultsChange = { viewModel.handleIntent(BookingIntent.UpdateGuests(it, uiState.children, uiState.rooms)) },
+                    onChildrenChange = { viewModel.handleIntent(BookingIntent.UpdateGuests(uiState.adults, it, uiState.rooms)) }
                 )
             }
             
@@ -104,16 +160,10 @@ fun BookingScreen(
             item {
                 // Special Requests
                 SpecialRequestsSection(
-                    specialRequests = specialRequests,
-                    onSpecialRequestsChange = { specialRequests = it },
-                    highFloor = highFloor,
-                    onHighFloorChange = { highFloor = it },
-                    quietRoom = quietRoom,
-                    onQuietRoomChange = { quietRoom = it },
-                    extraPillows = extraPillows,
-                    onExtraPillowsChange = { extraPillows = it },
-                    airportShuttle = airportShuttle,
-                    onAirportShuttleChange = { airportShuttle = it }
+                    specialRequests = uiState.specialRequests,
+                    onSpecialRequestsChange = { viewModel.handleIntent(BookingIntent.UpdateSpecialRequests(it)) },
+                    preferences = uiState.preferences,
+                    onPreferencesChange = { viewModel.handleIntent(BookingIntent.UpdatePreferences(it)) }
                 )
             }
             
@@ -124,8 +174,16 @@ fun BookingScreen(
             item {
                 // Payment Method
                 PaymentMethodSection(
-                    selectedPaymentMethod = selectedPaymentMethod,
-                    onPaymentMethodChange = { selectedPaymentMethod = it },
+                    selectedPaymentMethod = when (uiState.paymentMethod) {
+                        com.example.chillstay.domain.model.PaymentMethod.CREDIT_CARD -> 0
+                        com.example.chillstay.domain.model.PaymentMethod.DIGITAL_WALLET -> 1
+                        else -> 0
+                    },
+                    onPaymentMethodChange = { 
+                        val method = if (it == 0) com.example.chillstay.domain.model.PaymentMethod.CREDIT_CARD 
+                                   else com.example.chillstay.domain.model.PaymentMethod.DIGITAL_WALLET
+                        viewModel.handleIntent(BookingIntent.UpdatePaymentMethod(method))
+                    },
                     cardNumber = cardNumber,
                     onCardNumberChange = { cardNumber = it },
                     expiryDate = expiryDate,
@@ -143,7 +201,10 @@ fun BookingScreen(
             
             item {
                 // Price Summary
-                PriceSummarySection()
+                PriceSummarySection(
+                    priceBreakdown = uiState.priceBreakdown,
+                    appliedVouchers = uiState.appliedVouchers
+                )
             }
             
             item {
@@ -153,22 +214,34 @@ fun BookingScreen(
             item {
                 // Book Button
                 Button(
-                    onClick = { /* TODO: Process booking */ },
+                    onClick = { 
+                        if (!uiState.isCreatingBooking) {
+                            viewModel.handleIntent(BookingIntent.CreateBooking)
+                        }
+                    },
+                    enabled = !uiState.isCreatingBooking && uiState.hotel != null && uiState.room != null,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
                         .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1AB6B6)
+                        containerColor = if (uiState.isCreatingBooking) Color.Gray else Color(0xFF1AB6B6)
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(
-                        text = "BOOK",
-                        color = Color.White,
-                        fontSize = 17.58.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (uiState.isCreatingBooking) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "BOOK",
+                            color = Color.White,
+                            fontSize = 17.58.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
             
@@ -181,6 +254,10 @@ fun BookingScreen(
 
 @Composable
 fun StayDetailsSection(
+    hotel: com.example.chillstay.domain.model.Hotel?,
+    room: com.example.chillstay.domain.model.Room?,
+    dateFrom: java.time.LocalDate,
+    dateTo: java.time.LocalDate,
     rooms: Int,
     adults: Int,
     children: Int,
@@ -226,7 +303,7 @@ fun StayDetailsSection(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     OutlinedTextField(
-                        value = "Dec 25, 2024",
+                        value = dateFrom.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
                         onValueChange = { },
                         modifier = Modifier.fillMaxWidth(),
                         readOnly = true,
@@ -251,7 +328,7 @@ fun StayDetailsSection(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     OutlinedTextField(
-                        value = "Dec 28, 2024",
+                        value = dateTo.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
                         onValueChange = { },
                         modifier = Modifier.fillMaxWidth(),
                         readOnly = true,
@@ -278,7 +355,7 @@ fun StayDetailsSection(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 OutlinedTextField(
-                    value = "Deluxe Ocean View - $199/night",
+                    value = "${room?.detail?.name ?: room?.type ?: "Room"} - $${room?.price?.toInt() ?: 0}/night",
                     onValueChange = { },
                     modifier = Modifier.fillMaxWidth(),
                     readOnly = true,
@@ -403,14 +480,8 @@ fun CounterRow(
 fun SpecialRequestsSection(
     specialRequests: String,
     onSpecialRequestsChange: (String) -> Unit,
-    highFloor: Boolean,
-    onHighFloorChange: (Boolean) -> Unit,
-    quietRoom: Boolean,
-    onQuietRoomChange: (Boolean) -> Unit,
-    extraPillows: Boolean,
-    onExtraPillowsChange: (Boolean) -> Unit,
-    airportShuttle: Boolean,
-    onAirportShuttleChange: (Boolean) -> Unit
+    preferences: com.example.chillstay.domain.model.BookingPreferences,
+    onPreferencesChange: (com.example.chillstay.domain.model.BookingPreferences) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -473,26 +544,34 @@ fun SpecialRequestsSection(
                 
                 PreferenceCheckbox(
                     text = "High floor room",
-                    checked = highFloor,
-                    onCheckedChange = onHighFloorChange
+                    checked = preferences.highFloor,
+                    onCheckedChange = { 
+                        onPreferencesChange(preferences.copy(highFloor = it))
+                    }
                 )
                 
                 PreferenceCheckbox(
                     text = "Quiet room away from elevator",
-                    checked = quietRoom,
-                    onCheckedChange = onQuietRoomChange
+                    checked = preferences.quietRoom,
+                    onCheckedChange = { 
+                        onPreferencesChange(preferences.copy(quietRoom = it))
+                    }
                 )
                 
                 PreferenceCheckbox(
                     text = "Extra pillows",
-                    checked = extraPillows,
-                    onCheckedChange = onExtraPillowsChange
+                    checked = preferences.extraPillows,
+                    onCheckedChange = { 
+                        onPreferencesChange(preferences.copy(extraPillows = it))
+                    }
                 )
                 
                 PreferenceCheckbox(
                     text = "Airport shuttle service",
-                    checked = airportShuttle,
-                    onCheckedChange = onAirportShuttleChange
+                    checked = preferences.airportShuttle,
+                    onCheckedChange = { 
+                        onPreferencesChange(preferences.copy(airportShuttle = it))
+                    }
                 )
             }
         }
@@ -764,7 +843,10 @@ fun PaymentMethodOption(
 }
 
 @Composable
-fun PriceSummarySection() {
+fun PriceSummarySection(
+    priceBreakdown: PriceBreakdown,
+    appliedVouchers: List<com.example.chillstay.domain.model.Voucher> = emptyList()
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -786,9 +868,15 @@ fun PriceSummarySection() {
             Spacer(modifier = Modifier.height(16.dp))
             
             // Price breakdown
-            PriceRow("$199 × 3 nights", "$597")
-            PriceRow("Service fee", "$29")
-            PriceRow("Taxes", "$45")
+            val nights = 3 // Default to 3 nights for display
+            PriceRow("$${priceBreakdown.roomPrice.toInt()} × $nights nights", "$${priceBreakdown.roomPrice.toInt()}")
+            PriceRow("Service fee", "$${priceBreakdown.serviceFee.toInt()}")
+            PriceRow("Taxes", "$${priceBreakdown.taxes.toInt()}")
+            
+            // Show applied vouchers
+            appliedVouchers.forEach { voucher ->
+                PriceRow("Voucher: ${voucher.code}", "-$${priceBreakdown.voucherDiscount.toInt()}")
+            }
             
             Spacer(modifier = Modifier.height(13.dp))
             
@@ -810,7 +898,7 @@ fun PriceSummarySection() {
                 )
                 
                 Text(
-                    text = "$671",
+                    text = "$${priceBreakdown.finalTotal.toInt()}",
                     color = Color(0xFF1AB6B6),
                     fontSize = 17.44.sp,
                     fontWeight = FontWeight.Bold

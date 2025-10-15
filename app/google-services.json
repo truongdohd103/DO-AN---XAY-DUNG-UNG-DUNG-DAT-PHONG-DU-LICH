@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "238523792128",
+    "project_id": "chillstay-fab78",
+    "storage_bucket": "chillstay-fab78.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:238523792128:android:2b20276751ebfc288691e5",
+        "android_client_info": {
+          "package_name": "com.example.chillstay"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXglmjiIlFwiG62wVrQxCGTRwpovc80BU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

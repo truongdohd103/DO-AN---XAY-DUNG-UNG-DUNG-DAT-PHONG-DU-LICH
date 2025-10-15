@@ -20,6 +20,7 @@ interface HotelRepository {
         checkOut: String? = null,
         guests: Int? = null
     ): List<Room>
+    suspend fun getRoomById(roomId: String): Room?
 }
 
 

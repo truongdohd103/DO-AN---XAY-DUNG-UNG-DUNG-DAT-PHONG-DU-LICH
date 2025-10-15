@@ -21,20 +21,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.chillstay.domain.model.Hotel
+import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
+import org.koin.androidx.compose.get
+import com.example.chillstay.data.api.ChillStayApi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HotelDetailScreen(
+    hotelId: String,
     onBackClick: () -> Unit = {},
     onChooseRoomClick: () -> Unit = {}
 ) {
+    // Use the new ViewModel
+    val viewModel: HotelDetailViewModel = get()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
+    
+    // Load hotel details when screen opens
+    LaunchedEffect(hotelId) {
+        viewModel.handleIntent(HotelDetailIntent.LoadHotelDetails(hotelId))
+    }
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Luxury Resort & Spa",
+                        text = uiState.hotel?.name ?: "",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
@@ -56,7 +70,7 @@ fun HotelDetailScreen(
         },
         bottomBar = {
             BottomBar(
-                price = 299,
+                price = uiState.minPrice ?: 0,
                 onChooseRoomClick = onChooseRoomClick
             )
         }
@@ -69,7 +83,10 @@ fun HotelDetailScreen(
         ) {
             item {
                 // Hotel Image with indicators
-                HotelImageSection()
+                HotelImageSection(
+                    imageUrl = uiState.hotel?.imageUrl,
+                    photoCount = uiState.hotel?.detail?.photoUrls?.size ?: 0
+                )
             }
             
             item {
@@ -78,7 +95,12 @@ fun HotelDetailScreen(
             
             item {
                 // Hotel Info
-                HotelInfoSection()
+                HotelInfoSection(
+                    name = uiState.hotel?.name.orEmpty(),
+                    address = listOfNotNull(uiState.hotel?.city, uiState.hotel?.country).filter { it.isNotBlank() }.joinToString(", "),
+                    rating = uiState.hotel?.rating ?: 0.0,
+                    reviews = uiState.hotel?.numberOfReviews ?: 0
+                )
             }
             
             item {
@@ -94,18 +116,22 @@ fun HotelDetailScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
-            item {
-                // Description
-                DescriptionSection()
+            if (!uiState.hotel?.detail?.description.isNullOrBlank()) {
+                item {
+                    // Description
+                    DescriptionSection(description = uiState.hotel?.detail?.description.orEmpty())
+                }
             }
             
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
-            item {
-                // Facilities
-                FacilitiesSection()
+            if (!uiState.hotel?.detail?.facilities.isNullOrEmpty()) {
+                item {
+                    // Facilities
+                    FacilitiesSection(facilities = uiState.hotel?.detail?.facilities ?: emptyList())
+                }
             }
             
             item {
@@ -114,7 +140,7 @@ fun HotelDetailScreen(
             
             item {
                 // Location
-                LocationSection()
+                LocationSection(address = listOfNotNull(uiState.hotel?.city, uiState.hotel?.country).filter { it.isNotBlank() }.joinToString(", "))
             }
             
             item {
@@ -132,7 +158,7 @@ fun HotelDetailScreen(
             
             item {
                 // Reviews
-                ReviewsSection()
+                ReviewsSection(rating = uiState.hotel?.rating ?: 0.0, reviewCount = uiState.hotel?.numberOfReviews ?: 0)
             }
             
             item {
@@ -161,14 +187,14 @@ fun HotelDetailScreen(
 }
 
 @Composable
-fun HotelImageSection() {
+fun HotelImageSection(imageUrl: String?, photoCount: Int) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(250.dp)
     ) {
         AsyncImage(
-            model = "https://placehold.co/414x250",
+            model = imageUrl ?: "https://placehold.co/414x250",
             contentDescription = "Hotel Image",
             modifier = Modifier.fillMaxSize(),
             contentScale = androidx.compose.ui.layout.ContentScale.Crop
@@ -215,7 +241,7 @@ fun HotelImageSection() {
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = "67",
+                    text = photoCount.toString(),
                     color = Color.White,
                     fontSize = 14.sp
                 )
@@ -225,21 +251,26 @@ fun HotelImageSection() {
 }
 
 @Composable
-fun HotelInfoSection() {
+fun HotelInfoSection(
+    name: String,
+    address: String,
+    rating: Double,
+    reviews: Int
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 21.dp)
     ) {
         Text(
-            text = "Luxury Resort & Spa",
+            text = name,
             color = Color(0xFF212121),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
         
         Text(
-            text = "123 Beach Road, Miami - 20 meters to the beach",
+            text = address,
             color = Color(0xFF757575),
             fontSize = 16.sp
         )
@@ -257,7 +288,7 @@ fun HotelInfoSection() {
                 )
             }
             Text(
-                text = "4.8",
+                text = String.format("%.1f", rating),
                 color = Color(0xFF1AB6B6),
                 fontSize = 13.67.sp,
                 fontWeight = FontWeight.Bold
@@ -298,7 +329,7 @@ fun SellingOutWarning() {
 }
 
 @Composable
-fun DescriptionSection() {
+fun DescriptionSection(description: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -314,7 +345,7 @@ fun DescriptionSection() {
         Spacer(modifier = Modifier.height(17.dp))
         
         Text(
-            text = "Experience luxury at its finest in our premium resort. Enjoy stunning ocean views, world-class amenities, and exceptional service. Perfect for both business and leisure travelers.",
+            text = description,
             color = Color(0xFF757575),
             fontSize = 15.88.sp,
             lineHeight = 25.60.sp
@@ -323,7 +354,7 @@ fun DescriptionSection() {
 }
 
 @Composable
-fun FacilitiesSection() {
+fun FacilitiesSection(facilities: List<String>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -338,52 +369,21 @@ fun FacilitiesSection() {
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // First row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            FacilityItem(
-                icon = R.drawable.ic_swimming_pool,
-                name = "Swimming\nPool"
-            )
-            FacilityItem(
-                icon = R.drawable.ic_wifi,
-                name = "WiFi"
-            )
-            FacilityItem(
-                icon = R.drawable.ic_restaurant,
-                name = "Restaurant"
-            )
-            FacilityItem(
-                icon = R.drawable.ic_parking,
-                name = "Parking"
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Second row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            FacilityItem(
-                icon = R.drawable.ic_meeting_room,
-                name = "Meeting\nRoom"
-            )
-            FacilityItem(
-                icon = R.drawable.ic_elevator,
-                name = "Elevator"
-            )
-            FacilityItem(
-                icon = R.drawable.ic_fitness,
-                name = "Fitness\nCenter"
-            )
-            FacilityItem(
-                icon = R.drawable.ic_24_hours,
-                name = "24-hours\nOpen"
-            )
+        // Dynamic facilities list
+        val chunks = facilities.chunked(4)
+        chunks.forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                rowItems.forEach { name ->
+                    FacilityItem(
+                        icon = R.drawable.ic_check, // simple check icon placeholder
+                        name = name
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -430,7 +430,7 @@ fun FacilityItem(
 }
 
 @Composable
-fun LocationSection() {
+fun LocationSection(address: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -459,7 +459,7 @@ fun LocationSection() {
             )
             
             Text(
-                text = "123 Beach Road, Miami, Florida, USA",
+                text = address,
                 color = Color(0xFF757575),
                 fontSize = 16.sp,
                 lineHeight = 24.sp
@@ -542,7 +542,10 @@ fun LanguageItem(
 }
 
 @Composable
-fun ReviewsSection() {
+fun ReviewsSection(
+    rating: Double,
+    reviewCount: Int
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -576,14 +579,14 @@ fun ReviewsSection() {
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "4.8",
+                text = String.format("%.1f", rating),
                 color = Color(0xFF1AB6B6),
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Bold
             )
             
             Text(
-                text = "1,740 reviews",
+                text = "$reviewCount reviews",
                 color = Color(0xFF757575),
                 fontSize = 14.sp
             )

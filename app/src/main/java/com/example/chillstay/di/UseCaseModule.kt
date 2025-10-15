@@ -1,6 +1,6 @@
 package com.example.chillstay.di
 
-import com.example.chillstay.domain.usecase.GetSampleItems
+// removed sample use case
 import com.example.chillstay.domain.usecase.SignUpUseCase
 import com.example.chillstay.domain.usecase.SignInUseCase
 
@@ -9,6 +9,7 @@ import com.example.chillstay.domain.usecase.hotel.GetHotelsUseCase
 import com.example.chillstay.domain.usecase.hotel.SearchHotelsUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelRoomsUseCase
+import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
 
 // Booking use cases
 import com.example.chillstay.domain.usecase.booking.CreateBookingUseCase
@@ -42,8 +43,7 @@ import com.example.chillstay.domain.repository.BookingRepository
 import org.koin.dsl.module
 
 val useCaseModule = module {
-    // Sample use cases
-    factory { GetSampleItems(get()) }
+    // Sample use cases removed
     
     // Authentication use cases
     factory { SignUpUseCase(get()) }
@@ -54,6 +54,7 @@ val useCaseModule = module {
     factory { SearchHotelsUseCase(get()) }
     factory { GetHotelByIdUseCase(get()) }
     factory { GetHotelRoomsUseCase(get()) }
+    factory { GetRoomByIdUseCase(get()) }
     
     // Booking use cases
     factory { CreateBookingUseCase(get()) }
