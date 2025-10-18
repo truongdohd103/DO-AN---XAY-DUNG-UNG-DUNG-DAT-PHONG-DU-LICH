@@ -1,208 +1,318 @@
 package com.example.chillstay.ui.home
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.example.chillstay.R
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel) {
-    val state by viewModel.state.collectAsState()
-
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color.White
+fun HomeScreen(
+    viewModel: HomeViewModel,
+    onHotelClick: (String) -> Unit = {}
+) {
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
+    
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
         ) {
-            item { Header() }
-            item { SearchBar() }
-            item { FilterTabs() }
-            item { PopularHotels() }
-            item { HotelPromotions() }
-            item { VIPStatus() }
-            item { RecentlyBooked() }
-            item { TravelAchievements() }
-            item { ContinuePlanning() }
-            item { Spacer(modifier = Modifier.height(100.dp)) }
-        }
-
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            BottomNavigationBar()
+            item {
+                // Header
+                HeaderSection()
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            item {
+                // Search Bar
+                SearchBar()
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            item {
+                // Category Tabs (horizontal scroll)
+                CategoryTabs(
+                    selected = uiState.selectedCategory,
+                    onSelect = { viewModel.handleIntent(HomeIntent.ChangeHotelCategory(it)) }
+                )
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            item {
+                // Horizontal list of hotels per selected category
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    items(uiState.hotels.size) { index ->
+                        val hotel = uiState.hotels[index]
+                        val minPrice = hotel.rooms.minByOrNull { it.price }?.price
+                        HotelCard(
+                            title = hotel.name,
+                            location = "${hotel.city}, ${hotel.country}",
+                            price = minPrice?.let { "$${it.toInt()}" },
+                            rating = hotel.rating.toFloat(),
+                            reviews = hotel.numberOfReviews,
+                            imageUrl = hotel.imageUrl,
+                            onClick = { onHotelClick(hotel.id) }
+                        )
+                    }
+                }
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            // Removed PopularHotelsSection; list above handles vertical scroll
+            
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            item {
+                // VIP Status (UI static for now)
+                VipStatusSection()
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            item {
+                // Continue Planning (UI static for now)
+                ContinuePlanningSection()
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null) {
+                item {
+                    // Recently Booked (only when signed in and has data)
+                    RecentlyBookedSection()
+                }
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(80.dp)) // Space for bottom navigation
+            }
         }
     }
 }
 
 @Composable
-private fun Header() {
+fun HeaderSection() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(72.dp)
-            .background(Color(0xFF1AB5B5))
-            .padding(horizontal = 24.dp),
-        contentAlignment = Alignment.CenterStart
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF1AB6B6),
+                        Color(0xFF16A3A3)
+                    )
+                )
+            )
     ) {
         Text(
             text = "Chillstay",
+            color = Color.White,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 21.dp)
         )
     }
 }
 
 @Composable
-private fun SearchBar() {
+fun SearchBar() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .height(63.dp)
+            .padding(horizontal = 24.dp)
+            .background(
+                color = Color(0xFFF5F5F5),
+                shape = RoundedCornerShape(12.dp)
+            )
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(63.dp)
-                .background(Color(0xFFF5F5F5), RoundedCornerShape(12.dp))
+                .fillMaxSize()
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_search),
+                imageVector = Icons.Default.Search,
                 contentDescription = "Search",
-                modifier = Modifier.size(16.dp),
-                tint = Color(0xFF757575)
+                tint = Color(0xFF828282),
+                modifier = Modifier.size(16.dp)
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
             Text(
                 text = "Search",
+                color = Color(0xFF757575),
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF757575)
+                fontWeight = FontWeight.Bold
             )
+            
             Spacer(modifier = Modifier.weight(1f))
+            
             Icon(
-                painter = painterResource(id = R.drawable.ic_filter),
+                imageVector = Icons.Default.Search,
                 contentDescription = "Filter",
-                modifier = Modifier.size(16.dp),
-                tint = Color(0xFF757575)
+                tint = Color.Black,
+                modifier = Modifier.size(16.dp)
             )
         }
     }
 }
 
 @Composable
-private fun FilterTabs() {
-    var selectedTab by remember { mutableStateOf(0) }
+fun CategoryTabs(selected: Int, onSelect: (Int) -> Unit) {
     val tabs = listOf("Popular", "Recommended", "Trending")
-
     LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(tabs.size) { index ->
-            FilterChip(
-                selected = selectedTab == index,
-                title = tabs[index],
-                onClick = { selectedTab = index }
-            )
+            val tab = tabs[index]
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = if (selected == index) Color(0xFF1AB6B6) else Color.Transparent,
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (selected == index) Color(0xFF1AB65C) else Color(0xFFE0E0E0),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .clickable { onSelect(index) }
+                    .padding(horizontal = 21.dp, vertical = 13.dp)
+            ) {
+                Text(
+                    text = tab,
+                    color = if (selected == index) Color.White else Color(0xFF757575),
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun FilterChip(selected: Boolean, title: String, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        color = if (selected) Color(0xFF1AB5B5) else Color.Transparent,
-        border = if (selected) null else BorderStroke(0.5.dp, Color(0xFFE0E0E0)),
-        modifier = Modifier.height(42.dp)
+fun HotelCardsSection(
+    hotels: List<com.example.chillstay.domain.model.Hotel> = emptyList(),
+    onHotelClick: (String) -> Unit = {}
+) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = title,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (selected) Color.White else Color(0xFF757575)
+        items(hotels.size) { index ->
+            val hotel = hotels[index]
+            // Compute minimum room price if rooms are embedded; otherwise, omit price
+            val minPrice = hotel.rooms.minByOrNull { it.price }?.price
+            HotelCard(
+                title = hotel.name,
+                location = "${hotel.city}, ${hotel.country}",
+                price = minPrice?.let { "$${it.toInt()}" },
+                rating = hotel.rating.toFloat(),
+                reviews = hotel.numberOfReviews,
+                imageUrl = hotel.imageUrl,
+                onClick = { onHotelClick(hotel.id) }
             )
         }
     }
 }
 
 @Composable
-private fun PopularHotels() {
+fun PopularHotelsSection(
+    hotels: List<com.example.chillstay.domain.model.Hotel>,
+    onHotelClick: (String) -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 16.dp)
+            .padding(horizontal = 24.dp)
     ) {
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(horizontal = 24.dp)
-        ) {
-            item {
+        Text(
+            text = "Popular Hotels",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF212121)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            items(hotels.size) { index ->
+                val hotel = hotels[index]
                 HotelCard(
-                    name = "Luxury Resort & Spa",
-                    location = "Miami, USA - 20 km to beach",
-                    price = "$299",
-                    rating = "4.8",
-                    imageRes = R.drawable.img_hotel_1
-                )
-            }
-            item {
-                HotelCard(
-                    name = "Ocean View Hotel",
-                    location = "Bali, Indonesia",
-                    price = "$199",
-                    rating = "4.9",
-                    imageRes = R.drawable.img_hotel_2
+                    title = hotel.name,
+                    location = "${hotel.city}, ${hotel.country}",
+                    price = hotel.rooms.minByOrNull { it.price }?.price?.let { "$${it.toInt()}" },
+                    rating = hotel.rating.toFloat(),
+                    reviews = hotel.numberOfReviews,
+                    imageUrl = hotel.imageUrl,
+                    onClick = { onHotelClick(hotel.id) }
                 )
             }
         }
@@ -210,90 +320,119 @@ private fun PopularHotels() {
 }
 
 @Composable
-private fun HotelCard(
-    name: String,
+fun HotelCard(
+    title: String,
     location: String,
-    price: String,
-    rating: String,
-    imageRes: Int
+    price: String?,
+    rating: Float?,
+    reviews: Int?,
+    imageUrl: String,
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .width(280.dp)
-            .height(340.dp)
-            .shadow(12.dp, RoundedCornerShape(16.dp)),
+            .height(339.dp)
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
+            // Image
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp)
             ) {
-                Image(
-                    painter = painterResource(id = imageRes),
-                    contentDescription = name,
-                    modifier = Modifier.fillMaxSize(),
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp)
+                        .clip(RoundedCornerShape(20.dp)),
                     contentScale = ContentScale.Crop
                 )
             }
-
+            
+            // Content
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
                 Text(
-                    text = name,
+                    text = title,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF212121)
                 )
+                
                 Spacer(modifier = Modifier.height(8.dp))
+                
                 Text(
                     text = location,
                     fontSize = 14.sp,
                     color = Color(0xFF757575)
                 )
+                
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    repeat(5) { index ->
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_star),
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = if (index < 4) Color(0xFF1AB55C) else Color(0xFFE0E0E0)
+                
+                if (rating != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = rating.toString(),
+                            fontSize = 13.67.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1AB65C)
                         )
-                        if (index < 4) {
-                            Spacer(modifier = Modifier.width(2.dp))
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        Row {
+                            repeat(5) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = "Star",
+                                    tint = Color(0xFFFBC40D),
+                                    modifier = Modifier.size(9.dp)
+                                )
+                            }
+                        }
+
+                        if (reviews != null) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "(${reviews})",
+                                fontSize = 12.sp,
+                                color = Color(0xFF757575)
+                            )
                         }
                     }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = rating,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1AB55C)
-                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(
-                        text = price,
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1AB5B5)
-                    )
-                    Text(
-                        text = "/night",
-                        fontSize = 13.sp,
-                        color = Color(0xFF757575)
-                    )
+                
+                if (!price.isNullOrBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Text(
+                            text = price,
+                            fontSize = 19.38.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1AB6B6)
+                        )
+                        
+                        Text(
+                            text = "/night",
+                            fontSize = 12.91.sp,
+                            color = Color(0xFF757575),
+                            modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
+                        )
+                    }
                 }
             }
         }
@@ -301,11 +440,11 @@ private fun HotelCard(
 }
 
 @Composable
-private fun HotelPromotions() {
+fun HotelPromotionsSection() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp)
+            .padding(horizontal = 24.dp)
     ) {
         Text(
             text = "Hotel Promotions",
@@ -313,53 +452,67 @@ private fun HotelPromotions() {
             fontWeight = FontWeight.Bold,
             color = Color(0xFF212121)
         )
+        
         Spacer(modifier = Modifier.height(16.dp))
-
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            PromotionCard(
-                title = "INTERNATIONAL\nDEALS",
-                emoji = "✈️",
-                backgroundColor = Color(0xFF87CEEB)
-            )
-            PromotionCard(
-                title = "DOMESTIC\nDEALS",
-                emoji = "☀️",
-                backgroundColor = Color(0xFFFFB347)
-            )
+        
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            items(2) { index ->
+                PromotionCard(
+                    title = if (index == 0) "INTERNATIONAL\nDEALS" else "DOMESTIC\nDEALS",
+                    gradient = if (index == 0) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFF87CEEB),
+                                Color(0xFF6A5ACD)
+                            )
+                        )
+                    } else {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFFFFB347),
+                                Color(0xFFFF8C00)
+                            )
+                        )
+                    }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun PromotionCard(title: String, emoji: String, backgroundColor: Color) {
+fun PromotionCard(
+    title: String,
+    gradient: Brush
+) {
     Box(
         modifier = Modifier
-            .fillMaxWidth()
+            .width(366.dp)
             .height(188.dp)
-            .background(backgroundColor, RoundedCornerShape(20.dp))
-            .padding(20.dp)
+            .background(
+                brush = gradient,
+                shape = RoundedCornerShape(20.dp)
+            ),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = title,
+            color = Color.White,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
-            modifier = Modifier.align(Alignment.CenterStart)
-        )
-        Text(
-            text = emoji,
-            fontSize = 36.sp,
-            modifier = Modifier.align(Alignment.TopEnd)
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }
 
 @Composable
-private fun VIPStatus() {
+fun VipStatusSection() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp)
+            .padding(horizontal = 24.dp)
     ) {
         Text(
             text = "VIP status",
@@ -367,12 +520,21 @@ private fun VIPStatus() {
             fontWeight = FontWeight.Bold,
             color = Color(0xFF212121)
         )
+        
         Spacer(modifier = Modifier.height(16.dp))
-
+        
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFFFF5F5), RoundedCornerShape(16.dp))
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFFFFF5F5),
+                            Color(0xFFFFE4E1)
+                        )
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                )
                 .padding(20.dp)
         ) {
             Row(
@@ -387,16 +549,25 @@ private fun VIPStatus() {
                     color = Color(0xFF212121),
                     modifier = Modifier.weight(1f)
                 )
+                
                 Box(
                     modifier = Modifier
-                        .background(Color(0xFFCC8540), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFFCD853F),
+                                    Color(0xFFD2B48C)
+                                )
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = "⭐ VIP\nBronze",
+                        color = Color.White,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -405,240 +576,11 @@ private fun VIPStatus() {
 }
 
 @Composable
-private fun RecentlyBooked() {
+fun ContinuePlanningSection() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Recently Booked",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF212121)
-            )
-            TextButton(onClick = { }) {
-                Text(
-                    text = "See All",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1AB5B5)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            BookingCard(
-                name = "City Center Hotel",
-                location = "New York, USA - 20 km to center",
-                rating = "4.9",
-                reviews = "45",
-                originalPrice = "$700",
-                discount = "28%",
-                finalPrice = "$599",
-                imageRes = R.drawable.img_booking_1
-            )
-            BookingCard(
-                name = "Beachfront Villa",
-                location = "Maldives - 10 km to center",
-                rating = "4.9",
-                reviews = "45",
-                originalPrice = "$700",
-                discount = "28%",
-                finalPrice = "$599",
-                imageRes = R.drawable.img_booking_2
-            )
-        }
-    }
-}
-
-@Composable
-private fun BookingCard(
-    name: String,
-    location: String,
-    rating: String,
-    reviews: String,
-    originalPrice: String,
-    discount: String,
-    finalPrice: String,
-    imageRes: Int
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(266.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFA))
-    ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(161.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = imageRes),
-                    contentDescription = name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(
-                        text = name,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF212121)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = location,
-                        fontSize = 14.sp,
-                        color = Color(0xFF757575)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row {
-                        Text(
-                            text = rating,
-                            fontSize = 12.sp,
-                            color = Color(0xFF1AB5B5)
-                        )
-                        Text(
-                            text = " ($reviews reviews)",
-                            fontSize = 12.sp,
-                            color = Color(0xFF757575)
-                        )
-                    }
-                }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0xFFBDFFA9))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "$100 applied",
-                            fontSize = 8.sp,
-                            color = Color(0xFF30B538)
-                        )
-                    }
-                    Row {
-                        Text(
-                            text = originalPrice,
-                            fontSize = 8.sp,
-                            color = Color(0xFF757575),
-                            textDecoration = TextDecoration.LineThrough
-                        )
-                        Text(
-                            text = " - $discount",
-                            fontSize = 8.sp,
-                            color = Color(0xFFFF4A4A)
-                        )
-                    }
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            text = finalPrice,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1AB5B5)
-                        )
-                        Text(
-                            text = "/night",
-                            fontSize = 11.sp,
-                            color = Color(0xFF757575)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TravelAchievements() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp)
-    ) {
-        Text(
-            text = "Travel achievements",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF212121)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            AchievementCard(
-                value = "1/1",
-                label = "Navigator",
-                modifier = Modifier.weight(1f)
-            )
-            AchievementCard(
-                value = "4",
-                label = "Cities",
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun AchievementCard(value: String, label: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier
-            .height(100.dp)
-            .shadow(8.dp, RoundedCornerShape(12.dp)),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = value,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF212121)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = label,
-                fontSize = 14.sp,
-                color = Color(0xFF666666)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ContinuePlanning() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp)
+            .padding(horizontal = 24.dp)
     ) {
         Text(
             text = "Continue planning your trip",
@@ -646,28 +588,42 @@ private fun ContinuePlanning() {
             fontWeight = FontWeight.Bold,
             color = Color(0xFF212121)
         )
+        
         Spacer(modifier = Modifier.height(16.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7F7))
+        
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = Color(0xFFFFF8F8),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(20.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .background(Color(0xFFFF6B6B), RoundedCornerShape(12.dp)),
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFFFF6B6B),
+                                    Color(0xFFFF8E53)
+                                )
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "🏨", fontSize = 20.sp)
+                    Text(
+                        text = "🏨",
+                        fontSize = 20.sp
+                    )
                 }
-                Spacer(modifier = Modifier.width(16.dp))
+                
                 Column {
                     Text(
                         text = "BeachFront Villa",
@@ -675,7 +631,9 @@ private fun ContinuePlanning() {
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF212121)
                     )
+                    
                     Spacer(modifier = Modifier.height(4.dp))
+                    
                     Text(
                         text = "📅 Sep 28 - Sep 29 👥 2",
                         fontSize = 14.sp,
@@ -688,85 +646,317 @@ private fun ContinuePlanning() {
 }
 
 @Composable
-private fun BottomNavigationBar() {
-    Surface(
+fun RecentlyBookedSection() {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp),
-        color = Color.White,
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        shadowElevation = 8.dp
+            .padding(horizontal = 24.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 33.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            NavigationItem(
-                icon = R.drawable.ic_home_active,
+            Text(
+                text = "Recently Booked",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121)
+            )
+            
+            Text(
+                text = "See All",
+                fontSize = 15.62.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1AB6B6),
+                modifier = Modifier
+                    .background(
+                        color = Color.Transparent,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(8.dp)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            repeat(2) { index ->
+                RecentlyBookedCard(
+                    title = if (index == 0) "City Center Hotel" else "Beachfront Villa",
+                    location = if (index == 0) "New York, USA - 20 km to center" else "Maldives - 10 km to center",
+                    rating = 4.9f,
+                    originalPrice = "$700/night",
+                    discount = "- 28%",
+                    finalPrice = "$599",
+                    voucherApplied = "$100 applied",
+                    imageUrl = "https://placehold.co/287x159"
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RecentlyBookedCard(
+    title: String,
+    location: String,
+    rating: Float,
+    originalPrice: String,
+    discount: String,
+    finalPrice: String,
+    voucherApplied: String,
+    imageUrl: String
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(266.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA))
+    ) {
+        Column {
+            // Image
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(154.dp)
+            ) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp)
+                        .clip(RoundedCornerShape(20.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            
+            // Content
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = title,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF212121)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Text(
+                            text = location,
+                            fontSize = 14.sp,
+                            color = Color(0xFF757575)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row {
+                                repeat(5) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = "Star",
+                                        tint = Color(0xFFFBC40D),
+                                        modifier = Modifier.size(9.dp)
+                                    )
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.width(4.dp))
+                            
+                            Text(
+                                text = rating.toString(),
+                                fontSize = 12.sp,
+                                color = Color(0xFF1AB6B6)
+                            )
+                            
+                            Text(
+                                text = "(45 reviews)",
+                                fontSize = 12.sp,
+                                color = Color(0xFF757575)
+                            )
+                        }
+                    }
+                    
+                    // Price section
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Voucher applied
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Color(0xFFBCFEA8),
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 5.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = voucherApplied,
+                                fontSize = 8.sp,
+                                color = Color(0xFF31B439)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(2.dp))
+                        
+                        // Original price and discount
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = originalPrice,
+                                fontSize = 8.sp,
+                                color = Color(0xFF757575),
+                                textDecoration = TextDecoration.LineThrough
+                            )
+                            
+                            Text(
+                                text = discount,
+                                fontSize = 8.sp,
+                                color = Color(0xFFFF4A4A)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(2.dp))
+                        
+                        // Final price
+                        Row(
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Text(
+                                text = finalPrice,
+                                fontSize = 15.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1AB6B6)
+                            )
+                            
+                            Text(
+                                text = "/night",
+                                fontSize = 11.06.sp,
+                                color = Color(0xFF757575)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BottomNavigation(
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .background(
+                color = Color.White,
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+            )
+            .padding(horizontal = 33.dp, vertical = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BottomNavItem(
+                icon = Icons.Default.Home,
                 label = "Home",
-                selected = true
+                isSelected = true
             )
-            NavigationItem(
-                icon = R.drawable.ic_deal_inactive,
+            
+            BottomNavItem(
+                icon = Icons.Default.LocationOn,
                 label = "Deal",
-                selected = false
+                isSelected = false
             )
-            NavigationItem(
-                icon = R.drawable.ic_saved_inactive,
+            
+            BottomNavItem(
+                icon = Icons.Default.FavoriteBorder,
                 label = "Saved",
-                selected = false
+                isSelected = false
             )
-            NavigationItem(
-                icon = R.drawable.ic_trips_inactive,
+            
+            BottomNavItem(
+                icon = Icons.Default.Star,
                 label = "My trips",
-                selected = false
+                isSelected = false
             )
-            NavigationItem(
-                icon = R.drawable.ic_profile_inactive,
+            
+            BottomNavItem(
+                icon = Icons.Default.Favorite,
                 label = "Profile",
-                selected = false
+                isSelected = false
             )
         }
     }
 }
 
 @Composable
-private fun NavigationItem(icon: Int, label: String, selected: Boolean) {
+fun BottomNavItem(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean
+) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         Box(
             modifier = Modifier
                 .size(40.dp)
                 .background(
-                    if (selected) Color(0xFF38E0E0) else Color.White,
-                    RoundedCornerShape(8.dp)
+                    color = if (isSelected) {
+                        Color(0xFF1AB6B6)
+                    } else {
+                        Color.Transparent
+                    },
+                    shape = RoundedCornerShape(8.dp)
                 )
-                .then(
-                    if (!selected) Modifier.border(
-                        0.5.dp,
-                        Color(0xFF757575),
-                        RoundedCornerShape(8.dp)
-                    ) else Modifier
+                .border(
+                    width = if (isSelected) 0.dp else 1.dp,
+                    color = if (isSelected) Color.Transparent else Color(0xFF757575),
+                    shape = RoundedCornerShape(8.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                painter = painterResource(id = icon),
+                imageVector = icon,
                 contentDescription = label,
-                modifier = Modifier.size(18.dp),
-                tint = if (selected) Color.White else Color(0xFF757575)
+                tint = if (isSelected) Color.White else Color(0xFF757575),
+                modifier = Modifier.size(18.dp)
             )
         }
+        
         Spacer(modifier = Modifier.height(4.dp))
+        
         Text(
             text = label,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = if (selected) Color(0xFF212121) else Color(0xA6000000)
+            color = if (isSelected) Color(0xFF212121) else Color(0x66000000)
         )
     }
 }

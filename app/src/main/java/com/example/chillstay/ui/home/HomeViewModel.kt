@@ -2,35 +2,63 @@ package com.example.chillstay.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.chillstay.domain.model.SampleItem
-import com.example.chillstay.domain.usecase.GetSampleItems
+import com.example.chillstay.data.api.ChillStayApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class HomeUiState(
-    val isLoading: Boolean = true,
-    val items: List<SampleItem> = emptyList(),
-    val error: String? = null
-)
-
 class HomeViewModel(
-    private val getSampleItems: GetSampleItems
+    private val api: ChillStayApi
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeUiState())
-    val state: StateFlow<HomeUiState> = _state
+    val state: StateFlow<HomeUiState> = _state.asStateFlow()
 
     init {
-        load()
+        loadCategory(0)
     }
 
-    private fun load() {
-        _state.value = _state.value.copy(isLoading = true, error = null)
+    fun handleIntent(intent: HomeIntent) = when (intent) {
+        is HomeIntent.ChangeHotelCategory -> handleChangeHotelCategory(intent.categoryIndex)
+        is HomeIntent.RefreshHotels -> handleRefreshHotels(intent.categoryIndex)
+        is HomeIntent.RetryLoadHotels -> handleRetryLoadHotels(intent.categoryIndex)
+    }
+
+    private fun handleChangeHotelCategory(categoryIndex: Int) {
+        _state.update { it.updateSelectedCategory(categoryIndex) }
+        loadCategory(categoryIndex)
+    }
+
+    private fun handleRefreshHotels(categoryIndex: Int) {
+        loadCategory(categoryIndex)
+    }
+
+    private fun handleRetryLoadHotels(categoryIndex: Int) {
+        _state.update { it.clearError() }
+        loadCategory(categoryIndex)
+    }
+
+    private fun loadCategory(index: Int) {
+        _state.update { it.updateIsLoading(true).updateError(null) }
+
         viewModelScope.launch {
-            runCatching { getSampleItems() }
-                .onSuccess { _state.value = HomeUiState(isLoading = false, items = it) }
-                .onFailure { _state.value = HomeUiState(isLoading = false, error = it.message) }
+            val loader = when (index) {
+                0 -> suspend { api.getPopularHotels(limit = 5) }
+                1 -> suspend { api.getRecommendedHotels(limit = 3) }
+                else -> suspend { api.getTrendingHotels(limit = 2) }
+            }
+
+            runCatching { loader() }
+                .onSuccess { hotels ->
+                    _state.update { it.updateIsLoading(false).updateHotels(hotels) }
+                }
+                .onFailure { exception ->
+                    _state.update {
+                        it.updateIsLoading(false).updateError(exception.message ?: "Unknown error")
+                    }
+                }
         }
     }
 }
