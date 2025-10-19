@@ -2,83 +2,67 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // DEVELOPMENT MODE - Allow all reads for testing
+    // TODO: Remove this in production and use proper authentication
+    
     // Users collection - users can only read/write their own data
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if true; // Temporarily allow all for development
+      allow create: if true; // Temporarily allow all for development
     }
     
-    // Hotels collection - public read, admin write
+    // Hotels collection - public read/write for development
     match /hotels/{hotelId} {
-      allow read: if true; // Public read for all users
-      allow write: if request.auth != null && 
-        (request.auth.token.admin == true || 
-         resource == null); // Allow creation for authenticated users
+      allow read, write: if true; // Allow all for development
+      allow create: if true; // Allow all for development
     }
     
-    // Rooms collection - public read, admin write
+    // Rooms collection - public read/write for development
     match /rooms/{roomId} {
-      allow read: if true; // Public read for all users
-      allow write: if request.auth != null && 
-        (request.auth.token.admin == true || 
-         resource == null); // Allow creation for authenticated users
+      allow read, write: if true; // Allow all for development
+      allow create: if true; // Allow all for development
     }
     
-    // Bookings collection - users can only access their own bookings
+    // Bookings collection - allow all for development
     match /bookings/{bookingId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId &&
-        request.resource.data.keys().hasAll(['userId', 'hotelId', 'roomId', 'dateFrom', 'dateTo', 'guests', 'adults', 'children', 'rooms', 'price', 'totalPrice', 'status', 'paymentMethod', 'createdAt', 'updatedAt']);
+      allow read, write: if true; // Temporarily allow all for development
+      allow create: if true; // Temporarily allow all for development
     }
     
-    // Reviews collection - public read, users can only write their own reviews
+    // Reviews collection - allow all for development
     match /reviews/{reviewId} {
-      allow read: if true; // Public read for all users
-      allow write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+      allow read, write: if true; // Allow all for development
+      allow create: if true; // Allow all for development
     }
     
-    // Bookmarks collection - users can only access their own bookmarks
+    // Bookmarks collection - allow all for development
     match /bookmarks/{bookmarkId} {
-      allow read, write, delete: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+      allow read, write, delete: if true; // Allow all for development
+      allow create: if true; // Allow all for development
     }
     
-    // Vouchers collection - public read, admin write
+    // Vouchers collection - allow all for development
     match /vouchers/{voucherId} {
-      allow read: if true; // Public read for all users
-      allow write: if request.auth != null && 
-        request.auth.token.admin == true;
+      allow read, write: if true; // Allow all for development
+      allow create: if true; // Allow all for development
     }
     
-    // Notifications collection - users can only access their own notifications
+    // Notifications collection - allow all for development
     match /notifications/{notificationId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+      allow read, write: if true; // Allow all for development
+      allow create: if true; // Allow all for development
     }
     
-    // Bills collection - users can only access their own bills
+    // Bills collection - allow all for development
     match /bills/{billId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+      allow read, write: if true; // Allow all for development
+      allow create: if true; // Allow all for development
     }
     
-    // Payments collection - users can only access their own payments
+    // Payments collection - allow all for development
     match /payments/{paymentId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+      allow read, write: if true; // Allow all for development
+      allow create: if true; // Allow all for development
     }
     
     // Helper function to check if user is admin

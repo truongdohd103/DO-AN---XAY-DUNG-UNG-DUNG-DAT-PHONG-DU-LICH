@@ -28,6 +28,7 @@ import java.time.Instant
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.util.Log
 
 @Singleton
 class FirestoreHotelRepository @Inject constructor(
@@ -36,11 +37,13 @@ class FirestoreHotelRepository @Inject constructor(
 
     override suspend fun getHotels(): List<Hotel> {
         return try {
+            Log.d("FirestoreHotelRepository", "Attempting to fetch hotels from Firestore")
             val snapshot = firestore.collection("hotels")
                 .orderBy("rating", Query.Direction.DESCENDING)
                 .get()
                 .await()
             
+            Log.d("FirestoreHotelRepository", "Successfully fetched ${snapshot.documents.size} hotels")
             snapshot.documents.mapNotNull { document ->
                 val hotel = document.toObject(Hotel::class.java)?.copy(id = document.id)
                 
@@ -81,6 +84,7 @@ class FirestoreHotelRepository @Inject constructor(
                 hotel?.copy(rooms = rooms, detail = hotelDetail)
             }
         } catch (e: Exception) {
+            Log.e("FirestoreHotelRepository", "Error fetching hotels: ${e.message}", e)
             emptyList()
         }
     }

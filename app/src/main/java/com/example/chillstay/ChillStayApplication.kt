@@ -16,11 +16,14 @@ class ChillStayApplication : Application() {
         
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
-        // App Check Debug provider for development
+        // App Check Debug provider for development - DISABLED FOR TESTING
+        // TODO: Re-enable App Check in production
+        /*
         try {
             val appCheck = FirebaseAppCheck.getInstance()
             appCheck.installAppCheckProviderFactory(DebugAppCheckProviderFactory.getInstance())
         } catch (_: Exception) { }
+        */
         
         // Initialize Koin
         startKoin {

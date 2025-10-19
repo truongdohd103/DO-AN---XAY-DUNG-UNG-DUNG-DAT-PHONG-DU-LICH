@@ -17,10 +17,25 @@ import com.example.chillstay.ui.welcome.CarouselScreen
 import com.example.chillstay.ui.hoteldetail.HotelDetailScreen
 import com.example.chillstay.ui.room.RoomScreen
 import com.example.chillstay.ui.booking.BookingScreen
+import androidx.compose.material3.Text
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import com.example.chillstay.R
+import androidx.compose.ui.res.painterResource
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.LocalDate
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavHost(
     navController: NavHostController,
@@ -68,15 +83,16 @@ fun AppNavHost(
                                     popUpTo(Routes.AUTHENTICATION) { inclusive = true }
                                 }
                             }
-                            .addOnFailureListener {
-                                // Optionally show error via snackbar/state
+                            .addOnFailureListener { e ->
+                                navController.navigate("${Routes.SIGN_IN}?message=${java.net.URLEncoder.encode(e.message ?: "Sign in failed", "UTF-8")}")
                             }
                     }
                 },
                 onSignUpClick = { navController.navigate(Routes.SIGN_UP) },
                 onForgotPasswordClick = { /* TODO: Implement forgot password */ },
                 onGoogleClick = { /* TODO: Implement Google auth */ },
-                onFacebookClick = { /* TODO: Implement Facebook auth */ }
+                onFacebookClick = { /* TODO: Implement Facebook auth */ },
+                errorMessage = null
             )
         }
         composable("${Routes.SIGN_IN}?message={message}") { backStackEntry ->
@@ -92,14 +108,17 @@ fun AppNavHost(
                                     popUpTo(Routes.AUTHENTICATION) { inclusive = true }
                                 }
                             }
-                            .addOnFailureListener { }
+                            .addOnFailureListener { e ->
+                                navController.navigate("${Routes.SIGN_IN}?message=${java.net.URLEncoder.encode(e.message ?: "Sign in failed", "UTF-8")}")
+                            }
                     }
                 },
                 onSignUpClick = { navController.navigate(Routes.SIGN_UP) },
                 onForgotPasswordClick = { /* TODO: Implement forgot password */ },
                 onGoogleClick = { /* TODO: Implement Google auth */ },
                 onFacebookClick = { /* TODO: Implement Facebook auth */ },
-                successMessage = message
+                successMessage = null,
+                errorMessage = message
             )
         }
         composable(Routes.SIGN_UP) {
@@ -127,6 +146,9 @@ fun AppNavHost(
                                                 popUpTo(Routes.SIGN_UP) { inclusive = true }
                                             }
                                         }
+                                } else {
+                                    val err = task.exception?.message ?: "Sign up failed"
+                                    navController.navigate("${Routes.SIGN_UP}")
                                 }
                             }
                     }
@@ -141,7 +163,22 @@ fun AppNavHost(
                 homeViewModel = homeViewModel,
                 onBackClick = { navController.popBackStack() },
                 onHotelClick = { hotelId -> navController.navigate("${Routes.HOTEL_DETAIL}/$hotelId") },
-                onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) }
+                onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
+                onVipClick = {
+                    val isSignedIn = FirebaseAuth.getInstance().currentUser != null
+                    if (isSignedIn) navController.navigate(Routes.VIP_STATUS) else navController.navigate(Routes.AUTHENTICATION)
+                },
+                onSearchClick = {
+                    navController.navigate(Routes.SEARCH)
+                },
+                onContinueItemClick = { hotelId, roomId, dateFrom, dateTo ->
+                    val isSignedIn = FirebaseAuth.getInstance().currentUser != null
+                    if (isSignedIn) {
+                        navController.navigate("${Routes.BOOKING}/$hotelId/$roomId/$dateFrom/$dateTo")
+                    } else {
+                        navController.navigate(Routes.AUTHENTICATION)
+                    }
+                }
             )
         }
         composable("${Routes.HOTEL_DETAIL}/{hotelId}") { backStackEntry ->
@@ -179,6 +216,48 @@ fun AppNavHost(
                 dateTo = dateTo,
                 onBackClick = { navController.popBackStack() }
             )
+        }
+        composable(Routes.VIP_STATUS) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text(text = "VIP Status", color = Color.White) },
+                        navigationIcon = {
+                            IconButton(onClick = { navController.popBackStack() }) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_arrow_back),
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1AB6B6))
+                    )
+                }
+            ) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) { }
+            }
+        }
+        composable(Routes.SEARCH) {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text(text = "Search", color = Color.White) },
+                        navigationIcon = {
+                            IconButton(onClick = { navController.popBackStack() }) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_arrow_back),
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1AB6B6))
+                    )
+                }
+            ) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) { }
+            }
         }
     }
 }

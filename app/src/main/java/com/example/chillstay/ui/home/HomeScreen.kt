@@ -30,6 +30,11 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+import com.example.chillstay.domain.model.Hotel
+import com.example.chillstay.domain.model.Booking
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,7 +45,11 @@ import com.example.chillstay.R
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onHotelClick: (String) -> Unit = {}
+    onHotelClick: (String) -> Unit = {},
+    onVipClick: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
+    onSeeAllRecentClick: () -> Unit = {},
+    onContinueItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> }
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
     
@@ -63,7 +72,7 @@ fun HomeScreen(
             
             item {
                 // Search Bar
-                SearchBar()
+                SearchBar(onClick = onSearchClick)
             }
             
             item {
@@ -117,8 +126,8 @@ fun HomeScreen(
             }
             
             item {
-                // VIP Status (UI static for now)
-                VipStatusSection()
+                // VIP Status
+                VipStatusSection(onClick = onVipClick)
             }
             
             item {
@@ -126,8 +135,40 @@ fun HomeScreen(
             }
             
             item {
-                // Continue Planning (UI static for now)
-                ContinuePlanningSection()
+                // Continue Planning from pending bookings
+                
+                val userId = FirebaseAuth.getInstance().currentUser?.uid
+                var pending by remember(userId) { mutableStateOf(listOf<PendingDisplayItem>()) }
+                LaunchedEffect(userId) {
+                    if (userId != null) {
+                        val db = FirebaseFirestore.getInstance()
+                        val docs = db.collection("bookings")
+                            .whereEqualTo("userId", userId)
+                            .whereEqualTo("status", "PENDING")
+                            .limit(10)
+                            .get()
+                            .await()
+                        val items = mutableListOf<PendingDisplayItem>()
+                        for (d in docs.documents) {
+                            val dateFrom = d.getString("dateFrom") ?: continue
+                            val dateTo = d.getString("dateTo") ?: continue
+                            val guests = (d.getLong("guests") ?: 0).toInt()
+                            val createdAt = d.getDate("createdAt")
+                            val hotelId = d.getString("hotelId")
+                            val roomId = d.getString("roomId")
+                            val hotelName = try {
+                                val hid = d.getString("hotelId")
+                                if (!hid.isNullOrEmpty()) {
+                                    val hdoc = db.collection("hotels").document(hid).get().await()
+                                    hdoc.getString("name")
+                                } else null
+                            } catch (_: Exception) { null }
+                            items.add(PendingDisplayItem(hotelName, dateFrom, dateTo, guests, createdAt, hotelId ?: "", roomId ?: ""))
+                        }
+                        pending = items.sortedByDescending { it.createdAt }
+                    }
+                }
+                ContinuePlanningSection(items = pending, onItemClick = onContinueItemClick)
             }
             
             item {
@@ -136,8 +177,35 @@ fun HomeScreen(
             
             if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null) {
                 item {
-                    // Recently Booked (only when signed in and has data)
-                    RecentlyBookedSection()
+                    // Recently Booked (user-specific)
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+                    var recentHotels by remember(userId) { mutableStateOf(listOf<Hotel>()) }
+                    LaunchedEffect(userId) {
+                        if (userId != null) {
+                            val db = FirebaseFirestore.getInstance()
+                            val bookingDocs = db.collection("bookings")
+                                .whereEqualTo("userId", userId)
+                                .limit(10)
+                                .get()
+                                .await()
+                            val hotelIds = bookingDocs.documents
+                                .sortedByDescending { it.getDate("createdAt") }
+                                .mapNotNull { it.getString("hotelId") }
+                                .distinct()
+                                .take(5)
+                            val hotels = mutableListOf<Hotel>()
+                            for (hid in hotelIds) {
+                                val doc = db.collection("hotels").document(hid).get().await()
+                                doc.toObject(Hotel::class.java)?.copy(id = doc.id)?.let { hotels.add(it) }
+                            }
+                            recentHotels = hotels
+                        }
+                    }
+                    RecentlyBookedSection(
+                        hotels = recentHotels,
+                        onSeeAllClick = onSeeAllRecentClick,
+                        onHotelClick = onHotelClick
+                    )
                 }
             }
             
@@ -176,7 +244,7 @@ fun HeaderSection() {
 }
 
 @Composable
-fun SearchBar() {
+fun SearchBar(onClick: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,6 +254,7 @@ fun SearchBar() {
                 color = Color(0xFFF5F5F5),
                 shape = RoundedCornerShape(12.dp)
             )
+            .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
@@ -508,7 +577,7 @@ fun PromotionCard(
 }
 
 @Composable
-fun VipStatusSection() {
+fun VipStatusSection(onClick: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -535,6 +604,7 @@ fun VipStatusSection() {
                     ),
                     shape = RoundedCornerShape(16.dp)
                 )
+                .clickable { onClick() }
                 .padding(20.dp)
         ) {
             Row(
@@ -575,8 +645,18 @@ fun VipStatusSection() {
     }
 }
 
+data class PendingDisplayItem(
+    val hotelName: String?,
+    val dateFrom: String,
+    val dateTo: String,
+    val guests: Int,
+    val createdAt: java.util.Date?,
+    val hotelId: String,
+    val roomId: String
+)
+
 @Composable
-fun ContinuePlanningSection() {
+fun ContinuePlanningSection(items: List<PendingDisplayItem> = emptyList(), onItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> }) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -591,54 +671,54 @@ fun ContinuePlanningSection() {
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = Color(0xFFFFF8F8),
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .padding(20.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Box(
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items.forEach { it ->
+                Card(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFFFF6B6B),
-                                    Color(0xFFFF8E53)
-                                )
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        ),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .clickable { onItemClick(it.hotelId, it.roomId, it.dateFrom, it.dateTo) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8F8))
                 ) {
-                    Text(
-                        text = "🏨",
-                        fontSize = 20.sp
-                    )
-                }
-                
-                Column {
-                    Text(
-                        text = "BeachFront Villa",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF212121)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    Text(
-                        text = "📅 Sep 28 - Sep 29 👥 2",
-                        fontSize = 14.sp,
-                        color = Color(0xFF666666)
-                    )
+                    Row(
+                        modifier = Modifier.padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(
+                                            Color(0xFFFF6B6B),
+                                            Color(0xFFFF8E53)
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "🏨",
+                                fontSize = 20.sp
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = it.hotelName ?: "Pending booking",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF212121)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "📅 ${it.dateFrom} - ${it.dateTo} 👥 ${it.guests}",
+                                fontSize = 14.sp,
+                                color = Color(0xFF666666)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -646,7 +726,7 @@ fun ContinuePlanningSection() {
 }
 
 @Composable
-fun RecentlyBookedSection() {
+fun RecentlyBookedSection(hotels: List<com.example.chillstay.domain.model.Hotel> = emptyList(), onSeeAllClick: () -> Unit = {}, onHotelClick: (String) -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -674,6 +754,7 @@ fun RecentlyBookedSection() {
                         color = Color.Transparent,
                         shape = RoundedCornerShape(8.dp)
                     )
+                    .clickable { onSeeAllClick() }
                     .padding(8.dp)
             )
         }
@@ -683,16 +764,17 @@ fun RecentlyBookedSection() {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            repeat(2) { index ->
+            hotels.forEach { hotel ->
                 RecentlyBookedCard(
-                    title = if (index == 0) "City Center Hotel" else "Beachfront Villa",
-                    location = if (index == 0) "New York, USA - 20 km to center" else "Maldives - 10 km to center",
-                    rating = 4.9f,
-                    originalPrice = "$700/night",
-                    discount = "- 28%",
-                    finalPrice = "$599",
-                    voucherApplied = "$100 applied",
-                    imageUrl = "https://placehold.co/287x159"
+                    title = hotel.name,
+                    location = "${hotel.city}, ${hotel.country}",
+                    rating = hotel.rating.toFloat(),
+                    originalPrice = if (hotel.minPrice != null) "$${hotel.minPrice?.toInt()}/night" else "",
+                    discount = if ((hotel.minPrice ?: 0.0) > 0.0) "- 5%" else "",
+                    finalPrice = if (hotel.minPrice != null) "$${(hotel.minPrice!! * 0.95).toInt()}" else "",
+                    voucherApplied = if ((hotel.minPrice ?: 0.0) > 0.0) "$${(hotel.minPrice!! * 0.05).toInt()} applied" else "",
+                    imageUrl = hotel.imageUrl,
+                    onClick = { onHotelClick(hotel.id) }
                 )
             }
         }
@@ -708,7 +790,8 @@ fun RecentlyBookedCard(
     discount: String,
     finalPrice: String,
     voucherApplied: String,
-    imageUrl: String
+    imageUrl: String,
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -717,7 +800,7 @@ fun RecentlyBookedCard(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA))
     ) {
-        Column {
+        Column(modifier = Modifier.clickable { onClick() }) {
             // Image
             Box(
                 modifier = Modifier
