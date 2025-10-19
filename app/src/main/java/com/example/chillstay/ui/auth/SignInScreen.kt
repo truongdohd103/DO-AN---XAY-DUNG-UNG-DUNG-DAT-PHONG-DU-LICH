@@ -27,7 +27,8 @@ fun SignInScreen(
     onForgotPasswordClick: () -> Unit,
     onGoogleClick: () -> Unit,
     onFacebookClick: () -> Unit,
-    successMessage: String? = null
+    successMessage: String? = null,
+    errorMessage: String? = null
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -81,6 +82,25 @@ fun SignInScreen(
                     text = successMessage,
                     modifier = Modifier.padding(16.dp),
                     color = Color(0xFF2E7D32),
+                    fontSize = 14.sp
+                )
+            }
+        }
+
+        // Error message
+        if (errorMessage != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFFFEBEE)
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = errorMessage,
+                    modifier = Modifier.padding(16.dp),
+                    color = Color(0xFFC62828),
                     fontSize = 14.sp
                 )
             }

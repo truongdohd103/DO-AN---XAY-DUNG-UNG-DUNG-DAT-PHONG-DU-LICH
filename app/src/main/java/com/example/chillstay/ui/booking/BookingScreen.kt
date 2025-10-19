@@ -25,6 +25,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import org.koin.androidx.compose.get
 import java.time.format.DateTimeFormatter
+import androidx.activity.compose.BackHandler
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import java.time.Instant
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +42,7 @@ fun BookingScreen(
 ) {
     val viewModel: BookingViewModel = koinInject()
     val uiState by viewModel.state.collectAsStateWithLifecycle()
+    var showCancelDialog by remember { mutableStateOf(false) }
     
     // Load booking data when screen opens
     LaunchedEffect(hotelId, roomId, dateFrom, dateTo) {
@@ -93,6 +99,10 @@ fun BookingScreen(
         return
     }
 
+    BackHandler(enabled = true) {
+        showCancelDialog = true
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -113,7 +123,7 @@ fun BookingScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = { showCancelDialog = true }) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_arrow_back),
                             contentDescription = "Back",
@@ -249,6 +259,54 @@ fun BookingScreen(
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
+    }
+
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = { Text("Leave booking?") },
+            text = { Text("You can save this booking to continue later or cancel it.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    // Save to queue as PENDING booking draft
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+                    val hotel = uiState.hotel
+                    val room = uiState.room
+                    if (userId != null && hotel != null && room != null) {
+                        val data = hashMapOf(
+                            "userId" to userId,
+                            "hotelId" to hotel.id,
+                            "roomId" to room.id,
+                            "dateFrom" to uiState.dateFrom.toString(),
+                            "dateTo" to uiState.dateTo.toString(),
+                            "guests" to (uiState.adults + uiState.children),
+                            "adults" to uiState.adults,
+                            "children" to uiState.children,
+                            "rooms" to uiState.rooms,
+                            "price" to uiState.priceBreakdown.roomPrice,
+                            "originalPrice" to uiState.priceBreakdown.roomPrice,
+                            "discount" to uiState.priceBreakdown.discount,
+                            "serviceFee" to uiState.priceBreakdown.serviceFee,
+                            "taxes" to uiState.priceBreakdown.taxes,
+                            "totalPrice" to uiState.priceBreakdown.finalTotal,
+                            "status" to "PENDING",
+                            "createdAt" to Date.from(Instant.now()),
+                            "updatedAt" to Date.from(Instant.now())
+                        )
+                        FirebaseFirestore.getInstance().collection("bookings").add(data)
+                            .addOnCompleteListener { onBackClick() }
+                    } else {
+                        onBackClick()
+                    }
+                }) { Text("Save for later") }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { onBackClick() }) { Text("Cancel booking") }
+                    TextButton(onClick = { showCancelDialog = false }) { Text("Stay") }
+                }
+            }
+        )
     }
 }
 

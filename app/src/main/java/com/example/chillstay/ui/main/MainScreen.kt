@@ -12,13 +12,18 @@ import com.example.chillstay.ui.voucher.VoucherScreen
 import com.example.chillstay.ui.bookmark.MyBookmarkScreen
 import com.example.chillstay.ui.trip.MyTripScreen
 import com.example.chillstay.ui.profile.ProfileScreen
+import com.example.chillstay.ui.navigation.Routes
+import androidx.navigation.compose.rememberNavController
 
 @Composable
 fun MainScreen(
     homeViewModel: HomeViewModel,
     onBackClick: () -> Unit = {},
     onHotelClick: (String) -> Unit = {},
-    onRequireAuth: () -> Unit = {}
+    onRequireAuth: () -> Unit = {},
+    onVipClick: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
+    onContinueItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> }
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     
@@ -47,11 +52,24 @@ fun MainScreen(
                 .padding(paddingValues)
         ) {
                 when (selectedTab) {
-                    0 -> HomeScreen(viewModel = homeViewModel, onHotelClick = onHotelClick)
+                    0 -> HomeScreen(
+                        viewModel = homeViewModel,
+                        onHotelClick = onHotelClick,
+                        onVipClick = onVipClick,
+                        onSearchClick = onSearchClick,
+                        onSeeAllRecentClick = { selectedTab = 3 },
+                        onContinueItemClick = onContinueItemClick
+                    )
                     1 -> VoucherScreen(onBackClick = onBackClick)
                     2 -> MyBookmarkScreen(onBackClick = onBackClick, onHotelClick = onHotelClick)
                     3 -> MyTripScreen(onBackClick = onBackClick, onHotelClick = { onHotelClick("") })
-                    4 -> ProfileScreen(onBackClick = onBackClick)
+                    4 -> ProfileScreen(
+                        onBackClick = onBackClick,
+                        onLogout = {
+                            com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
+                            selectedTab = 0
+                        }
+                    )
                 }
         }
     }

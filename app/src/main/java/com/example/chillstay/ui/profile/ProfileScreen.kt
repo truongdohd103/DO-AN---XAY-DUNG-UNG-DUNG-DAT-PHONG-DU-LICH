@@ -21,7 +21,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun ProfileScreen(
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
     var isDarkTheme by remember { mutableStateOf(false) }
     
@@ -213,12 +214,14 @@ fun ProfileScreen(
                 
                 Spacer(Modifier.width(24.dp))
                 
-                Text(
-                    text = "Logout",
-                    color = Color(0xFFF75555),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                TextButton(onClick = onLogout) {
+                    Text(
+                        text = "Logout",
+                        color = Color(0xFFF75555),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
