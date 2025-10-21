@@ -27,6 +27,18 @@ fun MainScreen(
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     
+    // Refresh bookmark state when switching tabs
+    LaunchedEffect(selectedTab) {
+        when (selectedTab) {
+            0 -> { // Home tab - refresh bookmarks when coming back
+                homeViewModel.handleIntent(com.example.chillstay.ui.home.HomeIntent.RefreshBookmarks)
+            }
+            2 -> { // Bookmark tab
+                homeViewModel.handleIntent(com.example.chillstay.ui.home.HomeIntent.RefreshBookmarks)
+            }
+        }
+    }
+    
     Scaffold(
         bottomBar = {
             BottomNavigationBar(

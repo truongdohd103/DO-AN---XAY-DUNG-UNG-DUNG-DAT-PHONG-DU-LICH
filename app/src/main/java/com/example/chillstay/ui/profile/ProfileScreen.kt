@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun ProfileScreen(
@@ -25,6 +26,9 @@ fun ProfileScreen(
     onLogout: () -> Unit = {}
 ) {
     var isDarkTheme by remember { mutableStateOf(false) }
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val userEmail = currentUser?.email ?: "demo@chillstay.com"
+    val userName = currentUser?.displayName ?: "User"
     
     LazyColumn(
         modifier = Modifier
@@ -78,14 +82,14 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
-                    text = "Demo",
+                    text = userName,
                     color = Color(0xFF212121),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 
                 Text(
-                    text = "demo@chillstay.com",
+                    text = userEmail,
                     color = Color(0xFF424242),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold

@@ -17,6 +17,9 @@ import com.example.chillstay.ui.welcome.CarouselScreen
 import com.example.chillstay.ui.hoteldetail.HotelDetailScreen
 import com.example.chillstay.ui.room.RoomScreen
 import com.example.chillstay.ui.booking.BookingScreen
+import com.example.chillstay.ui.bookmark.MyBookmarkScreen
+import com.example.chillstay.ui.trip.MyTripScreen
+import com.example.chillstay.ui.profile.ProfileScreen
 import androidx.compose.material3.Text
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
@@ -258,6 +261,23 @@ fun AppNavHost(
             ) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) { }
             }
+        }
+        composable(Routes.BOOKMARK) {
+            MyBookmarkScreen(
+                onBackClick = { navController.popBackStack() },
+                onHotelClick = { hotelId -> navController.navigate("${Routes.HOTEL_DETAIL}/$hotelId") }
+            )
+        }
+        composable(Routes.MY_TRIPS) {
+            MyTripScreen(
+                onBackClick = { navController.popBackStack() },
+                onHotelClick = { /* TODO: Handle hotel click */ }
+            )
+        }
+        composable(Routes.PROFILE) {
+            ProfileScreen(
+                onBackClick = { navController.popBackStack() }
+            )
         }
     }
 }

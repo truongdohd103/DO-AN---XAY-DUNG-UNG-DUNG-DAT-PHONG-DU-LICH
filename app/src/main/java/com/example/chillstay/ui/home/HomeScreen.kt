@@ -109,6 +109,8 @@ fun HomeScreen(
                             rating = hotel.rating.toFloat(),
                             reviews = hotel.numberOfReviews,
                             imageUrl = hotel.imageUrl,
+                            isBookmarked = uiState.bookmarkedHotels.contains(hotel.id),
+                            onBookmarkClick = { viewModel.handleIntent(HomeIntent.ToggleBookmark(hotel.id)) },
                             onClick = { onHotelClick(hotel.id) }
                         )
                     }
@@ -183,16 +185,17 @@ fun HomeScreen(
                     LaunchedEffect(userId) {
                         if (userId != null) {
                             val db = FirebaseFirestore.getInstance()
-                            val bookingDocs = db.collection("bookings")
-                                .whereEqualTo("userId", userId)
-                                .limit(10)
-                                .get()
-                                .await()
-                            val hotelIds = bookingDocs.documents
-                                .sortedByDescending { it.getDate("createdAt") }
-                                .mapNotNull { it.getString("hotelId") }
-                                .distinct()
-                                .take(5)
+                    val bookingDocs = db.collection("bookings")
+                        .whereEqualTo("userId", userId)
+                        .whereEqualTo("status", "CONFIRMED") // Only confirmed bookings
+                        .limit(10)
+                        .get()
+                        .await()
+                    val hotelIds = bookingDocs.documents
+                        .sortedByDescending { it.getDate("createdAt") }
+                        .mapNotNull { it.getString("hotelId") }
+                        .distinct()
+                        .take(5)
                             val hotels = mutableListOf<Hotel>()
                             for (hid in hotelIds) {
                                 val doc = db.collection("hotels").document(hid).get().await()
@@ -203,8 +206,10 @@ fun HomeScreen(
                     }
                     RecentlyBookedSection(
                         hotels = recentHotels,
+                        bookmarkedHotels = uiState.bookmarkedHotels,
                         onSeeAllClick = onSeeAllRecentClick,
-                        onHotelClick = onHotelClick
+                        onHotelClick = onHotelClick,
+                        onBookmarkClick = { hotelId -> viewModel.handleIntent(HomeIntent.ToggleBookmark(hotelId)) }
                     )
                 }
             }
@@ -357,7 +362,9 @@ fun HotelCardsSection(
 @Composable
 fun PopularHotelsSection(
     hotels: List<com.example.chillstay.domain.model.Hotel>,
-    onHotelClick: (String) -> Unit = {}
+    bookmarkedHotels: Set<String> = emptySet(),
+    onHotelClick: (String) -> Unit = {},
+    onBookmarkClick: (String) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -381,6 +388,8 @@ fun PopularHotelsSection(
                     rating = hotel.rating.toFloat(),
                     reviews = hotel.numberOfReviews,
                     imageUrl = hotel.imageUrl,
+                    isBookmarked = bookmarkedHotels.contains(hotel.id),
+                    onBookmarkClick = { onBookmarkClick(hotel.id) },
                     onClick = { onHotelClick(hotel.id) }
                 )
             }
@@ -396,6 +405,8 @@ fun HotelCard(
     rating: Float?,
     reviews: Int?,
     imageUrl: String,
+    isBookmarked: Boolean = false,
+    onBookmarkClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
     Card(
@@ -422,6 +433,26 @@ fun HotelCard(
                         .clip(RoundedCornerShape(20.dp)),
                     contentScale = ContentScale.Crop
                 )
+                
+                // Bookmark button
+                IconButton(
+                    onClick = onBookmarkClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(20.dp)
+                        .size(24.dp)
+                        .background(
+                            color = if (isBookmarked) Color(0xFFF44235) else Color.White,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                        tint = if (isBookmarked) Color.White else Color(0xFF757575),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
             
             // Content
@@ -726,7 +757,13 @@ fun ContinuePlanningSection(items: List<PendingDisplayItem> = emptyList(), onIte
 }
 
 @Composable
-fun RecentlyBookedSection(hotels: List<com.example.chillstay.domain.model.Hotel> = emptyList(), onSeeAllClick: () -> Unit = {}, onHotelClick: (String) -> Unit = {}) {
+fun RecentlyBookedSection(
+    hotels: List<com.example.chillstay.domain.model.Hotel> = emptyList(), 
+    bookmarkedHotels: Set<String> = emptySet(),
+    onSeeAllClick: () -> Unit = {}, 
+    onHotelClick: (String) -> Unit = {},
+    onBookmarkClick: (String) -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -774,6 +811,8 @@ fun RecentlyBookedSection(hotels: List<com.example.chillstay.domain.model.Hotel>
                     finalPrice = if (hotel.minPrice != null) "$${(hotel.minPrice!! * 0.95).toInt()}" else "",
                     voucherApplied = if ((hotel.minPrice ?: 0.0) > 0.0) "$${(hotel.minPrice!! * 0.05).toInt()} applied" else "",
                     imageUrl = hotel.imageUrl,
+                    isBookmarked = bookmarkedHotels.contains(hotel.id),
+                    onBookmarkClick = { onBookmarkClick(hotel.id) },
                     onClick = { onHotelClick(hotel.id) }
                 )
             }
@@ -791,6 +830,8 @@ fun RecentlyBookedCard(
     finalPrice: String,
     voucherApplied: String,
     imageUrl: String,
+    isBookmarked: Boolean = false,
+    onBookmarkClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
     Card(
@@ -816,6 +857,26 @@ fun RecentlyBookedCard(
                         .clip(RoundedCornerShape(20.dp)),
                     contentScale = ContentScale.Crop
                 )
+                
+                // Bookmark button
+                IconButton(
+                    onClick = onBookmarkClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(15.dp)
+                        .size(20.dp)
+                        .background(
+                            color = if (isBookmarked) Color(0xFFF44235) else Color.White,
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                        tint = if (isBookmarked) Color.White else Color(0xFF757575),
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
             }
             
             // Content

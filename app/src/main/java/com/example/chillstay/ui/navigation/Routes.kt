@@ -13,4 +13,7 @@ object Routes {
     const val BOOKING = "booking"
     const val VIP_STATUS = "vip_status"
     const val SEARCH = "search"
+    const val BOOKMARK = "bookmark"
+    const val MY_TRIPS = "my_trips"
+    const val PROFILE = "profile"
 }
