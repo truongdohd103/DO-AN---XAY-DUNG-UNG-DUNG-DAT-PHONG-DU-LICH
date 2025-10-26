@@ -3,10 +3,12 @@ package com.example.chillstay.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.chillstay.core.common.OnboardingManager
+import kotlinx.coroutines.launch
 import com.example.chillstay.ui.auth.AuthenticationScreen
 import com.example.chillstay.ui.auth.SignInScreen
 import com.example.chillstay.ui.auth.SignUpScreen
@@ -20,25 +22,14 @@ import com.example.chillstay.ui.booking.BookingScreen
 import com.example.chillstay.ui.bookmark.MyBookmarkScreen
 import com.example.chillstay.ui.trip.MyTripScreen
 import com.example.chillstay.ui.profile.ProfileScreen
-import androidx.compose.material3.Text
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Icon
-import androidx.compose.ui.graphics.Color
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Modifier
-import com.example.chillstay.R
-import androidx.compose.ui.res.painterResource
+import com.example.chillstay.ui.voucher.VoucherScreen
+import com.example.chillstay.ui.voucher.VoucherDetailScreen
+import com.example.chillstay.ui.vip.VipStatusScreen
+import com.example.chillstay.ui.search.SearchScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.LocalDate
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavHost(
     navController: NavHostController,
@@ -47,9 +38,13 @@ fun AppNavHost(
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
         composable(Routes.WELCOME) {
+            val coroutineScope = rememberCoroutineScope()
             WelcomeScreen(
                 onGetStartedClick = {
-                    OnboardingManager.markWelcomeSeen(navController.context)
+                    // Use coroutine scope to call suspend function async
+                    coroutineScope.launch {
+                        OnboardingManager.markWelcomeSeen(navController.context)
+                    }
                     navController.navigate(Routes.CAROUSEL) {
                         popUpTo(Routes.WELCOME) { inclusive = true }
                     }
@@ -57,9 +52,13 @@ fun AppNavHost(
             )
         }
         composable(Routes.CAROUSEL) {
+            val coroutineScope = rememberCoroutineScope()
             CarouselScreen(
                 onSkipClick = {
-                    OnboardingManager.markOnboardingDone(navController.context)
+                    // Use coroutine scope to call suspend function async
+                    coroutineScope.launch {
+                        OnboardingManager.markOnboardingDone(navController.context)
+                    }
                     navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.CAROUSEL) { inclusive = true }
                     }
@@ -181,6 +180,14 @@ fun AppNavHost(
                     } else {
                         navController.navigate(Routes.AUTHENTICATION)
                     }
+                },
+                onVoucherClick = { voucherId ->
+                    // Navigate directly to VOUCHER_DETAIL with proper back stack
+                    navController.navigate("${Routes.VOUCHER_DETAIL}/$voucherId") {
+                        // Ensure we can go back to MAIN and avoid duplicate stack
+                        popUpTo(Routes.MAIN) { inclusive = false }
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -221,62 +228,45 @@ fun AppNavHost(
             )
         }
         composable(Routes.VIP_STATUS) {
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { Text(text = "VIP Status", color = Color.White) },
-                        navigationIcon = {
-                            IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_arrow_back),
-                                    contentDescription = "Back",
-                                    tint = Color.White
-                                )
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1AB6B6))
-                    )
-                }
-            ) { padding ->
-                Box(modifier = Modifier.fillMaxSize().padding(padding)) { }
-            }
+            VipStatusScreen(
+                onBackClick = { navController.popBackStack() }
+            )
         }
         composable(Routes.SEARCH) {
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { Text(text = "Search", color = Color.White) },
-                        navigationIcon = {
-                            IconButton(onClick = { navController.popBackStack() }) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_arrow_back),
-                                    contentDescription = "Back",
-                                    tint = Color.White
-                                )
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1AB6B6))
-                    )
-                }
-            ) { padding ->
-                Box(modifier = Modifier.fillMaxSize().padding(padding)) { }
-            }
+            SearchScreen(
+                onBackClick = { navController.popBackStack() }
+            )
         }
         composable(Routes.BOOKMARK) {
             MyBookmarkScreen(
-                onBackClick = { navController.popBackStack() },
+                onBackClick = {},
                 onHotelClick = { hotelId -> navController.navigate("${Routes.HOTEL_DETAIL}/$hotelId") }
             )
         }
         composable(Routes.MY_TRIPS) {
             MyTripScreen(
-                onBackClick = { navController.popBackStack() },
                 onHotelClick = { /* TODO: Handle hotel click */ }
             )
         }
         composable(Routes.PROFILE) {
-            ProfileScreen(
-                onBackClick = { navController.popBackStack() }
+            ProfileScreen()
+        }
+        composable(Routes.VOUCHER) {
+            VoucherScreen(
+                onBackClick = {},
+                onVoucherClick = { voucherId -> 
+                    navController.navigate("${Routes.VOUCHER_DETAIL}/$voucherId")
+                }
+            )
+        }
+        composable("${Routes.VOUCHER_DETAIL}/{voucherId}") { backStackEntry ->
+            val voucherId = backStackEntry.arguments?.getString("voucherId") ?: ""
+            VoucherDetailScreen(
+                voucherId = voucherId,
+                onBackClick = { 
+                    // Simple back navigation - let the system handle the stack
+                    navController.popBackStack()
+                }
             )
         }
     }

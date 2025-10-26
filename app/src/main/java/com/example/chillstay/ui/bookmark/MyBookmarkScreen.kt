@@ -27,6 +27,7 @@ import com.example.chillstay.domain.model.Hotel
 import com.google.firebase.auth.FirebaseAuth
 import org.koin.androidx.compose.get
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyBookmarkScreen(
     viewModel: MyBookmarkViewModel = get(),
@@ -42,19 +43,29 @@ fun MyBookmarkScreen(
         }
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "My Bookmark",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1AB6B6)
+                )
+            )
+        }
+    ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(paddingValues)
                 .background(Color.White)
         ) {
-            item {
-                // Header
-                BookmarkHeader(onBackClick = onBackClick)
-            }
-            
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -109,54 +120,6 @@ fun MyBookmarkScreen(
     }
 }
 
-@Composable
-fun BookmarkHeader(onBackClick: () -> Unit = {}) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF1AB6B6),
-                        Color(0xFF16A3A3)
-                    )
-                )
-            )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        color = Color.Transparent,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-            ) {
-                Text(
-                    text = "←",
-                    color = Color.White,
-                    fontSize = 18.sp
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Text(
-                text = "My bookmark",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
 
 @Composable
 fun BookmarkHotelCard(

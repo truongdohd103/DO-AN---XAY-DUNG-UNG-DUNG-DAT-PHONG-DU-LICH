@@ -2,6 +2,8 @@ package com.example.chillstay.core.common
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object OnboardingManager {
     private const val PREFS_NAME = "chillstay_prefs"
@@ -14,17 +16,20 @@ object OnboardingManager {
     fun isFirstLaunch(context: Context): Boolean =
         !prefs(context).getBoolean(KEY_WELCOME_SEEN, false)
 
-    fun markWelcomeSeen(context: Context) {
-        prefs(context).edit().putBoolean(KEY_WELCOME_SEEN, true).apply()
+    // Suspend để async I/O, tránh StrictMode violation trên main thread
+    suspend fun markWelcomeSeen(context: Context) {
+        withContext(Dispatchers.IO) {
+            prefs(context).edit().putBoolean(KEY_WELCOME_SEEN, true).apply()
+        }
     }
 
     fun isOnboardingDone(context: Context): Boolean =
         prefs(context).getBoolean(KEY_ONBOARDING_DONE, false)
 
-    fun markOnboardingDone(context: Context) {
-        prefs(context).edit().putBoolean(KEY_ONBOARDING_DONE, true).apply()
+    // Suspend để async I/O, tránh StrictMode violation trên main thread
+    suspend fun markOnboardingDone(context: Context) {
+        withContext(Dispatchers.IO) {
+            prefs(context).edit().putBoolean(KEY_ONBOARDING_DONE, true).apply()
+        }
     }
 }
-
-
-

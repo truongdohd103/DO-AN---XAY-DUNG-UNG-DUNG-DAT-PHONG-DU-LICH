@@ -159,17 +159,78 @@ async function seedChillStaySample() {
         console.warn('⚠️ No auth users -> skipping reviews seed');
     }
 
-    // Seed vouchers
+    // Seed vouchers with new model structure
     const voucherIds = [];
-    for (let i = 0; i < 10; i++) {
+    const voucherTitles = [
+        "UP TO\n5% OFF",
+        "UP TO\n8% OFF", 
+        "UP TO\n10% OFF",
+        "UP TO\n15% OFF",
+        "UP TO\n20% OFF",
+        "DOMESTIC DEALS",
+        "INTERNATIONAL DEALS",
+        "EARLY BIRD\nSPECIAL",
+        "WEEKEND\nGETAWAY",
+        "LUXURY\nEXPERIENCE",
+        "FAMILY\nPACKAGE",
+        "BUSINESS\nTRAVEL",
+        "ROMANTIC\nESCAPE",
+        "ADVENTURE\nDEAL",
+        "CITY BREAK\nOFFER"
+    ];
+    
+    const voucherDescriptions = [
+        "Save up to $800 on hotel bookings",
+        "Save up to $1,000 on hotel bookings", 
+        "Save up to $1,500 on hotel bookings",
+        "Save up to $2,000 on hotel bookings",
+        "Save up to $2,500 on hotel bookings",
+        "Enjoy special prices at local hotels and resorts",
+        "Enjoy special prices at international hotels and resorts",
+        "Book early and save more on your stay",
+        "Perfect deals for weekend getaways",
+        "Experience luxury at affordable prices",
+        "Great deals for family vacations",
+        "Special rates for business travelers",
+        "Romantic packages for couples",
+        "Adventure deals for thrill seekers",
+        "City break offers for urban explorers"
+    ];
+    
+    for (let i = 0; i < 15; i++) {
+        const now = new Date();
+        const validFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+        const validTo = new Date(now.getTime() + (30 + i * 5) * 24 * 60 * 60 * 1000); // 30-100 days from now
+        
         const voucherRef = await db.collection('vouchers').add({
             code: `SAVE${10 + i}`,
-            discount: 5 + (i % 5),
-            type: 'PERCENT',
-            expiresAt: new Date(Date.now() + 30 * 24 * 3600 * 1000)
+            title: voucherTitles[i % voucherTitles.length],
+            description: voucherDescriptions[i % voucherDescriptions.length],
+            type: i % 3 === 0 ? 'FIXED_AMOUNT' : 'PERCENTAGE',
+            value: i % 3 === 0 ? (50 + i * 10) : (5 + i % 15), // Fixed amount: $50-200, Percentage: 5-20%
+            status: 'ACTIVE',
+            validFrom: admin.firestore.Timestamp.fromDate(validFrom),
+            validTo: admin.firestore.Timestamp.fromDate(validTo),
+            applyForHotel: i % 4 === 0 ? hotelIds.slice(0, 3) : null, // Some vouchers apply to specific hotels
+            conditions: {
+                minBookingAmount: i % 2 === 0 ? (100 + i * 50) : 0,
+                maxDiscountAmount: i % 3 === 0 ? (500 + i * 100) : 0,
+                applicableForNewUsers: i % 5 === 0,
+                applicableForExistingUsers: true,
+                maxUsagePerUser: 1 + (i % 3),
+                maxTotalUsage: 0, // Unlimited
+                currentUsage: 0,
+                requiredUserLevel: i % 6 === 0 ? 'VIP' : null,
+                validDays: [],
+                validTimeSlots: []
+            },
+            createdAt: admin.firestore.Timestamp.now(),
+            updatedAt: admin.firestore.Timestamp.now()
         });
         voucherIds.push(voucherRef.id);
     }
+    
+    console.log(`✅ Created ${voucherIds.length} vouchers with new model structure`);
 
     // Seed multiple bookings with diverse data for testing
     if (userIds.length > 0 && roomIds.length > 0) {

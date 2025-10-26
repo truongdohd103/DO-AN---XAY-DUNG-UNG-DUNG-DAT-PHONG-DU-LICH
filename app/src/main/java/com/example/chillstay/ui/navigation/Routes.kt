@@ -16,4 +16,6 @@ object Routes {
     const val BOOKMARK = "bookmark"
     const val MY_TRIPS = "my_trips"
     const val PROFILE = "profile"
+    const val VOUCHER = "voucher"
+    const val VOUCHER_DETAIL = "voucher_detail"
 }

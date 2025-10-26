@@ -53,18 +53,29 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
     
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Chillstay",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1AB6B6)
+                )
+            )
+        }
+    ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(paddingValues)
                 .background(Color.White)
         ) {
-            item {
-                // Header
-                HeaderSection()
-            }
             
             item {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -221,32 +232,6 @@ fun HomeScreen(
     }
 }
 
-@Composable
-fun HeaderSection() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF1AB6B6),
-                        Color(0xFF16A3A3)
-                    )
-                )
-            )
-    ) {
-        Text(
-            text = "Chillstay",
-            color = Color.White,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 21.dp)
-        )
-    }
-}
 
 @Composable
 fun SearchBar(onClick: () -> Unit = {}) {
