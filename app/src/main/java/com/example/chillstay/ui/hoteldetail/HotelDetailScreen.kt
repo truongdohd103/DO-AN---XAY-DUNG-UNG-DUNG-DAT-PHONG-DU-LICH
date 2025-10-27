@@ -25,7 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
-import org.koin.androidx.compose.get
+import org.koin.compose.koinInject
 import com.example.chillstay.data.api.ChillStayApi
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,7 +36,7 @@ fun HotelDetailScreen(
     onChooseRoomClick: () -> Unit = {}
 ) {
     // Use the new ViewModel
-    val viewModel: HotelDetailViewModel = get()
+    val viewModel: HotelDetailViewModel = koinInject()
     val uiState by viewModel.state.collectAsStateWithLifecycle()
     
     // Load hotel details when screen opens

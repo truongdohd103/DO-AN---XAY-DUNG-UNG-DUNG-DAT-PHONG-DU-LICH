@@ -6,6 +6,7 @@ import coil.ImageLoaderFactory
 import com.example.chillstay.di.repositoryModule
 import com.example.chillstay.di.useCaseModule
 import com.example.chillstay.di.viewModelModule
+import com.example.chillstay.ui.components.ImageLoaderConfig
 import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
@@ -35,8 +36,7 @@ class ChillStayApplication : Application(), ImageLoaderFactory {
     }
     
     override fun newImageLoader(): ImageLoader {
-        return ImageLoader.Builder(this)
-            .build()
+        return ImageLoaderConfig.create(this)
     }
 }
 

@@ -48,6 +48,26 @@ async function seedChillStaySample() {
         { city: 'Bangkok', country: 'Thailand' },
         { city: 'Singapore', country: 'Singapore' }
     ];
+    
+    const hotelImages = [
+        'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=400&fit=crop&crop=center'
+    ];
+    
+    const roomImages = [
+        'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=500&h=300&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=500&h=300&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=500&h=300&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500&h=300&fit=crop&crop=center'
+    ];
     const hotelIds = [];
     const roomIds = [];
 
@@ -59,7 +79,7 @@ async function seedChillStaySample() {
             city: loc.city,
             rating: 4 + (i % 10) / 10,
             numberOfReviews: 20 + i * 3,
-            imageUrl: 'https://placehold.co/600x400',
+            imageUrl: hotelImages[i],
             minPrice: null,
             photoCount: 0
         };
@@ -81,7 +101,7 @@ async function seedChillStaySample() {
                 hotelId: hotelRef.id,
                 type: roomType.type,
                 price: roomType.price,
-                imageUrl: `https://placehold.co/500x300?text=${roomType.name.replace(' ', '+')}`,
+                imageUrl: roomImages[j % roomImages.length],
                 isAvailable: j === 0 ? true : (i % 3 !== 0), // Make some rooms unavailable
                 capacity: roomType.capacity,
                 detail: {

@@ -16,6 +16,8 @@ import com.example.chillstay.ui.home.HomeViewModel
 import com.example.chillstay.ui.navigation.AppNavHost
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -73,6 +75,18 @@ class MainActivity : ComponentActivity() {
                 // Ensure FirebaseApp is initialized
                 if (FirebaseApp.getApps(this@MainActivity).isEmpty()) {
                     FirebaseApp.initializeApp(this@MainActivity)
+                }
+                
+                // Initialize Firebase App Check for debug builds
+                if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+                    try {
+                        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(
+                            DebugAppCheckProviderFactory.getInstance()
+                        )
+                        Log.d("MainActivity", "Firebase App Check debug provider installed")
+                    } catch (e: Exception) {
+                        Log.w("MainActivity", "Failed to install App Check debug provider: ${e.message}")
+                    }
                 }
                 
                 // Initialize FirebaseAuth

@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.chillstay.domain.model.Room
-import org.koin.androidx.compose.get
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,7 +30,7 @@ fun RoomScreen(
     onBackClick: () -> Unit = {},
     onBookNowClick: (String, String, String, String) -> Unit = { _, _, _, _ -> }
 ) {
-    val viewModel: RoomViewModel = get()
+    val viewModel: RoomViewModel = koinInject()
     val uiState by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(hotelId) { if (hotelId.isNotEmpty()) viewModel.handleIntent(RoomIntent.LoadRooms(hotelId)) }
     Scaffold(

@@ -39,7 +39,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
 import com.example.chillstay.R
+import com.example.chillstay.ui.components.ImageLoaderConfig
+import com.example.chillstay.ui.components.OptimizedAsyncImage
+import com.example.chillstay.ui.components.SimpleAsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,9 +117,13 @@ fun HomeScreen(
                         .padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    items(uiState.hotels.size) { index ->
-                        val hotel = uiState.hotels[index]
-                        val minPrice = hotel.rooms.minByOrNull { it.price }?.price
+                    items(
+                        items = uiState.hotels,
+                        key = { hotel -> hotel.id }
+                    ) { hotel ->
+                        val minPrice = remember(hotel.rooms) { 
+                            hotel.rooms.minByOrNull { it.price }?.price 
+                        }
                         HotelCard(
                             title = hotel.name,
                             location = "${hotel.city}, ${hotel.country}",
@@ -154,31 +165,38 @@ fun HomeScreen(
                 var pending by remember(userId) { mutableStateOf(listOf<PendingDisplayItem>()) }
                 LaunchedEffect(userId) {
                     if (userId != null) {
-                        val db = FirebaseFirestore.getInstance()
-                        val docs = db.collection("bookings")
-                            .whereEqualTo("userId", userId)
-                            .whereEqualTo("status", "PENDING")
-                            .limit(10)
-                            .get()
-                            .await()
-                        val items = mutableListOf<PendingDisplayItem>()
-                        for (d in docs.documents) {
-                            val dateFrom = d.getString("dateFrom") ?: continue
-                            val dateTo = d.getString("dateTo") ?: continue
-                            val guests = (d.getLong("guests") ?: 0).toInt()
-                            val createdAt = d.getDate("createdAt")
-                            val hotelId = d.getString("hotelId")
-                            val roomId = d.getString("roomId")
-                            val hotelName = try {
-                                val hid = d.getString("hotelId")
-                                if (!hid.isNullOrEmpty()) {
-                                    val hdoc = db.collection("hotels").document(hid).get().await()
-                                    hdoc.getString("name")
-                                } else null
-                            } catch (_: Exception) { null }
-                            items.add(PendingDisplayItem(hotelName, dateFrom, dateTo, guests, createdAt, hotelId ?: "", roomId ?: ""))
+                        // Move Firebase operations to background thread
+                        pending = withContext(Dispatchers.IO) {
+                            try {
+                                val db = FirebaseFirestore.getInstance()
+                                val docs = db.collection("bookings")
+                                    .whereEqualTo("userId", userId)
+                                    .whereEqualTo("status", "PENDING")
+                                    .limit(10)
+                                    .get()
+                                    .await()
+                                val items = mutableListOf<PendingDisplayItem>()
+                                for (d in docs.documents) {
+                                    val dateFrom = d.getString("dateFrom") ?: continue
+                                    val dateTo = d.getString("dateTo") ?: continue
+                                    val guests = (d.getLong("guests") ?: 0).toInt()
+                                    val createdAt = d.getDate("createdAt")
+                                    val hotelId = d.getString("hotelId")
+                                    val roomId = d.getString("roomId")
+                                    val hotelName = try {
+                                        val hid = d.getString("hotelId")
+                                        if (!hid.isNullOrEmpty()) {
+                                            val hdoc = db.collection("hotels").document(hid).get().await()
+                                            hdoc.getString("name")
+                                        } else null
+                                    } catch (_: Exception) { null }
+                                    items.add(PendingDisplayItem(hotelName, dateFrom, dateTo, guests, createdAt, hotelId ?: "", roomId ?: ""))
+                                }
+                                items.sortedByDescending { it.createdAt }
+                            } catch (e: Exception) {
+                                emptyList()
+                            }
                         }
-                        pending = items.sortedByDescending { it.createdAt }
                     }
                 }
                 ContinuePlanningSection(items = pending, onItemClick = onContinueItemClick)
@@ -195,24 +213,31 @@ fun HomeScreen(
                     var recentHotels by remember(userId) { mutableStateOf(listOf<Hotel>()) }
                     LaunchedEffect(userId) {
                         if (userId != null) {
-                            val db = FirebaseFirestore.getInstance()
-                    val bookingDocs = db.collection("bookings")
-                        .whereEqualTo("userId", userId)
-                        .whereEqualTo("status", "CONFIRMED") // Only confirmed bookings
-                        .limit(10)
-                        .get()
-                        .await()
-                    val hotelIds = bookingDocs.documents
-                        .sortedByDescending { it.getDate("createdAt") }
-                        .mapNotNull { it.getString("hotelId") }
-                        .distinct()
-                        .take(5)
-                            val hotels = mutableListOf<Hotel>()
-                            for (hid in hotelIds) {
-                                val doc = db.collection("hotels").document(hid).get().await()
-                                doc.toObject(Hotel::class.java)?.copy(id = doc.id)?.let { hotels.add(it) }
+                            // Move Firebase operations to background thread
+                            recentHotels = withContext(Dispatchers.IO) {
+                                try {
+                                    val db = FirebaseFirestore.getInstance()
+                                    val bookingDocs = db.collection("bookings")
+                                        .whereEqualTo("userId", userId)
+                                        .whereEqualTo("status", "CONFIRMED") // Only confirmed bookings
+                                        .limit(10)
+                                        .get()
+                                        .await()
+                                    val hotelIds = bookingDocs.documents
+                                        .sortedByDescending { it.getDate("createdAt") }
+                                        .mapNotNull { it.getString("hotelId") }
+                                        .distinct()
+                                        .take(5)
+                                    val hotels = mutableListOf<Hotel>()
+                                    for (hid in hotelIds) {
+                                        val doc = db.collection("hotels").document(hid).get().await()
+                                        doc.toObject(Hotel::class.java)?.copy(id = doc.id)?.let { hotels.add(it) }
+                                    }
+                                    hotels
+                                } catch (e: Exception) {
+                                    emptyList()
+                                }
                             }
-                            recentHotels = hotels
                         }
                     }
                     RecentlyBookedSection(
@@ -394,6 +419,8 @@ fun HotelCard(
     onBookmarkClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val imageLoader = remember { ImageLoaderConfig.create(context) }
     Card(
         modifier = Modifier
             .width(280.dp)
@@ -409,8 +436,8 @@ fun HotelCard(
                     .fillMaxWidth()
                     .height(180.dp)
             ) {
-                AsyncImage(
-                    model = imageUrl,
+                SimpleAsyncImage(
+                    imageUrl = imageUrl,
                     contentDescription = title,
                     modifier = Modifier
                         .fillMaxSize()
@@ -819,6 +846,8 @@ fun RecentlyBookedCard(
     onBookmarkClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val imageLoader = remember { ImageLoaderConfig.create(context) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -833,8 +862,8 @@ fun RecentlyBookedCard(
                     .fillMaxWidth()
                     .height(154.dp)
             ) {
-                AsyncImage(
-                    model = imageUrl,
+                SimpleAsyncImage(
+                    imageUrl = imageUrl,
                     contentDescription = title,
                     modifier = Modifier
                         .fillMaxSize()

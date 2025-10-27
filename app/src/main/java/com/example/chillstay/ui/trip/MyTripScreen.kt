@@ -25,7 +25,7 @@ import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
 import com.google.firebase.auth.FirebaseAuth
-import org.koin.androidx.compose.get
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,9 +33,9 @@ fun MyTripScreen(
     onHotelClick: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val getUserBookingsUseCase: GetUserBookingsUseCase = get()
-    val getRoomByIdUseCase: GetRoomByIdUseCase = get()
-    val getHotelByIdUseCase: GetHotelByIdUseCase = get()
+    val getUserBookingsUseCase: GetUserBookingsUseCase = koinInject()
+    val getRoomByIdUseCase: GetRoomByIdUseCase = koinInject()
+    val getHotelByIdUseCase: GetHotelByIdUseCase = koinInject()
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
     var bookings by remember { mutableStateOf<List<Booking>>(emptyList()) }
     var roomMap by remember { mutableStateOf<Map<String, Room>>(emptyMap()) }

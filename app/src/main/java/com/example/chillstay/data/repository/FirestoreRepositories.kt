@@ -66,12 +66,15 @@ class FirestoreHotelRepository @Inject constructor(
                         isAvailable = roomData?.get("isAvailable") as? Boolean ?: true,
                         capacity = (roomData?.get("capacity") as? Long)?.toInt() ?: 0,
                         detail = roomData?.get("detail")?.let { detailData ->
-                            val detailMap = detailData as? Map<String, Any>
-                            RoomDetail(
-                                name = detailMap?.get("name") as? String ?: "",
-                                size = (detailMap?.get("size") as? Double) ?: 0.0,
-                                view = detailMap?.get("view") as? String ?: ""
-                            )
+                            if (detailData is Map<*, *>) {
+                                @Suppress("UNCHECKED_CAST")
+                                val detailMap = detailData as Map<String, Any>
+                                RoomDetail(
+                                    name = detailMap["name"] as? String ?: "",
+                                    size = (detailMap["size"] as? Double) ?: 0.0,
+                                    view = detailMap["view"] as? String ?: ""
+                                )
+                            } else null
                         }
                     )
                 }
@@ -85,8 +88,24 @@ class FirestoreHotelRepository @Inject constructor(
                 
                 hotel?.copy(rooms = rooms, detail = hotelDetail)
             }
+        } catch (e: FirebaseFirestoreException) {
+            when (e.code) {
+                FirebaseFirestoreException.Code.FAILED_PRECONDITION -> {
+                    Log.w("FirestoreHotelRepository", "Index not found for hotels query. Please create index in Firebase Console: ${e.message}")
+                    Log.w("FirestoreHotelRepository", "Index required: collection=hotels, fields=rating(desc)")
+                    emptyList()
+                }
+                FirebaseFirestoreException.Code.PERMISSION_DENIED -> {
+                    Log.w("FirestoreHotelRepository", "Permission denied accessing hotels: ${e.message}")
+                    emptyList()
+                }
+                else -> {
+                    Log.e("FirestoreHotelRepository", "Firestore error fetching hotels: ${e.message}", e)
+                    emptyList()
+                }
+            }
         } catch (e: Exception) {
-            Log.e("FirestoreHotelRepository", "Error fetching hotels: ${e.message}", e)
+            Log.e("FirestoreHotelRepository", "Unexpected error fetching hotels: ${e.message}", e)
             emptyList()
         }
     }
@@ -116,7 +135,24 @@ class FirestoreHotelRepository @Inject constructor(
                 query.isEmpty() || hotel.name.contains(query, ignoreCase = true) ||
                 hotel.city.contains(query, ignoreCase = true)
             }
+        } catch (e: FirebaseFirestoreException) {
+            when (e.code) {
+                FirebaseFirestoreException.Code.FAILED_PRECONDITION -> {
+                    Log.w("FirestoreHotelRepository", "Index not found for search query. Please create composite index in Firebase Console: ${e.message}")
+                    Log.w("FirestoreHotelRepository", "Index required: collection=hotels, fields=country(asc),city(asc),rating(desc)")
+                    emptyList()
+                }
+                FirebaseFirestoreException.Code.PERMISSION_DENIED -> {
+                    Log.w("FirestoreHotelRepository", "Permission denied searching hotels: ${e.message}")
+                    emptyList()
+                }
+                else -> {
+                    Log.e("FirestoreHotelRepository", "Firestore error searching hotels: ${e.message}", e)
+                    emptyList()
+                }
+            }
         } catch (e: Exception) {
+            Log.e("FirestoreHotelRepository", "Unexpected error searching hotels: ${e.message}", e)
             emptyList()
         }
     }
@@ -148,12 +184,15 @@ class FirestoreHotelRepository @Inject constructor(
                         isAvailable = roomData?.get("isAvailable") as? Boolean ?: true,
                         capacity = (roomData?.get("capacity") as? Long)?.toInt() ?: 0,
                         detail = roomData?.get("detail")?.let { detailData ->
-                            val detailMap = detailData as? Map<String, Any>
-                            RoomDetail(
-                                name = detailMap?.get("name") as? String ?: "",
-                                size = (detailMap?.get("size") as? Double) ?: 0.0,
-                                view = detailMap?.get("view") as? String ?: ""
-                            )
+                            if (detailData is Map<*, *>) {
+                                @Suppress("UNCHECKED_CAST")
+                                val detailMap = detailData as Map<String, Any>
+                                RoomDetail(
+                                    name = detailMap["name"] as? String ?: "",
+                                    size = (detailMap["size"] as? Double) ?: 0.0,
+                                    view = detailMap["view"] as? String ?: ""
+                                )
+                            } else null
                         }
                     )
                 }

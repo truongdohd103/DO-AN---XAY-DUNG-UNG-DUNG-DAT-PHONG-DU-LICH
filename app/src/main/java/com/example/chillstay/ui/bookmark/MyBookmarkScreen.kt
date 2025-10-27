@@ -23,14 +23,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.example.chillstay.ui.components.SimpleAsyncImage
 import com.example.chillstay.domain.model.Hotel
 import com.google.firebase.auth.FirebaseAuth
-import org.koin.androidx.compose.get
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyBookmarkScreen(
-    viewModel: MyBookmarkViewModel = get(),
+    viewModel: MyBookmarkViewModel = koinInject(),
     onBackClick: () -> Unit = {},
     onHotelClick: (String) -> Unit = {}
 ) {
@@ -143,8 +144,8 @@ fun BookmarkHotelCard(
                     .fillMaxWidth()
                     .height(154.dp)
             ) {
-                AsyncImage(
-                    model = hotel.imageUrl,
+                SimpleAsyncImage(
+                    imageUrl = hotel.imageUrl,
                     contentDescription = hotel.name,
                     modifier = Modifier
                         .fillMaxSize()
@@ -239,58 +240,71 @@ fun BookmarkHotelCard(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Voucher applied
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    color = Color(0xFFBCFEA8),
-                                    shape = RoundedCornerShape(4.dp)
+                        // Show actual hotel price if available
+                        hotel.minPrice?.let { minPrice ->
+                            // Voucher applied (simulate 5% discount)
+                            val discount = minPrice * 0.05
+                            val finalPrice = minPrice - discount
+                            
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        color = Color(0xFFBCFEA8),
+                                        shape = RoundedCornerShape(4.dp)
+                                    )
+                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "$${discount.toInt()} applied",
+                                    fontSize = 8.sp,
+                                    color = Color(0xFF31B439)
                                 )
-                                .padding(horizontal = 5.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "$100 applied",
-                                fontSize = 8.sp,
-                                color = Color(0xFF31B439)
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(2.dp))
-                        
-                        // Original price and discount
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = "$700/night",
-                                fontSize = 8.sp,
-                                color = Color(0xFF757575),
-                                textDecoration = TextDecoration.LineThrough
-                            )
+                            }
                             
-                            Text(
-                                text = "- 28%",
-                                fontSize = 8.sp,
-                                color = Color(0xFFFF4A4A)
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(2.dp))
-                        
-                        // Final price
-                        Row(
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Text(
-                                text = "$599",
-                                fontSize = 15.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1AB6B6)
-                            )
+                            Spacer(modifier = Modifier.height(2.dp))
                             
+                            // Original price and discount
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text(
+                                    text = "$${minPrice.toInt()}/night",
+                                    fontSize = 8.sp,
+                                    color = Color(0xFF757575),
+                                    textDecoration = TextDecoration.LineThrough
+                                )
+                                
+                                Text(
+                                    text = "- 5%",
+                                    fontSize = 8.sp,
+                                    color = Color(0xFFFF4A4A)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(2.dp))
+                            
+                            // Final price
+                            Row(
+                                verticalAlignment = Alignment.Bottom
+                            ) {
+                                Text(
+                                    text = "$${finalPrice.toInt()}",
+                                    fontSize = 15.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1AB6B6)
+                                )
+                                
+                                Text(
+                                    text = "/night",
+                                    fontSize = 11.06.sp,
+                                    color = Color(0xFF757575)
+                                )
+                            }
+                        } ?: run {
+                            // Fallback if no price available
                             Text(
-                                text = "/night",
-                                fontSize = 11.06.sp,
+                                text = "Price on request",
+                                fontSize = 12.sp,
                                 color = Color(0xFF757575)
                             )
                         }
