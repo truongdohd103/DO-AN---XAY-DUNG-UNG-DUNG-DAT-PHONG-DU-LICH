@@ -14,6 +14,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthenticationScreen(
     onSignInClick: () -> Unit,
@@ -21,13 +22,17 @@ fun AuthenticationScreen(
     onGoogleClick: () -> Unit,
     onFacebookClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize()
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color.White)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         // Title
         Spacer(modifier = Modifier.height(48.dp))
         Text(
@@ -127,6 +132,7 @@ fun AuthenticationScreen(
                 )
             }
         }
+    }
     }
 }
 

@@ -12,6 +12,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 
 @Composable
 fun BottomNavigationBar(
@@ -22,7 +26,7 @@ fun BottomNavigationBar(
         containerColor = Color.White,
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .windowInsetsPadding(WindowInsets.navigationBars)
             .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
     ) {
         NavigationBarItem(

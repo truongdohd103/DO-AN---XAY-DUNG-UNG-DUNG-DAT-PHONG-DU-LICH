@@ -3,7 +3,7 @@ package com.example.chillstay.domain.usecase.bookmark
 import com.example.chillstay.domain.model.Bookmark
 import com.example.chillstay.domain.repository.BookmarkRepository
 import com.example.chillstay.core.common.Result
-import java.time.Instant
+import com.google.firebase.Timestamp
 
 
 class AddBookmarkUseCase constructor(
@@ -23,7 +23,7 @@ class AddBookmarkUseCase constructor(
                 id = "", // Will be set by repository
                 userId = userId,
                 hotelId = hotelId,
-                createdAt = Instant.now()
+                createdAt = Timestamp.now()
             )
             
             val createdBookmark = bookmarkRepository.addBookmark(bookmark)

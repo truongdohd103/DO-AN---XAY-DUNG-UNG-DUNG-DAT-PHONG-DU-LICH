@@ -25,21 +25,39 @@ import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
 import com.google.firebase.auth.FirebaseAuth
-import org.koin.androidx.compose.get
+import org.koin.compose.koinInject
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyTripScreen(
-    onBackClick: () -> Unit = {},
     onHotelClick: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val getUserBookingsUseCase: GetUserBookingsUseCase = get()
-    val getRoomByIdUseCase: GetRoomByIdUseCase = get()
-    val getHotelByIdUseCase: GetHotelByIdUseCase = get()
+    val getUserBookingsUseCase: GetUserBookingsUseCase = koinInject()
+    val getRoomByIdUseCase: GetRoomByIdUseCase = koinInject()
+    val getHotelByIdUseCase: GetHotelByIdUseCase = koinInject()
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
     var bookings by remember { mutableStateOf<List<Booking>>(emptyList()) }
     var roomMap by remember { mutableStateOf<Map<String, Room>>(emptyMap()) }
     var hotelMap by remember { mutableStateOf<Map<String, Hotel>>(emptyMap()) }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "My Trips",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1AB6B6)
+                )
+            )
+        }
+    ) { paddingValues ->
 
     LaunchedEffect(currentUserId, selectedTab) {
         val status = when (selectedTab) {
@@ -77,26 +95,50 @@ fun MyTripScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .padding(horizontal = 24.dp, vertical = 16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            TripTab(text = "All", isSelected = selectedTab == 0) { selectedTab = 0 }
-            TripTab(text = "Upcoming", isSelected = selectedTab == 1) { selectedTab = 1 }
-            TripTab(text = "Completed", isSelected = selectedTab == 2) { selectedTab = 2 }
-            TripTab(text = "Cancelled", isSelected = selectedTab == 3) { selectedTab = 3 }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "My Trip",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1AB6B6)
+                )
+            )
         }
-        Spacer(Modifier.height(16.dp))
-
+    ) { paddingValues ->
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color.White)
         ) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            item {
+                Column(
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TripTab(text = "All", isSelected = selectedTab == 0) { selectedTab = 0 }
+                        TripTab(text = "Upcoming", isSelected = selectedTab == 1) { selectedTab = 1 }
+                        TripTab(text = "Completed", isSelected = selectedTab == 2) { selectedTab = 2 }
+                        TripTab(text = "Cancelled", isSelected = selectedTab == 3) { selectedTab = 3 }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                }
+            }
+            
             items(bookings.size) { index ->
                 val booking = bookings[index]
                 val room = roomMap[booking.roomId]
@@ -113,9 +155,14 @@ fun MyTripScreen(
                     onClick = onHotelClick
                 )
             }
+            
+            item {
+                Spacer(modifier = Modifier.height(80.dp)) // Space for bottom navigation
+            }
         }
     }
 }
+
 
 @Composable
 fun TripTab(text: String, isSelected: Boolean, onClick: () -> Unit) {
@@ -155,6 +202,7 @@ fun TripCard(
         modifier = Modifier
             .fillMaxWidth()
             .height(165.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
@@ -226,6 +274,114 @@ fun TripCard(
                 TextButton(
                     onClick = { /* TODO: View details */ }
                 ) {
+                    Text(
+                        text = "View Details",
+                        color = Color(0xFF1AB6B6),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+    }
+}
+
+@Composable
+fun TripTab(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .background(
+                color = if (isSelected) Color(0xFF1AB6B6) else Color.Transparent,
+                shape = RoundedCornerShape(20.dp)
+            )
+            .border(
+                width = 1.dp,
+                color = if (isSelected) Color(0xFF1AB6B6) else Color(0xFFE0E0E0),
+                shape = RoundedCornerShape(20.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = text,
+            color = if (isSelected) Color.White else Color(0xFF757575),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun TripCard(
+    hotelName: String,
+    location: String,
+    dates: String,
+    totalPrice: Int,
+    status: String,
+    statusColor: Color,
+    gradientColors: List<Color>,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.linearGradient(gradientColors)
+                )
+                .padding(20.dp)
+        ) {
+            Column {
+                Text(
+                    text = hotelName,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                if (location.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = location,
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 14.sp
+                    )
+                }
+                
+                Spacer(Modifier.height(8.dp))
+                
+                Text(
+                    text = dates,
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 14.sp
+                )
+                
+                Spacer(Modifier.height(12.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Total: $$totalPrice",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
                     Text(
                         text = "View Details",
                         color = Color(0xFF1AB6B6),

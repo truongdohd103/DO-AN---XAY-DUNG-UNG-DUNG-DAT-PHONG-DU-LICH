@@ -1,12 +1,12 @@
 package com.example.chillstay.domain.model
 
-import java.time.Instant
+import com.google.firebase.Timestamp
 
 data class Bookmark(
-    val id: String,
-    val userId: String,
-    val hotelId: String,
-    val createdAt: Instant
+    val id: String = "",
+    val userId: String = "",
+    val hotelId: String = "",
+    val createdAt: Timestamp = Timestamp.now()
 )
 
 

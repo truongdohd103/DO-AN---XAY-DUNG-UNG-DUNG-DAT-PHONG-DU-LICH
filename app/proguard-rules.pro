@@ -19,3 +19,28 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Firebase/Firestore rules
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+
+# Keep data classes for Firestore serialization
+-keep class com.example.chillstay.domain.model.** { *; }
+-keepclassmembers class com.example.chillstay.domain.model.** {
+    <init>(...);
+}
+
+# Keep Firebase Timestamp
+-keep class com.google.firebase.Timestamp { *; }
+
+# Keep java.time classes if used
+-keep class java.time.** { *; }
+
+# Keep Kotlin data classes
+-keep class kotlin.Metadata { *; }
+-dontwarn kotlin.**
+-keepclassmembers class **$WhenMappings {
+    <fields>;
+}

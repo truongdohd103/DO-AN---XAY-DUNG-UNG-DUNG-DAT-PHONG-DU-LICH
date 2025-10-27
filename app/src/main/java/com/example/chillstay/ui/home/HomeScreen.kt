@@ -39,7 +39,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
 import com.example.chillstay.R
+import com.example.chillstay.ui.components.ImageLoaderConfig
+import com.example.chillstay.ui.components.OptimizedAsyncImage
+import com.example.chillstay.ui.components.SimpleAsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,18 +60,29 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
     
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Chillstay",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1AB6B6)
+                )
+            )
+        }
+    ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(paddingValues)
                 .background(Color.White)
         ) {
-            item {
-                // Header
-                HeaderSection()
-            }
             
             item {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -99,9 +117,13 @@ fun HomeScreen(
                         .padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    items(uiState.hotels.size) { index ->
-                        val hotel = uiState.hotels[index]
-                        val minPrice = hotel.rooms.minByOrNull { it.price }?.price
+                    items(
+                        items = uiState.hotels,
+                        key = { hotel -> hotel.id }
+                    ) { hotel ->
+                        val minPrice = remember(hotel.rooms) { 
+                            hotel.rooms.minByOrNull { it.price }?.price 
+                        }
                         HotelCard(
                             title = hotel.name,
                             location = "${hotel.city}, ${hotel.country}",
@@ -109,6 +131,8 @@ fun HomeScreen(
                             rating = hotel.rating.toFloat(),
                             reviews = hotel.numberOfReviews,
                             imageUrl = hotel.imageUrl,
+                            isBookmarked = uiState.bookmarkedHotels.contains(hotel.id),
+                            onBookmarkClick = { viewModel.handleIntent(HomeIntent.ToggleBookmark(hotel.id)) },
                             onClick = { onHotelClick(hotel.id) }
                         )
                     }
@@ -141,31 +165,38 @@ fun HomeScreen(
                 var pending by remember(userId) { mutableStateOf(listOf<PendingDisplayItem>()) }
                 LaunchedEffect(userId) {
                     if (userId != null) {
-                        val db = FirebaseFirestore.getInstance()
-                        val docs = db.collection("bookings")
-                            .whereEqualTo("userId", userId)
-                            .whereEqualTo("status", "PENDING")
-                            .limit(10)
-                            .get()
-                            .await()
-                        val items = mutableListOf<PendingDisplayItem>()
-                        for (d in docs.documents) {
-                            val dateFrom = d.getString("dateFrom") ?: continue
-                            val dateTo = d.getString("dateTo") ?: continue
-                            val guests = (d.getLong("guests") ?: 0).toInt()
-                            val createdAt = d.getDate("createdAt")
-                            val hotelId = d.getString("hotelId")
-                            val roomId = d.getString("roomId")
-                            val hotelName = try {
-                                val hid = d.getString("hotelId")
-                                if (!hid.isNullOrEmpty()) {
-                                    val hdoc = db.collection("hotels").document(hid).get().await()
-                                    hdoc.getString("name")
-                                } else null
-                            } catch (_: Exception) { null }
-                            items.add(PendingDisplayItem(hotelName, dateFrom, dateTo, guests, createdAt, hotelId ?: "", roomId ?: ""))
+                        // Move Firebase operations to background thread
+                        pending = withContext(Dispatchers.IO) {
+                            try {
+                                val db = FirebaseFirestore.getInstance()
+                                val docs = db.collection("bookings")
+                                    .whereEqualTo("userId", userId)
+                                    .whereEqualTo("status", "PENDING")
+                                    .limit(10)
+                                    .get()
+                                    .await()
+                                val items = mutableListOf<PendingDisplayItem>()
+                                for (d in docs.documents) {
+                                    val dateFrom = d.getString("dateFrom") ?: continue
+                                    val dateTo = d.getString("dateTo") ?: continue
+                                    val guests = (d.getLong("guests") ?: 0).toInt()
+                                    val createdAt = d.getDate("createdAt")
+                                    val hotelId = d.getString("hotelId")
+                                    val roomId = d.getString("roomId")
+                                    val hotelName = try {
+                                        val hid = d.getString("hotelId")
+                                        if (!hid.isNullOrEmpty()) {
+                                            val hdoc = db.collection("hotels").document(hid).get().await()
+                                            hdoc.getString("name")
+                                        } else null
+                                    } catch (_: Exception) { null }
+                                    items.add(PendingDisplayItem(hotelName, dateFrom, dateTo, guests, createdAt, hotelId ?: "", roomId ?: ""))
+                                }
+                                items.sortedByDescending { it.createdAt }
+                            } catch (e: Exception) {
+                                emptyList()
+                            }
                         }
-                        pending = items.sortedByDescending { it.createdAt }
                     }
                 }
                 ContinuePlanningSection(items = pending, onItemClick = onContinueItemClick)
@@ -182,29 +213,39 @@ fun HomeScreen(
                     var recentHotels by remember(userId) { mutableStateOf(listOf<Hotel>()) }
                     LaunchedEffect(userId) {
                         if (userId != null) {
-                            val db = FirebaseFirestore.getInstance()
-                            val bookingDocs = db.collection("bookings")
-                                .whereEqualTo("userId", userId)
-                                .limit(10)
-                                .get()
-                                .await()
-                            val hotelIds = bookingDocs.documents
-                                .sortedByDescending { it.getDate("createdAt") }
-                                .mapNotNull { it.getString("hotelId") }
-                                .distinct()
-                                .take(5)
-                            val hotels = mutableListOf<Hotel>()
-                            for (hid in hotelIds) {
-                                val doc = db.collection("hotels").document(hid).get().await()
-                                doc.toObject(Hotel::class.java)?.copy(id = doc.id)?.let { hotels.add(it) }
+                            // Move Firebase operations to background thread
+                            recentHotels = withContext(Dispatchers.IO) {
+                                try {
+                                    val db = FirebaseFirestore.getInstance()
+                                    val bookingDocs = db.collection("bookings")
+                                        .whereEqualTo("userId", userId)
+                                        .whereEqualTo("status", "CONFIRMED") // Only confirmed bookings
+                                        .limit(10)
+                                        .get()
+                                        .await()
+                                    val hotelIds = bookingDocs.documents
+                                        .sortedByDescending { it.getDate("createdAt") }
+                                        .mapNotNull { it.getString("hotelId") }
+                                        .distinct()
+                                        .take(5)
+                                    val hotels = mutableListOf<Hotel>()
+                                    for (hid in hotelIds) {
+                                        val doc = db.collection("hotels").document(hid).get().await()
+                                        doc.toObject(Hotel::class.java)?.copy(id = doc.id)?.let { hotels.add(it) }
+                                    }
+                                    hotels
+                                } catch (e: Exception) {
+                                    emptyList()
+                                }
                             }
-                            recentHotels = hotels
                         }
                     }
                     RecentlyBookedSection(
                         hotels = recentHotels,
+                        bookmarkedHotels = uiState.bookmarkedHotels,
                         onSeeAllClick = onSeeAllRecentClick,
-                        onHotelClick = onHotelClick
+                        onHotelClick = onHotelClick,
+                        onBookmarkClick = { hotelId -> viewModel.handleIntent(HomeIntent.ToggleBookmark(hotelId)) }
                     )
                 }
             }
@@ -216,32 +257,6 @@ fun HomeScreen(
     }
 }
 
-@Composable
-fun HeaderSection() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF1AB6B6),
-                        Color(0xFF16A3A3)
-                    )
-                )
-            )
-    ) {
-        Text(
-            text = "Chillstay",
-            color = Color.White,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 21.dp)
-        )
-    }
-}
 
 @Composable
 fun SearchBar(onClick: () -> Unit = {}) {
@@ -357,7 +372,9 @@ fun HotelCardsSection(
 @Composable
 fun PopularHotelsSection(
     hotels: List<com.example.chillstay.domain.model.Hotel>,
-    onHotelClick: (String) -> Unit = {}
+    bookmarkedHotels: Set<String> = emptySet(),
+    onHotelClick: (String) -> Unit = {},
+    onBookmarkClick: (String) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -381,6 +398,8 @@ fun PopularHotelsSection(
                     rating = hotel.rating.toFloat(),
                     reviews = hotel.numberOfReviews,
                     imageUrl = hotel.imageUrl,
+                    isBookmarked = bookmarkedHotels.contains(hotel.id),
+                    onBookmarkClick = { onBookmarkClick(hotel.id) },
                     onClick = { onHotelClick(hotel.id) }
                 )
             }
@@ -396,8 +415,12 @@ fun HotelCard(
     rating: Float?,
     reviews: Int?,
     imageUrl: String,
+    isBookmarked: Boolean = false,
+    onBookmarkClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val imageLoader = remember { ImageLoaderConfig.create(context) }
     Card(
         modifier = Modifier
             .width(280.dp)
@@ -413,8 +436,8 @@ fun HotelCard(
                     .fillMaxWidth()
                     .height(180.dp)
             ) {
-                AsyncImage(
-                    model = imageUrl,
+                SimpleAsyncImage(
+                    imageUrl = imageUrl,
                     contentDescription = title,
                     modifier = Modifier
                         .fillMaxSize()
@@ -422,6 +445,26 @@ fun HotelCard(
                         .clip(RoundedCornerShape(20.dp)),
                     contentScale = ContentScale.Crop
                 )
+                
+                // Bookmark button
+                IconButton(
+                    onClick = onBookmarkClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(20.dp)
+                        .size(24.dp)
+                        .background(
+                            color = if (isBookmarked) Color(0xFFF44235) else Color.White,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                        tint = if (isBookmarked) Color.White else Color(0xFF757575),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
             
             // Content
@@ -726,7 +769,13 @@ fun ContinuePlanningSection(items: List<PendingDisplayItem> = emptyList(), onIte
 }
 
 @Composable
-fun RecentlyBookedSection(hotels: List<com.example.chillstay.domain.model.Hotel> = emptyList(), onSeeAllClick: () -> Unit = {}, onHotelClick: (String) -> Unit = {}) {
+fun RecentlyBookedSection(
+    hotels: List<com.example.chillstay.domain.model.Hotel> = emptyList(), 
+    bookmarkedHotels: Set<String> = emptySet(),
+    onSeeAllClick: () -> Unit = {}, 
+    onHotelClick: (String) -> Unit = {},
+    onBookmarkClick: (String) -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -774,6 +823,8 @@ fun RecentlyBookedSection(hotels: List<com.example.chillstay.domain.model.Hotel>
                     finalPrice = if (hotel.minPrice != null) "$${(hotel.minPrice!! * 0.95).toInt()}" else "",
                     voucherApplied = if ((hotel.minPrice ?: 0.0) > 0.0) "$${(hotel.minPrice!! * 0.05).toInt()} applied" else "",
                     imageUrl = hotel.imageUrl,
+                    isBookmarked = bookmarkedHotels.contains(hotel.id),
+                    onBookmarkClick = { onBookmarkClick(hotel.id) },
                     onClick = { onHotelClick(hotel.id) }
                 )
             }
@@ -791,8 +842,12 @@ fun RecentlyBookedCard(
     finalPrice: String,
     voucherApplied: String,
     imageUrl: String,
+    isBookmarked: Boolean = false,
+    onBookmarkClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val imageLoader = remember { ImageLoaderConfig.create(context) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -807,8 +862,8 @@ fun RecentlyBookedCard(
                     .fillMaxWidth()
                     .height(154.dp)
             ) {
-                AsyncImage(
-                    model = imageUrl,
+                SimpleAsyncImage(
+                    imageUrl = imageUrl,
                     contentDescription = title,
                     modifier = Modifier
                         .fillMaxSize()
@@ -816,6 +871,26 @@ fun RecentlyBookedCard(
                         .clip(RoundedCornerShape(20.dp)),
                     contentScale = ContentScale.Crop
                 )
+                
+                // Bookmark button
+                IconButton(
+                    onClick = onBookmarkClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(15.dp)
+                        .size(20.dp)
+                        .background(
+                            color = if (isBookmarked) Color(0xFFF44235) else Color.White,
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                        tint = if (isBookmarked) Color.White else Color(0xFF757575),
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
             }
             
             // Content

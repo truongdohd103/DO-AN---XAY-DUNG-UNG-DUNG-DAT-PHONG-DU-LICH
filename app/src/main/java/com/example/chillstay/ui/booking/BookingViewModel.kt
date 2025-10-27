@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.time.Instant
+import com.google.firebase.Timestamp
 import java.time.LocalDate
 
 class BookingViewModel(
@@ -202,8 +202,8 @@ class BookingViewModel(
                     paymentMethod = currentState.paymentMethod,
                     specialRequests = currentState.specialRequests,
                     preferences = currentState.preferences,
-                    createdAt = Instant.now(),
-                    updatedAt = Instant.now(),
+                    createdAt = Timestamp.now(),
+                    updatedAt = Timestamp.now(),
                     appliedVouchers = currentState.appliedVouchers,
                     hotel = currentState.hotel,
                     room = currentState.room

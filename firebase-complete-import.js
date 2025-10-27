@@ -48,6 +48,26 @@ async function seedChillStaySample() {
         { city: 'Bangkok', country: 'Thailand' },
         { city: 'Singapore', country: 'Singapore' }
     ];
+    
+    const hotelImages = [
+        'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&h=400&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&h=400&fit=crop&crop=center'
+    ];
+    
+    const roomImages = [
+        'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=500&h=300&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=500&h=300&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=500&h=300&fit=crop&crop=center',
+        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500&h=300&fit=crop&crop=center'
+    ];
     const hotelIds = [];
     const roomIds = [];
 
@@ -59,7 +79,7 @@ async function seedChillStaySample() {
             city: loc.city,
             rating: 4 + (i % 10) / 10,
             numberOfReviews: 20 + i * 3,
-            imageUrl: 'https://placehold.co/600x400',
+            imageUrl: hotelImages[i],
             minPrice: null,
             photoCount: 0
         };
@@ -81,7 +101,7 @@ async function seedChillStaySample() {
                 hotelId: hotelRef.id,
                 type: roomType.type,
                 price: roomType.price,
-                imageUrl: `https://placehold.co/500x300?text=${roomType.name.replace(' ', '+')}`,
+                imageUrl: roomImages[j % roomImages.length],
                 isAvailable: j === 0 ? true : (i % 3 !== 0), // Make some rooms unavailable
                 capacity: roomType.capacity,
                 detail: {
@@ -98,7 +118,7 @@ async function seedChillStaySample() {
     }
 
     // Seed Auth users (Admin SDK) and Firestore user profiles
-    let userIds = [];
+    const userIds = [];
     for (let i = 0; i < 2; i++) {
         const email = `user${i + 1}@chillstay.com`;
         const password = 'password123';
@@ -132,24 +152,13 @@ async function seedChillStaySample() {
         userIds.push(uid);
     }
 
-    // Also include any existing Firestore user docs (so we seed data for current testers)
-    try {
-        const existingUsersSnap = await db.collection('users').get();
-        existingUsersSnap.forEach(doc => {
-            if (!userIds.includes(doc.id)) userIds.push(doc.id);
-        });
-        console.log(`ℹ️ Total users to seed for: ${userIds.length}`);
-    } catch (e) {
-        console.warn('⚠️ Failed to include existing users from Firestore:', e.message || e);
-    }
-
     // Seed bookmarks only if we have at least one auth user
     if (userIds.length > 0) {
         for (let i = 0; i < Math.min(5, hotelIds.length); i++) {
             await db.collection('bookmarks').add({
                 userId: userIds[0],
                 hotelId: hotelIds[i],
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
+                createdAt: admin.firestore.Timestamp.now()
             });
         }
     } else {
@@ -170,103 +179,155 @@ async function seedChillStaySample() {
         console.warn('⚠️ No auth users -> skipping reviews seed');
     }
 
-    // Seed vouchers
+    // Seed vouchers with new model structure
     const voucherIds = [];
-    for (let i = 0; i < 10; i++) {
+    const voucherTitles = [
+        "UP TO\n5% OFF",
+        "UP TO\n8% OFF", 
+        "UP TO\n10% OFF",
+        "UP TO\n15% OFF",
+        "UP TO\n20% OFF",
+        "DOMESTIC DEALS",
+        "INTERNATIONAL DEALS",
+        "EARLY BIRD\nSPECIAL",
+        "WEEKEND\nGETAWAY",
+        "LUXURY\nEXPERIENCE",
+        "FAMILY\nPACKAGE",
+        "BUSINESS\nTRAVEL",
+        "ROMANTIC\nESCAPE",
+        "ADVENTURE\nDEAL",
+        "CITY BREAK\nOFFER"
+    ];
+    
+    const voucherDescriptions = [
+        "Save up to $800 on hotel bookings",
+        "Save up to $1,000 on hotel bookings", 
+        "Save up to $1,500 on hotel bookings",
+        "Save up to $2,000 on hotel bookings",
+        "Save up to $2,500 on hotel bookings",
+        "Enjoy special prices at local hotels and resorts",
+        "Enjoy special prices at international hotels and resorts",
+        "Book early and save more on your stay",
+        "Perfect deals for weekend getaways",
+        "Experience luxury at affordable prices",
+        "Great deals for family vacations",
+        "Special rates for business travelers",
+        "Romantic packages for couples",
+        "Adventure deals for thrill seekers",
+        "City break offers for urban explorers"
+    ];
+    
+    for (let i = 0; i < 15; i++) {
+        const now = new Date();
+        const validFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
+        const validTo = new Date(now.getTime() + (30 + i * 5) * 24 * 60 * 60 * 1000); // 30-100 days from now
+        
         const voucherRef = await db.collection('vouchers').add({
             code: `SAVE${10 + i}`,
-            discount: 5 + (i % 5),
-            type: 'PERCENT',
-            expiresAt: new Date(Date.now() + 30 * 24 * 3600 * 1000)
+            title: voucherTitles[i % voucherTitles.length],
+            description: voucherDescriptions[i % voucherDescriptions.length],
+            type: i % 3 === 0 ? 'FIXED_AMOUNT' : 'PERCENTAGE',
+            value: i % 3 === 0 ? (50 + i * 10) : (5 + i % 15), // Fixed amount: $50-200, Percentage: 5-20%
+            status: 'ACTIVE',
+            validFrom: admin.firestore.Timestamp.fromDate(validFrom),
+            validTo: admin.firestore.Timestamp.fromDate(validTo),
+            applyForHotel: i % 4 === 0 ? hotelIds.slice(0, 3) : null, // Some vouchers apply to specific hotels
+            conditions: {
+                minBookingAmount: i % 2 === 0 ? (100 + i * 50) : 0,
+                maxDiscountAmount: i % 3 === 0 ? (500 + i * 100) : 0,
+                applicableForNewUsers: i % 5 === 0,
+                applicableForExistingUsers: true,
+                maxUsagePerUser: 1 + (i % 3),
+                maxTotalUsage: 0, // Unlimited
+                currentUsage: 0,
+                requiredUserLevel: i % 6 === 0 ? 'VIP' : null,
+                validDays: [],
+                validTimeSlots: []
+            },
+            createdAt: admin.firestore.Timestamp.now(),
+            updatedAt: admin.firestore.Timestamp.now()
         });
         voucherIds.push(voucherRef.id);
     }
+    
+    console.log(`✅ Created ${voucherIds.length} vouchers with new model structure`);
 
-    // Seed multiple bookings with diverse data for testing (more volume, per user)
+    // Seed multiple bookings with diverse data for testing
     if (userIds.length > 0 && roomIds.length > 0) {
         const bookingStatuses = ['PENDING', 'CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT', 'CANCELLED'];
         const paymentMethods = ['CREDIT_CARD', 'DEBIT_CARD', 'DIGITAL_WALLET', 'BANK_TRANSFER', 'CASH'];
+        
+        for (let i = 0; i < 15; i++) {
+            const today = new Date();
+            const dateFrom = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (i * 2)).toISOString().slice(0, 10);
+            const dateTo = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (i * 2) + (i % 3) + 1).toISOString().slice(0, 10);
+            const roomId = roomIds[i % roomIds.length];
+            const userId = userIds[i % userIds.length];
+            const hotelId = hotelIds[i % hotelIds.length];
+            
+            // Get room price for calculation
+            const roomDoc = await db.collection('rooms').doc(roomId).get();
+            const roomPrice = roomDoc.exists ? roomDoc.data().price : 150 + (i * 20);
+            
+            const nights = Math.max(1, (new Date(dateTo) - new Date(dateFrom)) / (1000 * 60 * 60 * 24));
+            const basePrice = roomPrice * nights;
+            const serviceFee = basePrice * 0.05;
+            const taxes = basePrice * 0.1;
+            const discount = i % 3 === 0 ? basePrice * 0.1 : 0;
+            const totalPrice = basePrice + serviceFee + taxes - discount;
+            
+            const bookingRef = await db.collection('bookings').add({
+                userId: userId,
+                hotelId: hotelId,
+                roomId: roomId,
+                dateFrom: dateFrom,
+                dateTo: dateTo,
+                guests: 1 + (i % 4),
+                adults: 1 + (i % 3),
+                children: i % 3 === 0 ? 1 : 0,
+                rooms: 1 + (i % 2),
+                price: basePrice,
+                originalPrice: basePrice,
+                discount: discount,
+                serviceFee: serviceFee,
+                taxes: taxes,
+                totalPrice: totalPrice,
+                status: bookingStatuses[i % bookingStatuses.length],
+                paymentMethod: paymentMethods[i % paymentMethods.length],
+                specialRequests: i % 2 === 0 ? `Special request ${i + 1}: Please provide extra towels` : '',
+                preferences: {
+                    highFloor: i % 3 === 0,
+                    quietRoom: i % 4 === 0,
+                    extraPillows: i % 5 === 0,
+                    airportShuttle: i % 6 === 0,
+                    earlyCheckIn: i % 7 === 0,
+                    lateCheckOut: i % 8 === 0
+                },
+                createdAt: admin.firestore.Timestamp.now(),
+                updatedAt: admin.firestore.Timestamp.now(),
+                appliedVouchers: i % 4 === 0 ? [voucherIds[i % 5]] : []
+            });
 
-        async function seedBookingsForUser(userId, count = 40) {
-            for (let i = 0; i < count; i++) {
-                const today = new Date();
-                const offset = (i % 15) - 7; // spread around current date
-                const dateFrom = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset).toISOString().slice(0, 10);
-                const dateTo = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset + 1 + (i % 4)).toISOString().slice(0, 10);
-                const roomId = roomIds[(i * 7) % roomIds.length];
-                const hotelId = hotelIds[(i * 5) % hotelIds.length];
-
-                const roomDoc = await db.collection('rooms').doc(roomId).get();
-                const roomPrice = roomDoc.exists ? roomDoc.data().price : 120 + (i * 3);
-
-                const nights = Math.max(1, (new Date(dateTo) - new Date(dateFrom)) / (1000 * 60 * 60 * 24));
-                const basePrice = roomPrice * nights;
-                const serviceFee = basePrice * 0.05;
-                const taxes = basePrice * 0.1;
-                const discount = i % 3 === 0 ? basePrice * 0.1 : 0;
-                const totalPrice = basePrice + serviceFee + taxes - discount;
-
-                // bias more PENDING and CONFIRMED early in the list for Home testing
-                const statusIdx = i < 15 ? 0 : (i < 25 ? 1 : (i % bookingStatuses.length));
-                const status = bookingStatuses[statusIdx];
-
-                const bookingRef = await db.collection('bookings').add({
-                    userId: userId,
-                    hotelId: hotelId,
-                    roomId: roomId,
-                    dateFrom: dateFrom,
-                    dateTo: dateTo,
-                    guests: 1 + (i % 4),
-                    adults: 1 + (i % 3),
-                    children: i % 3 === 0 ? 1 : 0,
-                    rooms: 1 + (i % 2),
-                    price: basePrice,
-                    originalPrice: basePrice,
-                    discount: discount,
-                    serviceFee: serviceFee,
-                    taxes: taxes,
-                    totalPrice: totalPrice,
-                    status: status,
-                    paymentMethod: paymentMethods[i % paymentMethods.length],
-                    specialRequests: i % 2 === 0 ? `Special request ${i + 1}: Please provide extra towels` : '',
-                    preferences: {
-                        highFloor: i % 3 === 0,
-                        quietRoom: i % 4 === 0,
-                        extraPillows: i % 5 === 0,
-                        airportShuttle: i % 6 === 0,
-                        earlyCheckIn: i % 7 === 0,
-                        lateCheckOut: i % 8 === 0
-                    },
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    appliedVouchers: []
-                });
-
-                // Bill/Payment for non-PENDING (simulate incomplete payment for PENDING)
-                if (status !== 'PENDING') {
-                    const billRef = await db.collection('bills').add({
-                        userId: userId,
-                        bookingId: bookingRef.id,
-                        amount: totalPrice,
-                        status: status === 'CONFIRMED' || status === 'CHECKED_IN' || status === 'CHECKED_OUT' ? 'PAID' : 'UNPAID',
-                        createdAt: admin.firestore.FieldValue.serverTimestamp()
-                    });
-                    await db.collection('payments').add({
-                        userId: userId,
-                        billId: billRef.id,
-                        amount: (status === 'CONFIRMED' || status === 'CHECKED_IN' || status === 'CHECKED_OUT') ? totalPrice : 0,
-                        method: paymentMethods[i % paymentMethods.length],
-                        status: (status === 'CONFIRMED' || status === 'CHECKED_IN' || status === 'CHECKED_OUT') ? 'COMPLETED' : 'PENDING',
-                        createdAt: admin.firestore.FieldValue.serverTimestamp()
-                    });
-                }
-            }
+            // Create corresponding bill
+            const billRef = await db.collection('bills').add({
+                userId: userId,
+                bookingId: bookingRef.id,
+                amount: totalPrice,
+                status: i % 3 === 0 ? 'PAID' : 'UNPAID',
+                createdAt: admin.firestore.Timestamp.now()
+            });
+            
+            // Create corresponding payment
+            await db.collection('payments').add({
+                userId: userId,
+                billId: billRef.id,
+                amount: i % 3 === 0 ? totalPrice : 0,
+                method: paymentMethods[i % paymentMethods.length],
+                status: i % 3 === 0 ? 'COMPLETED' : 'PENDING',
+                createdAt: admin.firestore.Timestamp.now()
+            });
         }
-
-        for (const uid of userIds) {
-            await seedBookingsForUser(uid, 50);
-        }
-        console.log(`✅ Created bookings for ${userIds.length} users (≈ ${userIds.length * 50} records)`);
+        console.log('✅ Created 15 diverse bookings with bills and payments');
     } else {
         console.warn('⚠️ No auth users or rooms -> skipping booking/bill/payment seed');
     }
@@ -279,7 +340,7 @@ async function seedChillStaySample() {
                 title: `Notification ${i + 1}`,
                 message: 'Your booking update',
                 read: false,
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
+                createdAt: admin.firestore.Timestamp.now()
             });
         }
     } else {

@@ -15,16 +15,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CarouselScreen(
     onSkipClick: () -> Unit = {}
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxSize(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize()
+    ) { paddingValues ->
+        Card(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Main image
             AsyncImage(
@@ -96,5 +101,6 @@ fun CarouselScreen(
                 }
             }
         }
+    }
     }
 }

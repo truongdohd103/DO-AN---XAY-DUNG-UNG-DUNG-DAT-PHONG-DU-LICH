@@ -18,20 +18,42 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onBackClick: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     var isDarkTheme by remember { mutableStateOf(false) }
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val userEmail = currentUser?.email ?: "demo@chillstay.com"
+    val userName = currentUser?.displayName ?: "User"
     
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Profile",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1AB6B6)
+                )
+            )
+        }
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color.White),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
         item {
             Spacer(modifier = Modifier.height(20.dp))
         }
@@ -78,14 +100,14 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
-                    text = "Demo",
+                    text = userName,
                     color = Color(0xFF212121),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 
                 Text(
-                    text = "demo@chillstay.com",
+                    text = userEmail,
                     color = Color(0xFF424242),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
@@ -202,7 +224,8 @@ fun ProfileScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                    .padding(bottom = 80.dp), // Thêm padding bottom để tránh bị che bởi bottom nav
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -214,7 +237,9 @@ fun ProfileScreen(
                 
                 Spacer(Modifier.width(24.dp))
                 
-                TextButton(onClick = onLogout) {
+                TextButton(onClick = { 
+                    onLogout()
+                }) {
                     Text(
                         text = "Logout",
                         color = Color(0xFFF75555),
@@ -224,6 +249,7 @@ fun ProfileScreen(
                 }
             }
         }
+    }
     }
 }
 

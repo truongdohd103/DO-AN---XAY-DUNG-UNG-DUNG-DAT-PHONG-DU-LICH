@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import org.koin.androidx.compose.get
+import org.koin.compose.koinInject
 import java.time.format.DateTimeFormatter
 import androidx.activity.compose.BackHandler
 import com.google.firebase.auth.FirebaseAuth
@@ -938,7 +938,7 @@ fun PriceSummarySection(
             
             Spacer(modifier = Modifier.height(13.dp))
             
-            Divider(color = Color(0xFFE0E0E0))
+            HorizontalDivider(color = Color(0xFFE0E0E0))
             
             Spacer(modifier = Modifier.height(13.dp))
             
