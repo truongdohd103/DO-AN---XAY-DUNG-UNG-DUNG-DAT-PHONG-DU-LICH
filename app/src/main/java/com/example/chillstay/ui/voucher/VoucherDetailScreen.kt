@@ -35,7 +35,7 @@ fun VoucherDetailScreen(
     val currentUser = FirebaseAuth.getInstance().currentUser
 
     LaunchedEffect(voucherId) {
-        viewModel.handleIntent(VoucherDetailIntent.LoadVoucherDetail(voucherId))
+        viewModel.onEvent(VoucherDetailIntent.LoadVoucherDetail(voucherId))
     }
 
     LaunchedEffect(uiState.error) {
@@ -108,7 +108,7 @@ fun VoucherDetailScreen(
                                     textAlign = TextAlign.Center
                                 )
                                 Button(
-                                    onClick = { viewModel.handleIntent(VoucherDetailIntent.ClearError) }
+                                    onClick = { viewModel.onEvent(VoucherDetailIntent.ClearError) }
                                 ) {
                                     Text("Retry")
                                 }
@@ -137,7 +137,7 @@ fun VoucherDetailScreen(
                                 eligibilityMessage = uiState.eligibilityMessage,
                                 onClaimClick = {
                                     currentUser?.uid?.let { userId ->
-                                        viewModel.handleIntent(VoucherDetailIntent.ClaimVoucher(voucherId, userId))
+                                        viewModel.onEvent(VoucherDetailIntent.ClaimVoucher(voucherId, userId))
                                     }
                                 }
                             )

@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -14,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -23,7 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.example.chillstay.ui.components.SimpleAsyncImage
+import androidx.compose.ui.res.painterResource
+import com.example.chillstay.R
 import com.example.chillstay.domain.model.Hotel
 import com.google.firebase.auth.FirebaseAuth
 import org.koin.compose.koinInject
@@ -40,7 +39,7 @@ fun MyBookmarkScreen(
 
     LaunchedEffect(currentUserId) {
         if (currentUserId != null) {
-            viewModel.handleIntent(MyBookmarkIntent.LoadBookmarks(currentUserId))
+            viewModel.onEvent(MyBookmarkIntent.LoadBookmarks(currentUserId))
         }
     }
 
@@ -107,7 +106,7 @@ fun MyBookmarkScreen(
                         onHotelClick = { onHotelClick(hotel.id) },
                         onRemoveBookmark = { 
                             currentUserId?.let { userId ->
-                                viewModel.handleIntent(MyBookmarkIntent.RemoveBookmark("", hotel.id))
+                                viewModel.onEvent(MyBookmarkIntent.RemoveBookmark("", hotel.id))
                             }
                         }
                     )
@@ -131,27 +130,29 @@ fun BookmarkHotelCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(266.dp)
-            .padding(horizontal = 21.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable { onHotelClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA))
     ) {
         Column {
-            // Image section
+            // Image section - responsive height
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(154.dp)
+                    .heightIn(min = 120.dp, max = 200.dp)
+                    .aspectRatio(16f / 9f) // Maintain aspect ratio
             ) {
-                SimpleAsyncImage(
-                    imageUrl = hotel.imageUrl,
+                AsyncImage(
+                    model = hotel.imageUrl,
                     contentDescription = hotel.name,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(12.dp)
-                        .clip(RoundedCornerShape(20.dp)),
-                    contentScale = ContentScale.Crop
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.ic_home),
+                    error = painterResource(id = R.drawable.ic_home)
                 )
                 
                 // Heart icon for remove bookmark
@@ -159,32 +160,32 @@ fun BookmarkHotelCard(
                     onClick = onRemoveBookmark,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(15.dp)
-                        .size(20.dp)
+                        .padding(8.dp)
+                        .size(32.dp)
                         .background(
                             color = Color(0xFFF44235),
-                            shape = RoundedCornerShape(4.dp)
+                            shape = RoundedCornerShape(16.dp)
                         )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Favorite,
                         contentDescription = "Remove bookmark",
                         tint = Color.White,
-                        modifier = Modifier.size(12.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
             
-            // Content section
+            // Content section - responsive padding
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
                     Column(
                         modifier = Modifier.weight(1f)
@@ -193,7 +194,9 @@ fun BookmarkHotelCard(
                             text = hotel.name,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF212121)
+                            color = Color(0xFF212121),
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                         
                         Spacer(modifier = Modifier.height(4.dp))
@@ -201,7 +204,9 @@ fun BookmarkHotelCard(
                         Text(
                             text = "${hotel.city}, ${hotel.country}",
                             fontSize = 14.sp,
-                            color = Color(0xFF757575)
+                            color = Color(0xFF757575),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                         
                         Spacer(modifier = Modifier.height(8.dp))
@@ -215,7 +220,7 @@ fun BookmarkHotelCard(
                                         imageVector = Icons.Default.Star,
                                         contentDescription = "Star",
                                         tint = Color(0xFFFBC40D),
-                                        modifier = Modifier.size(9.dp)
+                                        modifier = Modifier.size(12.dp)
                                     )
                                 }
                             }
@@ -225,20 +230,22 @@ fun BookmarkHotelCard(
                             Text(
                                 text = hotel.rating.toString(),
                                 fontSize = 12.sp,
-                                color = Color(0xFF1AB6B6)
+                                color = Color(0xFF1AB6B6),
+                                fontWeight = FontWeight.SemiBold
                             )
                             
                             Text(
-                                text = "(${hotel.numberOfReviews} reviews)",
+                                text = "(${hotel.numberOfReviews})",
                                 fontSize = 12.sp,
                                 color = Color(0xFF757575)
                             )
                         }
                     }
                     
-                    // Price section
+                    // Price section - responsive layout
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.widthIn(min = 80.dp, max = 120.dp)
                     ) {
                         // Show actual hotel price if available
                         hotel.minPrice?.let { minPrice ->
@@ -250,53 +257,55 @@ fun BookmarkHotelCard(
                                 modifier = Modifier
                                     .background(
                                         color = Color(0xFFBCFEA8),
-                                        shape = RoundedCornerShape(4.dp)
+                                        shape = RoundedCornerShape(6.dp)
                                     )
-                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                                    .padding(horizontal = 6.dp, vertical = 3.dp)
                             ) {
                                 Text(
-                                    text = "$${discount.toInt()} applied",
-                                    fontSize = 8.sp,
-                                    color = Color(0xFF31B439)
+                                    text = "$${discount.toInt()} off",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF31B439),
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                             
-                            Spacer(modifier = Modifier.height(2.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             
                             // Original price and discount
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Text(
-                                    text = "$${minPrice.toInt()}/night",
-                                    fontSize = 8.sp,
+                                    text = "$${minPrice.toInt()}",
+                                    fontSize = 10.sp,
                                     color = Color(0xFF757575),
                                     textDecoration = TextDecoration.LineThrough
                                 )
                                 
                                 Text(
-                                    text = "- 5%",
-                                    fontSize = 8.sp,
-                                    color = Color(0xFFFF4A4A)
+                                    text = "-5%",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFFFF4A4A),
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                             
-                            Spacer(modifier = Modifier.height(2.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             
                             // Final price
-                            Row(
-                                verticalAlignment = Alignment.Bottom
+                            Column(
+                                horizontalAlignment = Alignment.End
                             ) {
                                 Text(
                                     text = "$${finalPrice.toInt()}",
-                                    fontSize = 15.5.sp,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1AB6B6)
                                 )
                                 
                                 Text(
                                     text = "/night",
-                                    fontSize = 11.06.sp,
+                                    fontSize = 10.sp,
                                     color = Color(0xFF757575)
                                 )
                             }
@@ -305,7 +314,8 @@ fun BookmarkHotelCard(
                             Text(
                                 text = "Price on request",
                                 fontSize = 12.sp,
-                                color = Color(0xFF757575)
+                                color = Color(0xFF757575),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End
                             )
                         }
                     }

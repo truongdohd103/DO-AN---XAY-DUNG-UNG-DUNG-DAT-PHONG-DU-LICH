@@ -19,14 +19,16 @@ class ChillStayApplication : Application(), ImageLoaderFactory {
         
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
-        // App Check Debug provider for development - DISABLED FOR TESTING
-        // TODO: Re-enable App Check in production
-        /*
-        try {
-            val appCheck = FirebaseAppCheck.getInstance()
-            appCheck.installAppCheckProviderFactory(DebugAppCheckProviderFactory.getInstance())
-        } catch (_: Exception) { }
-        */
+        
+        // Initialize Firebase App Check for debug builds only
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            try {
+                val appCheck = FirebaseAppCheck.getInstance()
+                appCheck.installAppCheckProviderFactory(DebugAppCheckProviderFactory.getInstance())
+            } catch (_: Exception) {
+                // Silently ignore App Check setup errors in debug
+            }
+        }
         
         // Initialize Koin
         startKoin {

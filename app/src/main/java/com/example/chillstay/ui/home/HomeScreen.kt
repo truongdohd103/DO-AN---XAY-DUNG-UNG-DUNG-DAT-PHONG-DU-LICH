@@ -1,6 +1,5 @@
 package com.example.chillstay.ui.home
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -26,27 +24,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import com.example.chillstay.domain.model.Hotel
-import com.example.chillstay.domain.model.Booking
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
+import androidx.compose.ui.res.painterResource
 import com.example.chillstay.R
-import com.example.chillstay.ui.components.ImageLoaderConfig
-import com.example.chillstay.ui.components.OptimizedAsyncImage
-import com.example.chillstay.ui.components.SimpleAsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,7 +92,7 @@ fun HomeScreen(
                 // Category Tabs (horizontal scroll)
                 CategoryTabs(
                     selected = uiState.selectedCategory,
-                    onSelect = { viewModel.handleIntent(HomeIntent.ChangeHotelCategory(it)) }
+                    onSelect = { viewModel.onEvent(HomeIntent.ChangeHotelCategory(it)) }
                 )
             }
             
@@ -132,7 +123,7 @@ fun HomeScreen(
                             reviews = hotel.numberOfReviews,
                             imageUrl = hotel.imageUrl,
                             isBookmarked = uiState.bookmarkedHotels.contains(hotel.id),
-                            onBookmarkClick = { viewModel.handleIntent(HomeIntent.ToggleBookmark(hotel.id)) },
+                            onBookmarkClick = { viewModel.onEvent(HomeIntent.ToggleBookmark(hotel.id)) },
                             onClick = { onHotelClick(hotel.id) }
                         )
                     }
@@ -219,7 +210,7 @@ fun HomeScreen(
                                     val db = FirebaseFirestore.getInstance()
                                     val bookingDocs = db.collection("bookings")
                                         .whereEqualTo("userId", userId)
-                                        .whereEqualTo("status", "CONFIRMED") // Only confirmed bookings
+                                        .whereEqualTo("status", "COMPLETED") // Only completed bookings
                                         .limit(10)
                                         .get()
                                         .await()
@@ -227,7 +218,7 @@ fun HomeScreen(
                                         .sortedByDescending { it.getDate("createdAt") }
                                         .mapNotNull { it.getString("hotelId") }
                                         .distinct()
-                                        .take(5)
+                                        .take(2) // Only show 2 most recent completed bookings
                                     val hotels = mutableListOf<Hotel>()
                                     for (hid in hotelIds) {
                                         val doc = db.collection("hotels").document(hid).get().await()
@@ -245,7 +236,7 @@ fun HomeScreen(
                         bookmarkedHotels = uiState.bookmarkedHotels,
                         onSeeAllClick = onSeeAllRecentClick,
                         onHotelClick = onHotelClick,
-                        onBookmarkClick = { hotelId -> viewModel.handleIntent(HomeIntent.ToggleBookmark(hotelId)) }
+                        onBookmarkClick = { hotelId -> viewModel.onEvent(HomeIntent.ToggleBookmark(hotelId)) }
                     )
                 }
             }
@@ -419,8 +410,6 @@ fun HotelCard(
     onBookmarkClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val imageLoader = remember { ImageLoaderConfig.create(context) }
     Card(
         modifier = Modifier
             .width(280.dp)
@@ -436,14 +425,16 @@ fun HotelCard(
                     .fillMaxWidth()
                     .height(180.dp)
             ) {
-                SimpleAsyncImage(
-                    imageUrl = imageUrl,
+                AsyncImage(
+                    model = imageUrl,
                     contentDescription = title,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(20.dp)
                         .clip(RoundedCornerShape(20.dp)),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.ic_home),
+                    error = painterResource(id = R.drawable.ic_home)
                 )
                 
                 // Bookmark button
@@ -794,7 +785,7 @@ fun RecentlyBookedSection(
             )
             
             Text(
-                text = "See All",
+                text = "View All",
                 fontSize = 15.62.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1AB6B6),
@@ -846,8 +837,6 @@ fun RecentlyBookedCard(
     onBookmarkClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val imageLoader = remember { ImageLoaderConfig.create(context) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -862,14 +851,16 @@ fun RecentlyBookedCard(
                     .fillMaxWidth()
                     .height(154.dp)
             ) {
-                SimpleAsyncImage(
-                    imageUrl = imageUrl,
+                AsyncImage(
+                    model = imageUrl,
                     contentDescription = title,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(12.dp)
                         .clip(RoundedCornerShape(20.dp)),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.ic_home),
+                    error = painterResource(id = R.drawable.ic_home)
                 )
                 
                 // Bookmark button

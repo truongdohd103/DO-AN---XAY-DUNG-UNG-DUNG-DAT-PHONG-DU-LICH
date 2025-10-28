@@ -1,5 +1,7 @@
 package com.example.chillstay.ui.booking
 
+import androidx.compose.runtime.Immutable
+import com.example.chillstay.core.base.UiState
 import com.example.chillstay.domain.model.Booking
 import com.example.chillstay.domain.model.BookingPreferences
 import com.example.chillstay.domain.model.Hotel
@@ -8,6 +10,7 @@ import com.example.chillstay.domain.model.Room
 import com.example.chillstay.domain.model.Voucher
 import java.time.LocalDate
 
+@Immutable
 data class BookingUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -26,7 +29,7 @@ data class BookingUiState(
     val priceBreakdown: PriceBreakdown = PriceBreakdown(),
     val isCreatingBooking: Boolean = false,
     val bookingCreated: Boolean = false
-)
+) : UiState
 
 data class PriceBreakdown(
     val roomPrice: Double = 0.0,

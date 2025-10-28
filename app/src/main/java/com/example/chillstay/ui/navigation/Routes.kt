@@ -11,6 +11,7 @@ object Routes {
     const val HOTEL_DETAIL = "hotel_detail"
     const val ROOM = "room"
     const val BOOKING = "booking"
+    const val BOOKING_DETAIL = "booking_detail"
     const val VIP_STATUS = "vip_status"
     const val SEARCH = "search"
     const val BOOKMARK = "bookmark"
@@ -18,4 +19,6 @@ object Routes {
     const val PROFILE = "profile"
     const val VOUCHER = "voucher"
     const val VOUCHER_DETAIL = "voucher_detail"
+    const val REVIEW = "review"
+    const val BILL = "bill"
 }

@@ -32,7 +32,7 @@ fun RoomScreen(
 ) {
     val viewModel: RoomViewModel = koinInject()
     val uiState by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(hotelId) { if (hotelId.isNotEmpty()) viewModel.handleIntent(RoomIntent.LoadRooms(hotelId)) }
+    LaunchedEffect(hotelId) { if (hotelId.isNotEmpty()) viewModel.onEvent(RoomIntent.LoadRooms(hotelId)) }
     Scaffold(
         topBar = {
             TopAppBar(

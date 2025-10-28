@@ -1,15 +1,14 @@
 package com.example.chillstay.domain.model
 
 import com.google.firebase.Timestamp
-import java.time.LocalDate
 
 data class Booking(
     val id: String = "",
     val userId: String = "",
     val hotelId: String = "",
     val roomId: String = "",
-    val dateFrom: LocalDate = LocalDate.now(),
-    val dateTo: LocalDate = LocalDate.now().plusDays(1),
+    val dateFrom: String = "",
+    val dateTo: String = "",
     val guests: Int = 1,
     val adults: Int = 1,
     val children: Int = 0,
@@ -26,7 +25,7 @@ data class Booking(
     val preferences: BookingPreferences = BookingPreferences(),
     val createdAt: Timestamp = Timestamp.now(),
     val updatedAt: Timestamp = Timestamp.now(),
-    val appliedVouchers: List<Voucher> = emptyList(),
+    val appliedVouchers: List<String> = emptyList(),
     val hotel: Hotel? = null,
     val room: Room? = null
 )
@@ -36,6 +35,7 @@ enum class BookingStatus {
     CONFIRMED,
     CHECKED_IN,
     CHECKED_OUT,
+    COMPLETED,
     CANCELLED,
     REFUNDED
 }

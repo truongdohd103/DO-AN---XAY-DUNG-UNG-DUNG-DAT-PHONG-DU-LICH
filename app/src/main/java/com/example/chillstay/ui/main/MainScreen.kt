@@ -3,6 +3,7 @@ package com.example.chillstay.ui.main
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import com.google.firebase.auth.FirebaseAuth
 import com.example.chillstay.ui.components.BottomNavigationBar
@@ -24,16 +25,30 @@ import android.util.Log
 @Composable
 fun MainScreen(
     homeViewModel: HomeViewModel,
+    initialTab: Int = 0,
     onBackClick: () -> Unit = {},
-    onHotelClick: (String) -> Unit = {},
+    onHotelClick: (String, Boolean) -> Unit = { _, _ -> },
     onRequireAuth: () -> Unit = {},
+    onLogout: () -> Unit = {},
     onVipClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onContinueItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> },
-    onVoucherClick: (String) -> Unit = {}  // Giữ nhưng không dùng trực tiếp
+    onVoucherClick: (String) -> Unit = {},  // Giữ nhưng không dùng trực tiếp
+    onNavigateToReview: (String) -> Unit = {},
+    onNavigateToBill: (String) -> Unit = {},
+    onNavigateToBooking: (String) -> Unit = {}
 ) {
-    // Use remember to prevent unnecessary recomposition
-    var selectedTab by remember { mutableStateOf(0) }
+    // Use rememberSaveable to persist tab selection across navigation
+    var selectedTab by rememberSaveable { 
+        android.util.Log.d("MainScreen", "Initializing with initialTab: $initialTab")
+        mutableStateOf(initialTab) 
+    }
+
+    // Update selectedTab when initialTab changes
+    LaunchedEffect(initialTab) {
+        android.util.Log.d("MainScreen", "LaunchedEffect: initialTab changed to $initialTab")
+        selectedTab = initialTab
+    }
 
     // Memoize FirebaseAuth check to avoid repeated calls
     val isSignedIn by remember {
@@ -53,12 +68,12 @@ fun MainScreen(
         when (selectedTab) {
             0 -> { // Home tab - refresh bookmarks when coming back
                 coroutineScope.launch {
-                    homeViewModel.handleIntent(com.example.chillstay.ui.home.HomeIntent.RefreshBookmarks)
+                    homeViewModel.onEvent(com.example.chillstay.ui.home.HomeIntent.RefreshBookmarks)
                 }
             }
             2 -> { // Bookmark tab
                 coroutineScope.launch {
-                    homeViewModel.handleIntent(com.example.chillstay.ui.home.HomeIntent.RefreshBookmarks)
+                    homeViewModel.onEvent(com.example.chillstay.ui.home.HomeIntent.RefreshBookmarks)
                 }
             }
         }
@@ -93,10 +108,13 @@ fun MainScreen(
             when (selectedTab) {
                 0 -> HomeScreen(
                     viewModel = homeViewModel,
-                    onHotelClick = onHotelClick,
+                    onHotelClick = { hotelId -> onHotelClick(hotelId, false) },
                     onVipClick = onVipClick,
                     onSearchClick = onSearchClick,
-                    onSeeAllRecentClick = { selectedTab = 3 },
+                    onSeeAllRecentClick = { 
+                        selectedTab = 3 // My Trip tab
+                        // Note: MyTripScreen will show COMPLETED tab by default
+                    },
                     onContinueItemClick = onContinueItemClick
                 )
                 1 -> {
@@ -132,15 +150,39 @@ fun MainScreen(
                         }
                     }
                 }
-                2 -> MyBookmarkScreen(onBackClick = {}, onHotelClick = onHotelClick)
-                3 -> MyTripScreen(onHotelClick = { onHotelClick("") })
+                2 -> MyBookmarkScreen(onBackClick = {}, onHotelClick = { hotelId -> onHotelClick(hotelId, false) })
+                3 -> MyTripScreen(
+                           onHotelClick = { hotelId, fromMyTrip -> onHotelClick(hotelId, fromMyTrip) },
+                           onBookingClick = { bookingId: String -> 
+                               // Navigate to booking detail for pending bookings
+                               Log.d("MainScreen", "Navigate to booking: $bookingId")
+                               onNavigateToBooking(bookingId)
+                           },
+                           onWriteReview = { bookingId: String -> 
+                               // Navigate to review screen
+                               onNavigateToReview(bookingId)
+                           },
+                           onViewBill = { bookingId: String -> 
+                               // Navigate to bill screen
+                               onNavigateToBill(bookingId)
+                           },
+                           onCancelBooking = { bookingId: String -> 
+                               // Cancel booking and refresh data
+                               Log.d("MainScreen", "Cancel booking: $bookingId")
+                               // Refresh home data after cancellation
+                               coroutineScope.launch {
+                                   homeViewModel.onEvent(com.example.chillstay.ui.home.HomeIntent.RefreshBookmarks)
+                               }
+                           },
+                           initialTab = 1 // Show COMPLETED tab by default
+                       )
                 4 -> ProfileScreen(
                     onLogout = {
-                        Log.d("MainScreen", "User logged out, switching to home tab")
+                        Log.d("MainScreen", "User logged out, navigating to authentication")
                         // Use coroutine scope for Firebase sign out
                         coroutineScope.launch {
                             FirebaseAuth.getInstance().signOut()
-                            selectedTab = 0
+                            onLogout() // Navigate to authentication screen
                         }
                     }
                 )

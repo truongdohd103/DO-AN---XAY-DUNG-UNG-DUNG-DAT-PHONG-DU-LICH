@@ -38,6 +38,7 @@ fun BookingScreen(
     roomId: String = "",
     dateFrom: String = "",
     dateTo: String = "",
+    bookingId: String = "",
     onBackClick: () -> Unit = {}
 ) {
     val viewModel: BookingViewModel = koinInject()
@@ -45,11 +46,15 @@ fun BookingScreen(
     var showCancelDialog by remember { mutableStateOf(false) }
     
     // Load booking data when screen opens
-    LaunchedEffect(hotelId, roomId, dateFrom, dateTo) {
-        if (hotelId.isNotEmpty() && roomId.isNotEmpty() && dateFrom.isNotEmpty() && dateTo.isNotEmpty()) {
+    LaunchedEffect(hotelId, roomId, dateFrom, dateTo, bookingId) {
+        if (bookingId.isNotEmpty()) {
+            // Load existing booking by ID
+            viewModel.onEvent(BookingIntent.LoadBookingById(bookingId))
+        } else if (hotelId.isNotEmpty() && roomId.isNotEmpty() && dateFrom.isNotEmpty() && dateTo.isNotEmpty()) {
+            // Load new booking data
             val fromDate = java.time.LocalDate.parse(dateFrom)
             val toDate = java.time.LocalDate.parse(dateTo)
-            viewModel.handleIntent(BookingIntent.LoadBookingData(hotelId, roomId, fromDate, toDate))
+            viewModel.onEvent(BookingIntent.LoadBookingData(hotelId, roomId, fromDate, toDate))
         }
     }
     var cardNumber by remember { mutableStateOf("1234 5678 9012 3456") }
@@ -85,10 +90,12 @@ fun BookingScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = { 
-                        if (hotelId.isNotEmpty() && roomId.isNotEmpty() && dateFrom.isNotEmpty() && dateTo.isNotEmpty()) {
+                        if (bookingId.isNotEmpty()) {
+                            viewModel.onEvent(BookingIntent.LoadBookingById(bookingId))
+                        } else if (hotelId.isNotEmpty() && roomId.isNotEmpty() && dateFrom.isNotEmpty() && dateTo.isNotEmpty()) {
                             val fromDate = java.time.LocalDate.parse(dateFrom)
                             val toDate = java.time.LocalDate.parse(dateTo)
-                            viewModel.handleIntent(BookingIntent.LoadBookingData(hotelId, roomId, fromDate, toDate))
+                            viewModel.onEvent(BookingIntent.LoadBookingData(hotelId, roomId, fromDate, toDate))
                         }
                     }
                 ) {
@@ -157,9 +164,9 @@ fun BookingScreen(
                     rooms = uiState.rooms,
                     adults = uiState.adults,
                     children = uiState.children,
-                    onRoomsChange = { viewModel.handleIntent(BookingIntent.UpdateGuests(uiState.adults, uiState.children, it)) },
-                    onAdultsChange = { viewModel.handleIntent(BookingIntent.UpdateGuests(it, uiState.children, uiState.rooms)) },
-                    onChildrenChange = { viewModel.handleIntent(BookingIntent.UpdateGuests(uiState.adults, it, uiState.rooms)) }
+                    onRoomsChange = { viewModel.onEvent(BookingIntent.UpdateGuests(uiState.adults, uiState.children, it)) },
+                    onAdultsChange = { viewModel.onEvent(BookingIntent.UpdateGuests(it, uiState.children, uiState.rooms)) },
+                    onChildrenChange = { viewModel.onEvent(BookingIntent.UpdateGuests(uiState.adults, it, uiState.rooms)) }
                 )
             }
             
@@ -171,9 +178,9 @@ fun BookingScreen(
                 // Special Requests
                 SpecialRequestsSection(
                     specialRequests = uiState.specialRequests,
-                    onSpecialRequestsChange = { viewModel.handleIntent(BookingIntent.UpdateSpecialRequests(it)) },
+                    onSpecialRequestsChange = { viewModel.onEvent(BookingIntent.UpdateSpecialRequests(it)) },
                     preferences = uiState.preferences,
-                    onPreferencesChange = { viewModel.handleIntent(BookingIntent.UpdatePreferences(it)) }
+                    onPreferencesChange = { viewModel.onEvent(BookingIntent.UpdatePreferences(it)) }
                 )
             }
             
@@ -192,7 +199,7 @@ fun BookingScreen(
                     onPaymentMethodChange = { 
                         val method = if (it == 0) com.example.chillstay.domain.model.PaymentMethod.CREDIT_CARD 
                                    else com.example.chillstay.domain.model.PaymentMethod.DIGITAL_WALLET
-                        viewModel.handleIntent(BookingIntent.UpdatePaymentMethod(method))
+                        viewModel.onEvent(BookingIntent.UpdatePaymentMethod(method))
                     },
                     cardNumber = cardNumber,
                     onCardNumberChange = { cardNumber = it },
@@ -226,7 +233,7 @@ fun BookingScreen(
                 Button(
                     onClick = { 
                         if (!uiState.isCreatingBooking) {
-                            viewModel.handleIntent(BookingIntent.CreateBooking)
+                            viewModel.onEvent(BookingIntent.CreateBooking)
                         }
                     },
                     enabled = !uiState.isCreatingBooking && uiState.hotel != null && uiState.room != null,

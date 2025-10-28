@@ -1,16 +1,21 @@
 package com.example.chillstay.ui.booking
 
+import com.example.chillstay.core.base.UiEvent
 import com.example.chillstay.domain.model.Booking
 import com.example.chillstay.domain.model.BookingPreferences
 import com.example.chillstay.domain.model.PaymentMethod
 import java.time.LocalDate
 
-sealed class BookingIntent {
+sealed class BookingIntent : UiEvent {
     data class LoadBookingData(
         val hotelId: String,
         val roomId: String,
         val dateFrom: LocalDate,
         val dateTo: LocalDate
+    ) : BookingIntent()
+    
+    data class LoadBookingById(
+        val bookingId: String
     ) : BookingIntent()
     
     data class UpdateGuests(

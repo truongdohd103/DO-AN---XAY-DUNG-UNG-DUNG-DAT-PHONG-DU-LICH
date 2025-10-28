@@ -15,6 +15,7 @@ import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
 import com.example.chillstay.domain.usecase.booking.CreateBookingUseCase
 import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
 import com.example.chillstay.domain.usecase.booking.CancelBookingUseCase
+import com.example.chillstay.domain.usecase.booking.GetBookingByIdUseCase
 
 // User use cases
 import com.example.chillstay.domain.usecase.user.GetUserProfileUseCase
@@ -36,10 +37,6 @@ import com.example.chillstay.domain.usecase.voucher.GetVoucherByIdUseCase
 import com.example.chillstay.domain.usecase.voucher.ClaimVoucherUseCase
 import com.example.chillstay.domain.usecase.voucher.CheckVoucherEligibilityUseCase
 
-// Notification use cases
-import com.example.chillstay.domain.usecase.notification.GetUserNotificationsUseCase
-import com.example.chillstay.domain.usecase.notification.MarkNotificationAsReadUseCase
-import com.example.chillstay.domain.usecase.notification.MarkAllNotificationsAsReadUseCase
 
 import com.example.chillstay.domain.repository.VoucherRepository
 import com.example.chillstay.domain.repository.BookingRepository
@@ -63,6 +60,7 @@ val useCaseModule = module {
     factory { CreateBookingUseCase(get()) }
     factory { GetUserBookingsUseCase(get()) }
     factory { CancelBookingUseCase(get()) }
+    factory { GetBookingByIdUseCase(get()) }
     
     // User use cases
     factory { GetUserProfileUseCase(get()) }
@@ -83,9 +81,4 @@ val useCaseModule = module {
     factory { GetVoucherByIdUseCase(get<VoucherRepository>()) }
     factory { ClaimVoucherUseCase(get<VoucherRepository>()) }
     factory { CheckVoucherEligibilityUseCase(get<VoucherRepository>()) }
-    
-    // Notification use cases
-    factory { GetUserNotificationsUseCase(get()) }
-    factory { MarkNotificationAsReadUseCase(get()) }
-    factory { MarkAllNotificationsAsReadUseCase(get()) }
 }

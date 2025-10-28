@@ -13,6 +13,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,9 +33,9 @@ fun CarouselScreen(
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Main image
-            AsyncImage(
-                model = "https://placehold.co/414x736",
+            // Main image - Using Image instead of AsyncImage for local drawable
+            Image(
+                painter = painterResource(id = com.example.chillstay.R.drawable.carousel),
                 contentDescription = "Carousel Image",
                 modifier = Modifier
                     .fillMaxWidth()

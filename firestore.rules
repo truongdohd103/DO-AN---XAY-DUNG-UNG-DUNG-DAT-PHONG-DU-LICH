@@ -47,6 +47,13 @@ service cloud.firestore {
       allow create: if true; // Allow all for development
     }
     
+    // VOUCHER_CLAIMS collection - NEW: Allow all for development (fix PERMISSION_DENIED)
+    match /voucher_claims/{claimId} {
+      allow read, write: if true; // Temporarily allow all for development
+      allow create: if true; // Allow all for development
+      allow delete: if true; // If needed for unclaim
+    }
+    
     // Notifications collection - allow all for development
     match /notifications/{notificationId} {
       allow read, write: if true; // Allow all for development
@@ -74,5 +81,21 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
+    
+    // TODO: PRODUCTION RULES (uncomment when ready)
+    /*
+    // For voucher_claims in prod: Users can only read/write their own claims
+    match /voucher_claims/{claimId} {
+      allow read: if request.auth != null && isOwner(resource.data.userId);  // Read own claims
+      allow create: if request.auth != null && isOwner(request.resource.data.userId);  // Create own
+      allow update, delete: if false;  // No update/delete for security (or add logic)
+    }
+    
+    // Similar for other collections: Replace 'if true' with auth checks
+    match /users/{userId} {
+      allow read, write: if request.auth != null && isOwner(userId);
+    }
+    // ... (apply to hotels: read if authenticated; bookings: owner only, etc.)
+    */
   }
 }

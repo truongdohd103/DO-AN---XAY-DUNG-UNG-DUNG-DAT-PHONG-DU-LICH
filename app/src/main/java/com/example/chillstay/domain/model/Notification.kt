@@ -7,10 +7,20 @@ data class Notification(
     val userId: String = "",
     val title: String = "",
     val message: String = "",
-    val type: String = "",
+    val type: NotificationType = NotificationType.GENERAL,
     val isRead: Boolean = false,
     val createdAt: Timestamp = Timestamp.now(),
-    val priority: Int = 0
+    val updatedAt: Timestamp? = null,
+    val data: Map<String, String> = emptyMap() // For additional payload
 )
 
-
+enum class NotificationType {
+    GENERAL,
+    BOOKING_CONFIRMATION,
+    BOOKING_CANCELLED,
+    PAYMENT_SUCCESS,
+    PAYMENT_FAILED,
+    REVIEW_REMINDER,
+    PROMOTION,
+    SYSTEM
+}
