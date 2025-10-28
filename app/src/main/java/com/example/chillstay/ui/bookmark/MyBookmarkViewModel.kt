@@ -1,13 +1,10 @@
 package com.example.chillstay.ui.bookmark
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.domain.usecase.bookmark.GetUserBookmarksUseCase
 import com.example.chillstay.domain.usecase.bookmark.RemoveBookmarkUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -15,16 +12,13 @@ class MyBookmarkViewModel(
     private val getUserBookmarks: GetUserBookmarksUseCase,
     private val removeBookmark: RemoveBookmarkUseCase,
     private val getHotelById: GetHotelByIdUseCase
-) : ViewModel() {
+) : BaseViewModel<MyBookmarkUiState, MyBookmarkIntent, MyBookmarkEffect>(MyBookmarkUiState()) {
 
-    private val _state = MutableStateFlow(MyBookmarkUiState())
-    val state: StateFlow<MyBookmarkUiState> = _state.asStateFlow()
-
-    fun handleIntent(intent: MyBookmarkIntent) = when (intent) {
-        is MyBookmarkIntent.LoadBookmarks -> handleLoadBookmarks(intent.userId)
-        is MyBookmarkIntent.RemoveBookmark -> handleRemoveBookmark(intent.bookmarkId, intent.hotelId)
-        is MyBookmarkIntent.RefreshBookmarks -> handleRefreshBookmarks(intent.userId)
-        is MyBookmarkIntent.RetryLoad -> handleRetryLoad(intent.userId)
+    override fun onEvent(event: MyBookmarkIntent) = when (event) {
+        is MyBookmarkIntent.LoadBookmarks -> handleLoadBookmarks(event.userId)
+        is MyBookmarkIntent.RemoveBookmark -> handleRemoveBookmark(event.bookmarkId, event.hotelId)
+        is MyBookmarkIntent.RefreshBookmarks -> handleRefreshBookmarks(event.userId)
+        is MyBookmarkIntent.RetryLoad -> handleRetryLoad(event.userId)
     }
 
     private fun handleLoadBookmarks(userId: String) {

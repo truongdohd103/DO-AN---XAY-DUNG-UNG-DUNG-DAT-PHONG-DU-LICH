@@ -1,6 +1,7 @@
 package com.example.chillstay.ui.home
 
 import androidx.compose.runtime.Immutable
+import com.example.chillstay.core.base.UiState
 import com.example.chillstay.domain.model.Hotel
 
 @Immutable
@@ -10,7 +11,7 @@ data class HomeUiState(
     val selectedCategory: Int = 0,
     val error: String? = null,
     val bookmarkedHotels: Set<String> = emptySet()
-) {
+) : UiState {
     fun updateIsLoading(value: Boolean) = copy(isLoading = value)
     fun updateHotels(value: List<Hotel>) = copy(hotels = value)
     fun updateSelectedCategory(value: Int) = copy(selectedCategory = value)

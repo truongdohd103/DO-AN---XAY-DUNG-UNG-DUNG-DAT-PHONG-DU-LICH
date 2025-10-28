@@ -4,24 +4,24 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
+import com.example.chillstay.ui.navigation.Routes
 
 object MyBookmarkNavigation {
-    const val route = "my_bookmark"
+    const val route = Routes.BOOKMARK
 }
 
-fun NavGraphBuilder.myBookmarkRoute(
-    onBackClick: () -> Unit = {},
-    onHotelClick: (String) -> Unit = {}
+fun NavGraphBuilder.bookmarkRoute(
+    onBackClick: () -> Unit,
+    onHotelClick: (hotelId: String) -> Unit
 ) {
     composable(route = MyBookmarkNavigation.route) {
-        // MyBookmarkScreen sẽ được inject từ DI container
-        // MyBookmarkScreen(
-        //     onBackClick = onBackClick,
-        //     onHotelClick = onHotelClick
-        // )
+        MyBookmarkScreen(
+            onBackClick = onBackClick,
+            onHotelClick = onHotelClick
+        )
     }
 }
 
-fun NavHostController.navigateToMyBookmark(navOptions: NavOptions? = null) {
+fun NavHostController.navigateToBookmark(navOptions: NavOptions? = null) {
     navigate(route = MyBookmarkNavigation.route, navOptions = navOptions)
 }

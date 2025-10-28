@@ -1,15 +1,12 @@
 package com.example.chillstay.ui.voucher
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.domain.usecase.voucher.GetAvailableVouchersUseCase
 import com.example.chillstay.domain.usecase.voucher.GetVoucherByIdUseCase
 import com.example.chillstay.domain.usecase.voucher.ClaimVoucherUseCase
 import com.example.chillstay.domain.usecase.voucher.CheckVoucherEligibilityUseCase
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import android.util.Log
 import java.util.Date
@@ -19,30 +16,22 @@ class VoucherViewModel(
     private val getVoucherByIdUseCase: GetVoucherByIdUseCase,
     private val claimVoucherUseCase: ClaimVoucherUseCase,
     private val checkVoucherEligibilityUseCase: CheckVoucherEligibilityUseCase
-) : ViewModel() {
+) : BaseViewModel<VoucherUiState, VoucherIntent, VoucherEffect>(VoucherUiState()) {
 
-    private val _uiState = MutableStateFlow(VoucherUiState())
-    val uiState: StateFlow<VoucherUiState> = _uiState.asStateFlow()
+    val uiState = state
 
-    fun handleIntent(intent: VoucherIntent) {
-        when (intent) {
+    override fun onEvent(event: VoucherIntent) {
+        when (event) {
             is VoucherIntent.LoadVouchers -> {
                 loadVouchers()
             }
-            is VoucherIntent.LoadVoucherDetail -> {
-                // This will be handled by VoucherDetailViewModel
-                Log.d("VoucherViewModel", "LoadVoucherDetail handled by VoucherDetailViewModel: ${intent.voucherId}")
-            }
-            is VoucherIntent.ClaimVoucher -> {
-                // This will be handled by VoucherDetailViewModel
-                Log.d("VoucherViewModel", "ClaimVoucher handled by VoucherDetailViewModel: ${intent.voucherId}")
-            }
             is VoucherIntent.NavigateToVoucherDetail -> {
-                // Navigation will be handled by the UI
-                Log.d("VoucherViewModel", "Navigate to voucher detail: ${intent.voucherId}")
+                viewModelScope.launch {
+                    sendEffect { VoucherEffect.NavigateToVoucherDetail(event.voucherId) }
+                }
             }
             is VoucherIntent.RefreshVouchers -> {
-                refreshVouchers(intent.userId)
+                refreshVouchers(event.userId)
             }
             is VoucherIntent.ClearError -> {
                 clearError()
@@ -53,7 +42,7 @@ class VoucherViewModel(
     private fun loadVouchers() {
         viewModelScope.launch {
             Log.d("VoucherViewModel", "Loading vouchers...")
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _state.value = _state.value.copy(isLoading = true, error = null)
             
             try {
                 val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -62,14 +51,14 @@ class VoucherViewModel(
                 when (result) {
                     is com.example.chillstay.core.common.Result.Success -> {
                         Log.d("VoucherViewModel", "Successfully loaded ${result.data.size} vouchers")
-                        _uiState.value = _uiState.value.copy(
+                        _state.value = _state.value.copy(
                             isLoading = false,
                             vouchers = result.data
                         )
                     }
                     is com.example.chillstay.core.common.Result.Error -> {
                         Log.e("VoucherViewModel", "Error loading vouchers: ${result.throwable.message}")
-                        _uiState.value = _uiState.value.copy(
+                        _state.value = _state.value.copy(
                             isLoading = false,
                             error = result.throwable.message ?: "Failed to load vouchers"
                         )
@@ -77,7 +66,7 @@ class VoucherViewModel(
                 }
             } catch (e: Exception) {
                 Log.e("VoucherViewModel", "Exception loading vouchers: ${e.message}", e)
-                _uiState.value = _uiState.value.copy(
+                _state.value = _state.value.copy(
                     isLoading = false,
                     error = e.message ?: "Unknown error occurred"
                 )
@@ -88,7 +77,7 @@ class VoucherViewModel(
     private fun refreshVouchers(userId: String?) {
         viewModelScope.launch {
             Log.d("VoucherViewModel", "Refreshing vouchers...")
-            _uiState.value = _uiState.value.copy(isRefreshing = true, error = null)
+            _state.value = _state.value.copy(isRefreshing = true, error = null)
             
             try {
                 val result = getAvailableVouchersUseCase(userId = userId)
@@ -96,14 +85,14 @@ class VoucherViewModel(
                 when (result) {
                     is com.example.chillstay.core.common.Result.Success -> {
                         Log.d("VoucherViewModel", "Successfully refreshed ${result.data.size} vouchers")
-                        _uiState.value = _uiState.value.copy(
+                        _state.value = _state.value.copy(
                             isRefreshing = false,
                             vouchers = result.data
                         )
                     }
                     is com.example.chillstay.core.common.Result.Error -> {
                         Log.e("VoucherViewModel", "Error refreshing vouchers: ${result.throwable.message}")
-                        _uiState.value = _uiState.value.copy(
+                        _state.value = _state.value.copy(
                             isRefreshing = false,
                             error = result.throwable.message ?: "Failed to refresh vouchers"
                         )
@@ -111,7 +100,7 @@ class VoucherViewModel(
                 }
             } catch (e: Exception) {
                 Log.e("VoucherViewModel", "Exception refreshing vouchers: ${e.message}", e)
-                _uiState.value = _uiState.value.copy(
+                _state.value = _state.value.copy(
                     isRefreshing = false,
                     error = e.message ?: "Unknown error occurred"
                 )
@@ -120,7 +109,7 @@ class VoucherViewModel(
     }
 
     private fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        _state.value = _state.value.copy(error = null)
     }
 }
 
@@ -128,21 +117,20 @@ class VoucherDetailViewModel(
     private val getVoucherByIdUseCase: GetVoucherByIdUseCase,
     private val claimVoucherUseCase: ClaimVoucherUseCase,
     private val checkVoucherEligibilityUseCase: CheckVoucherEligibilityUseCase
-) : ViewModel() {
+) : BaseViewModel<VoucherDetailUiState, VoucherDetailIntent, VoucherDetailEffect>(VoucherDetailUiState()) {
 
-    private val _uiState = MutableStateFlow(VoucherDetailUiState())
-    val uiState: StateFlow<VoucherDetailUiState> = _uiState.asStateFlow()
+    val uiState = state
 
-    fun handleIntent(intent: VoucherDetailIntent) {
-        when (intent) {
+    override fun onEvent(event: VoucherDetailIntent) {
+        when (event) {
             is VoucherDetailIntent.LoadVoucherDetail -> {
-                loadVoucherDetail(intent.voucherId)
+                loadVoucherDetail(event.voucherId)
             }
             is VoucherDetailIntent.ClaimVoucher -> {
-                claimVoucher(intent.voucherId, intent.userId)
+                claimVoucher(event.voucherId, event.userId)
             }
             is VoucherDetailIntent.CheckClaimEligibility -> {
-                checkClaimEligibility(intent.voucherId, intent.userId)
+                checkClaimEligibility(event.voucherId, event.userId)
             }
             is VoucherDetailIntent.ClearError -> {
                 clearError()
@@ -153,7 +141,7 @@ class VoucherDetailViewModel(
     private fun loadVoucherDetail(voucherId: String) {
         viewModelScope.launch {
             Log.d("VoucherDetailViewModel", "Loading voucher detail for ID: $voucherId")
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _state.value = _state.value.copy(isLoading = true, error = null)
             
             try {
                 val result = getVoucherByIdUseCase(voucherId)
@@ -163,7 +151,7 @@ class VoucherDetailViewModel(
                         val voucher = result.data
                         Log.d("VoucherDetailViewModel", "Successfully loaded voucher: ${voucher?.title}")
                         
-                        _uiState.value = _uiState.value.copy(
+                        _state.value = _state.value.copy(
                             isLoading = false,
                             voucher = voucher,
                             voucherDetail = null,
@@ -178,15 +166,18 @@ class VoucherDetailViewModel(
                     }
                     is com.example.chillstay.core.common.Result.Error -> {
                         Log.e("VoucherDetailViewModel", "Error loading voucher: ${result.throwable.message}")
-                        _uiState.value = _uiState.value.copy(
+                        _state.value = _state.value.copy(
                             isLoading = false,
                             error = result.throwable.message ?: "Failed to load voucher"
                         )
+                        viewModelScope.launch {
+                            sendEffect { VoucherDetailEffect.ShowError(result.throwable.message ?: "Failed to load voucher") }
+                        }
                     }
                 }
             } catch (e: Exception) {
                 Log.e("VoucherDetailViewModel", "Exception loading voucher: ${e.message}", e)
-                _uiState.value = _uiState.value.copy(
+                _state.value = _state.value.copy(
                     isLoading = false,
                     error = e.message ?: "Unknown error occurred"
                 )
@@ -197,7 +188,7 @@ class VoucherDetailViewModel(
     private fun claimVoucher(voucherId: String, userId: String) {
         viewModelScope.launch {
             Log.d("VoucherDetailViewModel", "Claiming voucher: $voucherId for user: $userId")
-            _uiState.value = _uiState.value.copy(isClaiming = true, error = null)
+            _state.value = _state.value.copy(isClaiming = true, error = null)
             
             try {
                 val result = claimVoucherUseCase(voucherId, userId)
@@ -205,23 +196,29 @@ class VoucherDetailViewModel(
                 when (result) {
                     is com.example.chillstay.core.common.Result.Success -> {
                         Log.d("VoucherDetailViewModel", "Successfully claimed voucher")
-                        _uiState.value = _uiState.value.copy(
+                        _state.value = _state.value.copy(
                             isClaiming = false,
                             isClaimed = true,
                             claimSuccess = true
                         )
+                        viewModelScope.launch {
+                            sendEffect { VoucherDetailEffect.ShowVoucherClaimed }
+                        }
                     }
                     is com.example.chillstay.core.common.Result.Error -> {
                         Log.e("VoucherDetailViewModel", "Error claiming voucher: ${result.throwable.message}")
-                        _uiState.value = _uiState.value.copy(
+                        _state.value = _state.value.copy(
                             isClaiming = false,
                             error = result.throwable.message ?: "Failed to claim voucher"
                         )
+                        viewModelScope.launch {
+                            sendEffect { VoucherDetailEffect.ShowError(result.throwable.message ?: "Failed to claim voucher") }
+                        }
                     }
                 }
             } catch (e: Exception) {
                 Log.e("VoucherDetailViewModel", "Exception claiming voucher: ${e.message}", e)
-                _uiState.value = _uiState.value.copy(
+                _state.value = _state.value.copy(
                     isClaiming = false,
                     error = e.message ?: "Unknown error occurred"
                 )
@@ -240,7 +237,7 @@ class VoucherDetailViewModel(
                     is com.example.chillstay.core.common.Result.Success -> {
                         val eligibility = result.data
                         Log.d("VoucherDetailViewModel", "Eligibility check result: $eligibility")
-                        _uiState.value = _uiState.value.copy(
+                        _state.value = _state.value.copy(
                             isEligible = eligibility.first,
                             eligibilityMessage = eligibility.second
                         )
@@ -252,13 +249,13 @@ class VoucherDetailViewModel(
                         val errorMessage = result.throwable.message ?: ""
                         if (errorMessage.contains("PERMISSION_DENIED") || errorMessage.contains("permission")) {
                             Log.w("VoucherDetailViewModel", "PERMISSION_DENIED detected - using graceful fallback")
-                            _uiState.value = _uiState.value.copy(
+                            _state.value = _state.value.copy(
                                 isEligible = true,
                                 eligibilityMessage = "Temporary issue - Try claiming anyway"
                             )
                         } else {
                             // Fallback: Basic eligibility check without complex logic
-                            val voucher = _uiState.value.voucher
+                            val voucher = _state.value.voucher
                             if (voucher != null) {
                                 val now = Date()
                                 val isValid = voucher.status == com.example.chillstay.domain.model.VoucherStatus.ACTIVE &&
@@ -266,18 +263,18 @@ class VoucherDetailViewModel(
                                         voucher.validTo.toDate().after(now)
                                 
                                 if (isValid) {
-                                    _uiState.value = _uiState.value.copy(
+                                    _state.value = _state.value.copy(
                                         isEligible = true,
                                         eligibilityMessage = "You are eligible to claim this voucher"
                                     )
                                 } else {
-                                    _uiState.value = _uiState.value.copy(
+                                    _state.value = _state.value.copy(
                                         isEligible = false,
                                         eligibilityMessage = "Voucher is not valid or has expired"
                                     )
                                 }
                             } else {
-                                _uiState.value = _uiState.value.copy(
+                                _state.value = _state.value.copy(
                                     isEligible = false,
                                     eligibilityMessage = "Unable to check eligibility"
                                 )
@@ -292,25 +289,25 @@ class VoucherDetailViewModel(
                 val errorMessage = e.message ?: ""
                 if (errorMessage.contains("PERMISSION_DENIED") || errorMessage.contains("permission")) {
                     Log.w("VoucherDetailViewModel", "PERMISSION_DENIED exception detected - using graceful fallback")
-                    _uiState.value = _uiState.value.copy(
+                    _state.value = _state.value.copy(
                         isEligible = true,
                         eligibilityMessage = "Temporary issue - Try claiming anyway"
                     )
                 } else {
                     // Fallback: Basic eligibility check
-                    val voucher = _uiState.value.voucher
+                    val voucher = _state.value.voucher
                     if (voucher != null) {
                         val now = Date()
                         val isValid = voucher.status == com.example.chillstay.domain.model.VoucherStatus.ACTIVE &&
                                 voucher.validFrom.toDate().before(now) &&
                                 voucher.validTo.toDate().after(now)
                         
-                        _uiState.value = _uiState.value.copy(
+                        _state.value = _state.value.copy(
                             isEligible = isValid,
                             eligibilityMessage = if (isValid) "You are eligible to claim this voucher" else "Voucher is not valid or has expired"
                         )
                     } else {
-                        _uiState.value = _uiState.value.copy(
+                        _state.value = _state.value.copy(
                             isEligible = false,
                             eligibilityMessage = "Unable to check eligibility"
                         )
@@ -321,7 +318,7 @@ class VoucherDetailViewModel(
     }
 
     private fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        _state.value = _state.value.copy(error = null)
     }
 
     private fun formatVoucherConditions(conditions: com.example.chillstay.domain.model.VoucherConditions): String {

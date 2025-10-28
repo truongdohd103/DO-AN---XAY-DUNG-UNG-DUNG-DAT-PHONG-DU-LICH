@@ -41,7 +41,7 @@ fun HotelDetailScreen(
     
     // Load hotel details when screen opens
     LaunchedEffect(hotelId) {
-        viewModel.handleIntent(HotelDetailIntent.LoadHotelDetails(hotelId))
+        viewModel.onEvent(HotelDetailIntent.LoadHotelDetails(hotelId))
     }
     Scaffold(
         topBar = {

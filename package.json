@@ -2,9 +2,9 @@
   "name": "chillstay-firebase-import",
   "version": "1.0.0",
   "description": "Script to import sample data into ChillStay Firestore database",
-  "main": "firebase-import.js",
+  "main": "firebase-complete-import.js",
   "scripts": {
-    "import": "node firebase-import.js",
+    "import": "node firebase-complete-import.js",
     "install-deps": "npm install"
   },
   "dependencies": {
@@ -19,9 +19,3 @@
   "author": "ChillStay Team",
   "license": "MIT"
 }
-
-
-
-
-
-

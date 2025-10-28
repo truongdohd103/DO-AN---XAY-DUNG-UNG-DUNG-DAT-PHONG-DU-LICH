@@ -1,15 +1,12 @@
 package com.example.chillstay.ui.home
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.data.api.ChillStayApi
 import com.example.chillstay.domain.usecase.bookmark.AddBookmarkUseCase
 import com.example.chillstay.domain.usecase.bookmark.RemoveBookmarkUseCase
 import com.example.chillstay.domain.usecase.bookmark.GetUserBookmarksUseCase
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -21,21 +18,18 @@ class HomeViewModel(
     private val addBookmarkUseCase: AddBookmarkUseCase,
     private val removeBookmarkUseCase: RemoveBookmarkUseCase,
     private val getUserBookmarksUseCase: GetUserBookmarksUseCase
-) : ViewModel() {
-
-    private val _state = MutableStateFlow(HomeUiState())
-    val state: StateFlow<HomeUiState> = _state.asStateFlow()
+) : BaseViewModel<HomeUiState, HomeIntent, HomeEffect>(HomeUiState()) {
 
     init {
         loadCategory(0)
         loadUserBookmarks()
     }
 
-    fun handleIntent(intent: HomeIntent) = when (intent) {
-        is HomeIntent.ChangeHotelCategory -> handleChangeHotelCategory(intent.categoryIndex)
-        is HomeIntent.RefreshHotels -> handleRefreshHotels(intent.categoryIndex)
-        is HomeIntent.RetryLoadHotels -> handleRetryLoadHotels(intent.categoryIndex)
-        is HomeIntent.ToggleBookmark -> handleToggleBookmark(intent.hotelId)
+    override fun onEvent(event: HomeIntent) = when (event) {
+        is HomeIntent.ChangeHotelCategory -> handleChangeHotelCategory(event.categoryIndex)
+        is HomeIntent.RefreshHotels -> handleRefreshHotels(event.categoryIndex)
+        is HomeIntent.RetryLoadHotels -> handleRetryLoadHotels(event.categoryIndex)
+        is HomeIntent.ToggleBookmark -> handleToggleBookmark(event.hotelId)
         is HomeIntent.RefreshBookmarks -> handleRefreshBookmarks()
     }
 
@@ -80,6 +74,9 @@ class HomeViewModel(
                 Log.e("HomeViewModel", "Error loading category $index: ${exception.message}", exception)
                 _state.update {
                     it.updateIsLoading(false).updateError(exception.message ?: "Unknown error")
+                }
+                viewModelScope.launch {
+                    sendEffect { HomeEffect.ShowError(exception.message ?: "Failed to load hotels") }
                 }
             }
         }
@@ -145,10 +142,16 @@ class HomeViewModel(
                         
                         if (result is com.example.chillstay.core.common.Result.Success) {
                             Log.d("HomeViewModel", "Successfully removed bookmark")
+                            viewModelScope.launch {
+                                sendEffect { HomeEffect.ShowBookmarkRemoved }
+                            }
                         } else {
                             Log.e("HomeViewModel", "Failed to remove bookmark: ${(result as com.example.chillstay.core.common.Result.Error).throwable.message}")
                             // Revert UI change if backend call failed
                             _state.update { it.toggleBookmark(hotelId) }
+                            viewModelScope.launch {
+                                sendEffect { HomeEffect.ShowError("Failed to remove bookmark") }
+                            }
                         }
                     } else {
                         // Add bookmark on background thread
@@ -159,16 +162,25 @@ class HomeViewModel(
                         
                         if (result is com.example.chillstay.core.common.Result.Success) {
                             Log.d("HomeViewModel", "Successfully added bookmark")
+                            viewModelScope.launch {
+                                sendEffect { HomeEffect.ShowBookmarkAdded }
+                            }
                         } else {
                             Log.e("HomeViewModel", "Failed to add bookmark: ${(result as com.example.chillstay.core.common.Result.Error).throwable.message}")
                             // Revert UI change if backend call failed
                             _state.update { it.toggleBookmark(hotelId) }
+                            viewModelScope.launch {
+                                sendEffect { HomeEffect.ShowError("Failed to add bookmark") }
+                            }
                         }
                     }
                 } catch (exception: Exception) {
                     Log.e("HomeViewModel", "Exception in toggle bookmark: ${exception.message}", exception)
                     // Revert UI change if backend call failed
                     _state.update { it.toggleBookmark(hotelId) }
+                    viewModelScope.launch {
+                        sendEffect { HomeEffect.ShowError("Something went wrong with bookmark operation") }
+                    }
                 }
             }
         }

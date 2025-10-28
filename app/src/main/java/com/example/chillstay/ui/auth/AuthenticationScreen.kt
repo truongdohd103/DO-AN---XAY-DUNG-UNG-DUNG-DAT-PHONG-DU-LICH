@@ -9,20 +9,40 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.chillstay.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthenticationScreen(
+    onBackClick: () -> Unit = {},
     onSignInClick: () -> Unit,
     onSignUpClick: () -> Unit,
     onGoogleClick: () -> Unit,
     onFacebookClick: () -> Unit
 ) {
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_arrow_back),
+                            contentDescription = "Back",
+                            tint = Color(0xFF1AB6B6)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White
+                )
+            )
+        },
         modifier = Modifier.fillMaxSize()
     ) { paddingValues ->
         Column(

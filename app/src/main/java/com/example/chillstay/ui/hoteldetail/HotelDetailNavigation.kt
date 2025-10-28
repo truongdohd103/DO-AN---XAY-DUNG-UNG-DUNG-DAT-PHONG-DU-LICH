@@ -3,40 +3,70 @@ package com.example.chillstay.ui.hoteldetail
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptions
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import androidx.navigation.NavType
-import androidx.navigation.NavBackStackEntry
+import com.example.chillstay.ui.navigation.Routes
 
 object HotelDetailNavigation {
-    const val route = "hotel_detail/{hotelId}"
-    const val routeWithArg = "hotel_detail"
+    const val HOTEL_ID_ARG = "hotelId"
+    const val FROM_MY_TRIP_ARG = "fromMyTrip"
     
-    fun createRoute(hotelId: String) = "hotel_detail/$hotelId"
+    fun route(hotelId: String, fromMyTrip: Boolean = false) = 
+        if (fromMyTrip) "${Routes.HOTEL_DETAIL}/$hotelId?fromMyTrip=$fromMyTrip"
+        else "${Routes.HOTEL_DETAIL}/$hotelId"
 }
 
-fun NavGraphBuilder.hotelDetailRoute(
-    onBackClick: () -> Unit = {},
-    onChooseRoomClick: (String) -> Unit = {}
+fun NavGraphBuilder.hotelDetailRoutes(
+    onBackClick: (fromMyTrip: Boolean) -> Unit,
+    onChooseRoomClick: (hotelId: String) -> Unit
 ) {
+    // Basic hotel detail route
     composable(
-        route = HotelDetailNavigation.route,
+        route = "${Routes.HOTEL_DETAIL}/{${HotelDetailNavigation.HOTEL_ID_ARG}}",
         arguments = listOf(
-            navArgument("hotelId") {
-                type = NavType.StringType
+            navArgument(HotelDetailNavigation.HOTEL_ID_ARG) { type = NavType.StringType }
+        )
+    ) { backStackEntry ->
+        val hotelId = backStackEntry.arguments?.getString(HotelDetailNavigation.HOTEL_ID_ARG) ?: ""
+        val fromMyTrip = false
+        
+        HotelDetailScreen(
+            hotelId = hotelId,
+            onBackClick = { onBackClick(fromMyTrip) },
+            onChooseRoomClick = { onChooseRoomClick(hotelId) }
+        )
+    }
+    
+    // Hotel detail route with fromMyTrip parameter
+    composable(
+        route = "${Routes.HOTEL_DETAIL}/{${HotelDetailNavigation.HOTEL_ID_ARG}}?${HotelDetailNavigation.FROM_MY_TRIP_ARG}={${HotelDetailNavigation.FROM_MY_TRIP_ARG}}",
+        arguments = listOf(
+            navArgument(HotelDetailNavigation.HOTEL_ID_ARG) { type = NavType.StringType },
+            navArgument(HotelDetailNavigation.FROM_MY_TRIP_ARG) { 
+                type = NavType.BoolType
+                defaultValue = false
             }
         )
-    ) { backStackEntry: NavBackStackEntry ->
-        val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
-        // HotelDetailScreen sẽ được inject từ DI container
-        // HotelDetailScreen(
-        //     hotelId = hotelId,
-        //     onBackClick = onBackClick,
-        //     onChooseRoomClick = { onChooseRoomClick(hotelId) }
-        // )
+    ) { backStackEntry ->
+        val hotelId = backStackEntry.arguments?.getString(HotelDetailNavigation.HOTEL_ID_ARG) ?: ""
+        val fromMyTrip = backStackEntry.arguments?.getBoolean(HotelDetailNavigation.FROM_MY_TRIP_ARG) ?: false
+        
+        HotelDetailScreen(
+            hotelId = hotelId,
+            onBackClick = { onBackClick(fromMyTrip) },
+            onChooseRoomClick = { onChooseRoomClick(hotelId) }
+        )
     }
 }
 
-fun NavHostController.navigateToHotelDetail(hotelId: String, navOptions: NavOptions? = null) {
-    navigate(route = HotelDetailNavigation.createRoute(hotelId), navOptions = navOptions)
+fun NavHostController.navigateToHotelDetail(
+    hotelId: String,
+    fromMyTrip: Boolean = false,
+    navOptions: NavOptions? = null
+) {
+    navigate(
+        route = HotelDetailNavigation.route(hotelId, fromMyTrip),
+        navOptions = navOptions
+    )
 }

@@ -2,7 +2,6 @@ package com.example.chillstay.domain.repository
 
 import com.example.chillstay.domain.model.Bill
 import com.example.chillstay.domain.model.Payment
-
 interface BillRepository {
     suspend fun getBillById(id: String): Bill?
     suspend fun getBillsByBookingId(bookingId: String): List<Bill>

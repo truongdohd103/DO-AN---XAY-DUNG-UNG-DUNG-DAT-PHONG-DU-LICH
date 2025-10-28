@@ -16,19 +16,29 @@ import com.example.chillstay.ui.home.HomeViewModel
 import com.example.chillstay.ui.main.MainScreen
 import com.example.chillstay.ui.welcome.WelcomeScreen
 import com.example.chillstay.ui.welcome.CarouselScreen
-import com.example.chillstay.ui.hoteldetail.HotelDetailScreen
-import com.example.chillstay.ui.room.RoomScreen
-import com.example.chillstay.ui.booking.BookingScreen
-import com.example.chillstay.ui.bookmark.MyBookmarkScreen
-import com.example.chillstay.ui.trip.MyTripScreen
 import com.example.chillstay.ui.profile.ProfileScreen
-import com.example.chillstay.ui.voucher.VoucherScreen
-import com.example.chillstay.ui.voucher.VoucherDetailScreen
 import com.example.chillstay.ui.vip.VipStatusScreen
 import com.example.chillstay.ui.search.SearchScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.LocalDate
+
+// Navigation imports
+import com.example.chillstay.ui.hoteldetail.hotelDetailRoutes
+import com.example.chillstay.ui.hoteldetail.navigateToHotelDetail
+import com.example.chillstay.ui.room.roomRoute
+import com.example.chillstay.ui.room.navigateToRoom
+import com.example.chillstay.ui.booking.bookingRoutes
+import com.example.chillstay.ui.booking.navigateToNewBooking
+import com.example.chillstay.ui.booking.navigateToBookingDetail
+import com.example.chillstay.ui.bookmark.bookmarkRoute
+import com.example.chillstay.ui.trip.tripRoute
+import com.example.chillstay.ui.voucher.voucherRoutes
+import com.example.chillstay.ui.voucher.navigateToVoucherDetail
+import com.example.chillstay.ui.review.reviewRoute
+import com.example.chillstay.ui.review.navigateToReview
+import com.example.chillstay.ui.bill.billRoute
+import com.example.chillstay.ui.bill.navigateToBill
 
 @Composable
 fun AppNavHost(
@@ -67,6 +77,7 @@ fun AppNavHost(
         }
         composable(Routes.AUTHENTICATION) {
             AuthenticationScreen(
+                onBackClick = { navController.navigate(Routes.MAIN) },
                 onSignInClick = { navController.navigate(Routes.SIGN_IN) },
                 onSignUpClick = { navController.navigate(Routes.SIGN_UP) },
                 onGoogleClick = { /* TODO: Implement Google auth */ },
@@ -163,9 +174,18 @@ fun AppNavHost(
         composable(Routes.MAIN) {
             MainScreen(
                 homeViewModel = homeViewModel,
+                initialTab = 0,
                 onBackClick = { navController.popBackStack() },
-                onHotelClick = { hotelId -> navController.navigate("${Routes.HOTEL_DETAIL}/$hotelId") },
+                onHotelClick = { hotelId, fromMyTrip -> 
+                    android.util.Log.d("AppNavHost", "onHotelClick called with hotelId: $hotelId, fromMyTrip: $fromMyTrip")
+                    navController.navigateToHotelDetail(hotelId, fromMyTrip)
+                },
                 onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
+                onLogout = { 
+                    navController.navigate(Routes.AUTHENTICATION) {
+                        popUpTo(Routes.MAIN) { inclusive = true }
+                    }
+                },
                 onVipClick = {
                     val isSignedIn = FirebaseAuth.getInstance().currentUser != null
                     if (isSignedIn) navController.navigate(Routes.VIP_STATUS) else navController.navigate(Routes.AUTHENTICATION)
@@ -176,57 +196,107 @@ fun AppNavHost(
                 onContinueItemClick = { hotelId, roomId, dateFrom, dateTo ->
                     val isSignedIn = FirebaseAuth.getInstance().currentUser != null
                     if (isSignedIn) {
-                        navController.navigate("${Routes.BOOKING}/$hotelId/$roomId/$dateFrom/$dateTo")
+                        navController.navigateToNewBooking(hotelId, roomId, dateFrom, dateTo)
                     } else {
                         navController.navigate(Routes.AUTHENTICATION)
                     }
                 },
                 onVoucherClick = { voucherId ->
                     // Navigate directly to VOUCHER_DETAIL with proper back stack
-                    navController.navigate("${Routes.VOUCHER_DETAIL}/$voucherId") {
+                    navController.navigateToVoucherDetail(voucherId) {
                         // Ensure we can go back to MAIN and avoid duplicate stack
                         popUpTo(Routes.MAIN) { inclusive = false }
                         launchSingleTop = true
                     }
+                },
+                onNavigateToReview = { bookingId ->
+                    navController.navigateToReview(bookingId)
+                },
+                onNavigateToBill = { bookingId ->
+                    navController.navigateToBill(bookingId)
+                },
+                onNavigateToBooking = { bookingId ->
+                    navController.navigateToBookingDetail(bookingId)
                 }
             )
         }
-        composable("${Routes.HOTEL_DETAIL}/{hotelId}") { backStackEntry ->
-            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
-            HotelDetailScreen(
-                hotelId = hotelId,
+        composable("${Routes.MAIN}?tab={tab}") { backStackEntry ->
+            val tabParam = backStackEntry.arguments?.getString("tab")?.toIntOrNull() ?: 0
+            android.util.Log.d("AppNavHost", "MainScreen with tab parameter: $tabParam")
+            MainScreen(
+                homeViewModel = homeViewModel,
+                initialTab = tabParam,
                 onBackClick = { navController.popBackStack() },
-                onChooseRoomClick = { navController.navigate("${Routes.ROOM}/$hotelId") }
-            )
-        }
-        composable("${Routes.ROOM}/{hotelId}") { backStackEntry ->
-            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
-            RoomScreen(
-                hotelId = hotelId,
-                onBackClick = { navController.popBackStack() },
-                onBookNowClick = { hotelId, roomId, dateFrom, dateTo ->
-                    val isSignedIn = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null
-                    if (isSignedIn) {
-                        navController.navigate("${Routes.BOOKING}/$hotelId/$roomId/$dateFrom/$dateTo")
-                    } else {
-                        navController.navigate(Routes.AUTHENTICATION)
+                onHotelClick = { hotelId, fromMyTrip -> 
+                    android.util.Log.d("AppNavHost", "onHotelClick called with hotelId: $hotelId, fromMyTrip: $fromMyTrip")
+                    navController.navigateToHotelDetail(hotelId, fromMyTrip)
+                },
+                onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
+                onLogout = { 
+                    navController.navigate(Routes.AUTHENTICATION) {
+                        popUpTo(Routes.MAIN) { inclusive = true }
                     }
+                },
+                onVipClick = {
+                    val isSignedIn = FirebaseAuth.getInstance().currentUser != null
+                    if (isSignedIn) navController.navigate(Routes.VIP_STATUS) else navController.navigate(Routes.AUTHENTICATION)
+                },
+                onSearchClick = { navController.navigate(Routes.SEARCH) },
+                onContinueItemClick = { hotelId, roomId, dateFrom, dateTo ->
+                    navController.navigateToNewBooking(hotelId, roomId, dateFrom, dateTo)
+                },
+                onVoucherClick = { voucherId ->
+                    navController.navigateToVoucherDetail(voucherId) {
+                        popUpTo(Routes.MAIN) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToReview = { bookingId ->
+                    navController.navigateToReview(bookingId)
+                },
+                onNavigateToBill = { bookingId ->
+                    navController.navigateToBill(bookingId)
+                },
+                onNavigateToBooking = { bookingId ->
+                    navController.navigateToBookingDetail(bookingId)
                 }
             )
         }
-        composable("${Routes.BOOKING}/{hotelId}/{roomId}/{dateFrom}/{dateTo}") { backStackEntry ->
-            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
-            val roomId = backStackEntry.arguments?.getString("roomId") ?: ""
-            val dateFrom = backStackEntry.arguments?.getString("dateFrom") ?: ""
-            val dateTo = backStackEntry.arguments?.getString("dateTo") ?: ""
-            BookingScreen(
-                hotelId = hotelId,
-                roomId = roomId,
-                dateFrom = dateFrom,
-                dateTo = dateTo,
-                onBackClick = { navController.popBackStack() }
-            )
-        }
+        // Hotel Detail Routes
+        hotelDetailRoutes(
+            onBackClick = { fromMyTrip ->
+                if (fromMyTrip) {
+                    // Navigate to MAIN with tab=3 (My Trip tab) to restore the correct tab
+                    android.util.Log.d("AppNavHost", "Back from HotelDetail with fromMyTrip=true, navigating to MAIN with tab=3")
+                    navController.navigate("${Routes.MAIN}?tab=3") {
+                        // Pop everything up to and including MAIN to replace it with MAIN?tab=3
+                        popUpTo(Routes.MAIN) { inclusive = true }
+                    }
+                } else {
+                    android.util.Log.d("AppNavHost", "Back from HotelDetail with fromMyTrip=false, using popBackStack")
+                    navController.popBackStack()
+                }
+            },
+            onChooseRoomClick = { hotelId ->
+                navController.navigateToRoom(hotelId)
+            }
+        )
+        // Room Route
+        roomRoute(
+            onBackClick = { navController.popBackStack() },
+            onBookNowClick = { hotelId, roomId, dateFrom, dateTo ->
+                val isSignedIn = FirebaseAuth.getInstance().currentUser != null
+                if (isSignedIn) {
+                    navController.navigateToNewBooking(hotelId, roomId, dateFrom, dateTo)
+                } else {
+                    navController.navigate(Routes.AUTHENTICATION)
+                }
+            }
+        )
+        // Booking Routes
+        bookingRoutes(
+            onBackClick = { navController.popBackStack() }
+        )
         composable(Routes.VIP_STATUS) {
             VipStatusScreen(
                 onBackClick = { navController.popBackStack() }
@@ -237,37 +307,47 @@ fun AppNavHost(
                 onBackClick = { navController.popBackStack() }
             )
         }
-        composable(Routes.BOOKMARK) {
-            MyBookmarkScreen(
-                onBackClick = {},
-                onHotelClick = { hotelId -> navController.navigate("${Routes.HOTEL_DETAIL}/$hotelId") }
-            )
-        }
-        composable(Routes.MY_TRIPS) {
-            MyTripScreen(
-                onHotelClick = { /* TODO: Handle hotel click */ }
-            )
-        }
+        // Bookmark Route
+        bookmarkRoute(
+            onBackClick = {},
+            onHotelClick = { hotelId -> navController.navigateToHotelDetail(hotelId, false) }
+        )
+        // Trip Route
+        tripRoute(
+            onHotelClick = { hotelId: String, fromMyTrip: Boolean -> 
+                navController.navigateToHotelDetail(hotelId, fromMyTrip)
+            },
+            onBookingClick = { bookingId: String -> 
+                android.util.Log.d("AppNavHost", "onBookingClick called with bookingId: $bookingId")
+                navController.navigateToBookingDetail(bookingId)
+            },
+            onWriteReview = { bookingId: String -> 
+                navController.navigateToReview(bookingId)
+            },
+            onViewBill = { bookingId: String -> 
+                navController.navigateToBill(bookingId)
+            },
+            onCancelBooking = { bookingId: String -> 
+                // TODO: Handle booking cancellation
+            }
+        )
         composable(Routes.PROFILE) {
             ProfileScreen()
         }
-        composable(Routes.VOUCHER) {
-            VoucherScreen(
-                onBackClick = {},
-                onVoucherClick = { voucherId -> 
-                    navController.navigate("${Routes.VOUCHER_DETAIL}/$voucherId")
-                }
-            )
-        }
-        composable("${Routes.VOUCHER_DETAIL}/{voucherId}") { backStackEntry ->
-            val voucherId = backStackEntry.arguments?.getString("voucherId") ?: ""
-            VoucherDetailScreen(
-                voucherId = voucherId,
-                onBackClick = { 
-                    // Simple back navigation - let the system handle the stack
-                    navController.popBackStack()
-                }
-            )
-        }
+        // Voucher Routes
+        voucherRoutes(
+            onBackClick = { navController.popBackStack() },
+            onVoucherClick = { voucherId -> 
+                navController.navigateToVoucherDetail(voucherId)
+            }
+        )
+        // Review Route
+        reviewRoute(
+            onBackClick = { navController.popBackStack() }
+        )
+        // Bill Route
+        billRoute(
+            onBackClick = { navController.popBackStack() }
+        )
     }
 }

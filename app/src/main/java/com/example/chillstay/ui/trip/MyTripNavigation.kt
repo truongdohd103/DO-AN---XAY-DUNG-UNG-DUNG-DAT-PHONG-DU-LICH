@@ -4,24 +4,30 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
+import com.example.chillstay.ui.navigation.Routes
 
 object MyTripNavigation {
-    const val route = "my_trip"
+    const val route = Routes.MY_TRIPS
 }
 
-fun NavGraphBuilder.myTripRoute(
-    onBackClick: () -> Unit = {},
-    onHotelClick: (String) -> Unit = {}
+fun NavGraphBuilder.tripRoute(
+    onHotelClick: (hotelId: String, fromMyTrip: Boolean) -> Unit,
+    onBookingClick: (bookingId: String) -> Unit,
+    onWriteReview: (bookingId: String) -> Unit,
+    onViewBill: (bookingId: String) -> Unit,
+    onCancelBooking: (bookingId: String) -> Unit
 ) {
     composable(route = MyTripNavigation.route) {
-        // MyTripScreen sẽ được inject từ DI container
-        // MyTripScreen(
-        //     onBackClick = onBackClick,
-        //     onHotelClick = onHotelClick
-        // )
+        MyTripScreen(
+            onHotelClick = onHotelClick,
+            onBookingClick = onBookingClick,
+            onWriteReview = onWriteReview,
+            onViewBill = onViewBill,
+            onCancelBooking = onCancelBooking
+        )
     }
 }
 
-fun NavHostController.navigateToMyTrip(navOptions: NavOptions? = null) {
+fun NavHostController.navigateToTrip(navOptions: NavOptions? = null) {
     navigate(route = MyTripNavigation.route, navOptions = navOptions)
 }
