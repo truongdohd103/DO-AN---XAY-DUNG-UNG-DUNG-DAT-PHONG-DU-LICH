@@ -13,3 +13,22 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Firebase - All related files
+serviceAccountKey.json
+google-services.json
+firebase-complete-import.js
+firestore.indexes.json
+firestore.rules
+firebase-*.js
+.firebaserc
+firebase.json
+
+# Node.js (if any)
+node_modules/
+package-lock.json
+
+# Documentation files (development only)
+*_PLAN.md
+*_SCHEDULE.md
+*_ANALYSIS.md

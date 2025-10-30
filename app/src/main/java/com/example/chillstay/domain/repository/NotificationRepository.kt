@@ -8,6 +8,5 @@ interface NotificationRepository {
     suspend fun markAsRead(notificationId: String): Boolean
     suspend fun markAllAsRead(userId: String): Boolean
     suspend fun deleteNotification(notificationId: String): Boolean
+    suspend fun getUnreadCount(userId: String): Int
 }
-
-

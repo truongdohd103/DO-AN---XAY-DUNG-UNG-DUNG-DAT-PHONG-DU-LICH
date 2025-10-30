@@ -1,16 +1,13 @@
 package com.example.chillstay.di
 
-// removed InMemorySampleRepository
-import com.example.chillstay.data.repository.FirestoreHotelRepository
-import com.example.chillstay.data.repository.FirestoreUserRepository
-import com.example.chillstay.data.repository.FirestoreBookingRepository
-import com.example.chillstay.data.repository.FirestoreBookmarkRepository
-import com.example.chillstay.data.repository.FirestoreReviewRepository
-import com.example.chillstay.data.repository.FirestoreVoucherRepository
-import com.example.chillstay.data.repository.FirestoreNotificationRepository
-import com.example.chillstay.data.repository.FirestoreBillRepository
-import com.example.chillstay.data.repository.FirestorePaymentRepository
-import com.example.chillstay.data.repository.FirestoreAuthRepository
+// Updated to use firestore package structure
+import com.example.chillstay.data.repository.firestore.FirestoreHotelRepository
+import com.example.chillstay.data.repository.firestore.FirestoreUserRepository
+import com.example.chillstay.data.repository.firestore.FirestoreBookingRepository
+import com.example.chillstay.data.repository.firestore.FirestoreBookmarkRepository
+import com.example.chillstay.data.repository.firestore.FirestoreReviewRepository
+import com.example.chillstay.data.repository.firestore.FirestoreVoucherRepository
+import com.example.chillstay.data.repository.firestore.FirestoreBillRepository
 // removed SampleRepository binding
 import com.example.chillstay.domain.repository.HotelRepository
 import com.example.chillstay.domain.repository.UserRepository
@@ -18,9 +15,7 @@ import com.example.chillstay.domain.repository.BookingRepository
 import com.example.chillstay.domain.repository.BookmarkRepository
 import com.example.chillstay.domain.repository.ReviewRepository
 import com.example.chillstay.domain.repository.VoucherRepository
-import com.example.chillstay.domain.repository.NotificationRepository
 import com.example.chillstay.domain.repository.BillRepository
-import com.example.chillstay.domain.repository.PaymentRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import org.koin.dsl.module
@@ -42,9 +37,6 @@ val repositoryModule = module {
     single<BookmarkRepository> { FirestoreBookmarkRepository(get()) }
     single<ReviewRepository> { FirestoreReviewRepository(get()) }
     single<VoucherRepository> { FirestoreVoucherRepository(get()) }
-    single<NotificationRepository> { FirestoreNotificationRepository(get()) }
     single<BillRepository> { FirestoreBillRepository(get()) }
-    single<PaymentRepository> { FirestorePaymentRepository(get()) }
-    single { FirestoreAuthRepository(get(), get()) }
     single<ChillStayApi> { FirebaseChillStayApi(get()) }
 }

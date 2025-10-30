@@ -34,7 +34,7 @@ class ApplyVoucherToBookingUseCase constructor(
                 return Result.failure(Exception("Voucher is not active"))
             }
             
-            if (voucher.validFrom.after(now) || voucher.validTo.before(now)) {
+            if (voucher.validFrom.toDate().after(now) || voucher.validTo.toDate().before(now)) {
                 return Result.failure(Exception("Voucher is not valid at this time"))
             }
             

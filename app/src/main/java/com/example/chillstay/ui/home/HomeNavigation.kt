@@ -4,17 +4,23 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
+import com.example.chillstay.ui.navigation.Routes
 
 object HomeNavigation {
-    const val route = "home"
+    const val route = Routes.HOME
 }
 
 fun NavGraphBuilder.homeRoute(
-    onHotelClick: (String) -> Unit = {}
+    homeViewModel: HomeViewModel,
+    onHotelClick: (hotelId: String, fromMyTrip: Boolean) -> Unit,
+    onRequireAuth: () -> Unit,
+    onSearchClick: () -> Unit,
+    onVoucherClick: (voucherId: String) -> Unit,
+    onContinueItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit
 ) {
     composable(route = HomeNavigation.route) {
-        // HomeScreen sẽ được inject từ DI container
-        // HomeScreen(onHotelClick = onHotelClick)
+        // HomeScreen is typically integrated into MainScreen
+        // This route can be used for standalone Home navigation if needed
     }
 }
 

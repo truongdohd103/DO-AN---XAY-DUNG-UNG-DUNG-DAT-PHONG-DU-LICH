@@ -13,22 +13,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import coil.compose.AsyncImage
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CarouselScreen(
     onSkipClick: () -> Unit = {}
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxSize(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize()
+    ) { paddingValues ->
+        Card(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Main image
-            AsyncImage(
-                model = "https://placehold.co/414x736",
+            // Main image - Using Image instead of AsyncImage for local drawable
+            Image(
+                painter = painterResource(id = com.example.chillstay.R.drawable.carousel),
                 contentDescription = "Carousel Image",
                 modifier = Modifier
                     .fillMaxWidth()
@@ -96,5 +103,6 @@ fun CarouselScreen(
                 }
             }
         }
+    }
     }
 }

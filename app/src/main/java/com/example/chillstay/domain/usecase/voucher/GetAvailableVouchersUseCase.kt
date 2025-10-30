@@ -20,8 +20,8 @@ class GetAvailableVouchersUseCase constructor(
                     // Filter by status
                     voucher.status == VoucherStatus.ACTIVE &&
                     // Filter by validity period
-                    voucher.validFrom.before(now) &&
-                    voucher.validTo.after(now) &&
+                    voucher.validFrom.toDate().before(now) &&
+                    voucher.validTo.toDate().after(now) &&
                     // Filter by hotel if specified
                     (hotelId == null || voucher.applyForHotel == null || 
                      voucher.applyForHotel.contains(hotelId))

@@ -5,200 +5,321 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.res.painterResource
-import com.example.chillstay.R
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.example.chillstay.domain.model.Bookmark
+import androidx.compose.ui.res.painterResource
+import com.example.chillstay.R
 import com.example.chillstay.domain.model.Hotel
-import com.example.chillstay.domain.usecase.bookmark.GetUserBookmarksUseCase
-import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.google.firebase.auth.FirebaseAuth
-import org.koin.androidx.compose.get
+import org.koin.compose.koinInject
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyBookmarkScreen(
+    viewModel: MyBookmarkViewModel = koinInject(),
     onBackClick: () -> Unit = {},
     onHotelClick: (String) -> Unit = {}
 ) {
-    val getUserBookmarksUseCase: GetUserBookmarksUseCase = get()
-    val getHotelByIdUseCase: GetHotelByIdUseCase = get()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
-    var hotels by remember { mutableStateOf<List<Hotel>>(emptyList()) }
 
     LaunchedEffect(currentUserId) {
         if (currentUserId != null) {
-            runCatching { getUserBookmarksUseCase(currentUserId) }
-                .onSuccess { result ->
-                    val bookmarks = when (result) {
-                        is com.example.chillstay.core.common.Result.Success -> result.data
-                        is com.example.chillstay.core.common.Result.Error -> emptyList()
-                    }
-                    val fetched = mutableListOf<Hotel>()
-                    for (bm in bookmarks) {
-                        runCatching { getHotelByIdUseCase(bm.hotelId) }
-                            .onSuccess { res ->
-                                when (res) {
-                                    is com.example.chillstay.core.common.Result.Success -> fetched.add(res.data)
-                                    is com.example.chillstay.core.common.Result.Error -> {}
-                                }
-                            }
-                    }
-                    hotels = fetched
-                }
+            viewModel.onEvent(MyBookmarkIntent.LoadBookmarks(currentUserId))
         }
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-            .padding(horizontal = 21.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        items(hotels.size) { index ->
-            val hotel = hotels[index]
-            RecentlyBookedCard(
-                imageUrl = hotel.imageUrl,
-                name = hotel.name,
-                location = "${hotel.city}, ${hotel.country}",
-                rating = hotel.rating,
-                reviews = hotel.numberOfReviews,
-                // Giá/voucher hiện không có trong schema bookmark/hotel: ẩn hoặc set 0
-                originalPrice = 0,
-                discountedPrice = 0,
-                voucherApplied = 0,
-                onClick = { onHotelClick(hotel.id) }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "My Bookmark",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1AB6B6)
+                )
             )
+        }
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color.White)
+        ) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            if (uiState.isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = Color(0xFF1AB6B6)
+                        )
+                    }
+                }
+            } else if (uiState.isEmpty) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No bookmarks yet",
+                            fontSize = 16.sp,
+                            color = Color(0xFF757575)
+                        )
+                    }
+                }
+            } else {
+                items(uiState.hotels.size) { index ->
+                    val hotel = uiState.hotels[index]
+                    BookmarkHotelCard(
+                        hotel = hotel,
+                        onHotelClick = { onHotelClick(hotel.id) },
+                        onRemoveBookmark = { 
+                            currentUserId?.let { userId ->
+                                viewModel.onEvent(MyBookmarkIntent.RemoveBookmark("", hotel.id))
+                            }
+                        }
+                    )
+                }
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(80.dp)) // Space for bottom navigation
+            }
         }
     }
 }
 
+
 @Composable
-fun RecentlyBookedCard(
-    imageUrl: String,
-    name: String,
-    location: String,
-    rating: Double,
-    reviews: Int,
-    originalPrice: Int,
-    discountedPrice: Int,
-    voucherApplied: Int,
-    onClick: () -> Unit = {}
+fun BookmarkHotelCard(
+    hotel: Hotel,
+    onHotelClick: () -> Unit = {},
+    onRemoveBookmark: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(266.dp)
-            .clickable { onClick() },
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { onHotelClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = "Recently Booked Hotel Image",
+        Column {
+            // Image section - responsive height
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(159.dp)
-                    .clip(RoundedCornerShape(20.dp)),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = name,
-                color = Color(0xFF212121),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = location,
-                color = Color(0xFF757575),
-                fontSize = 14.sp
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                repeat(5) {
+                    .heightIn(min = 120.dp, max = 200.dp)
+                    .aspectRatio(16f / 9f) // Maintain aspect ratio
+            ) {
+                AsyncImage(
+                    model = hotel.imageUrl,
+                    contentDescription = hotel.name,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.ic_home),
+                    error = painterResource(id = R.drawable.ic_home)
+                )
+                
+                // Heart icon for remove bookmark
+                IconButton(
+                    onClick = onRemoveBookmark,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(32.dp)
+                        .background(
+                            color = Color(0xFFF44235),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_star),
-                        contentDescription = "Rating Star",
-                        tint = Color(0xFFFBC40D),
-                        modifier = Modifier.size(12.dp)
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "Remove bookmark",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = rating.toString(),
-                    color = Color(0xFF1AB6B6),
-                    fontSize = 12.sp
-                )
-                Text(
-                    text = " ($reviews reviews)",
-                    color = Color(0xFF757575),
-                    fontSize = 12.sp
-                )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            
+            // Content section - responsive padding
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_check),
-                            contentDescription = "Voucher Applied",
-                            tint = Color(0xFF31B439),
-                            modifier = Modifier.size(16.dp)
-                        )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text(
-                            text = "$$voucherApplied applied",
-                            color = Color(0xFF31B439),
-                            fontSize = 8.sp
+                            text = hotel.name,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF212121),
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
-                    }
-                    Row {
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
                         Text(
-                            text = "$$originalPrice/night",
+                            text = "${hotel.city}, ${hotel.country}",
+                            fontSize = 14.sp,
                             color = Color(0xFF757575),
-                            fontSize = 8.sp,
-                            textDecoration = TextDecoration.LineThrough
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
-                        Text(
-                            text = " -${((originalPrice - discountedPrice).toFloat() / originalPrice * 100).toInt()}%",
-                            color = Color(0xFFFF4A4A),
-                            fontSize = 8.sp
-                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row {
+                                repeat(5) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = "Star",
+                                        tint = Color(0xFFFBC40D),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.width(4.dp))
+                            
+                            Text(
+                                text = hotel.rating.toString(),
+                                fontSize = 12.sp,
+                                color = Color(0xFF1AB6B6),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            
+                            Text(
+                                text = "(${hotel.numberOfReviews})",
+                                fontSize = 12.sp,
+                                color = Color(0xFF757575)
+                            )
+                        }
                     }
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            text = "$$discountedPrice",
-                            color = Color(0xFF1AB6B6),
-                            fontSize = 15.50.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "/night",
-                            color = Color(0xFF757575),
-                            fontSize = 11.06.sp
-                        )
+                    
+                    // Price section - responsive layout
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.widthIn(min = 80.dp, max = 120.dp)
+                    ) {
+                        // Show actual hotel price if available
+                        hotel.minPrice?.let { minPrice ->
+                            // Voucher applied (simulate 5% discount)
+                            val discount = minPrice * 0.05
+                            val finalPrice = minPrice - discount
+                            
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        color = Color(0xFFBCFEA8),
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "$${discount.toInt()} off",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF31B439),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            // Original price and discount
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "$${minPrice.toInt()}",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF757575),
+                                    textDecoration = TextDecoration.LineThrough
+                                )
+                                
+                                Text(
+                                    text = "-5%",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFFFF4A4A),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            // Final price
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    text = "$${finalPrice.toInt()}",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1AB6B6)
+                                )
+                                
+                                Text(
+                                    text = "/night",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF757575)
+                                )
+                            }
+                        } ?: run {
+                            // Fallback if no price available
+                            Text(
+                                text = "Price on request",
+                                fontSize = 12.sp,
+                                color = Color(0xFF757575),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                            )
+                        }
                     }
                 }
-                // Heart icon for bookmark (filled)
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_favorite),
-                    contentDescription = "Bookmark",
-                    tint = Color(0xFFF44235),
-                    modifier = Modifier.size(24.dp)
-                )
             }
         }
     }

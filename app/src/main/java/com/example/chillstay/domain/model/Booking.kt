@@ -1,70 +1,41 @@
 package com.example.chillstay.domain.model
 
-import java.time.Instant
-import java.time.LocalDate
+import com.google.firebase.Timestamp
 
 data class Booking(
-    val id: String,
-    val userId: String,
-    val hotelId: String,
-    val roomId: String,
-    val dateFrom: LocalDate,
-    val dateTo: LocalDate,
-    val guests: Int,
-    val adults: Int,
-    val children: Int,
-    val rooms: Int,
-    val price: Double,
-    val originalPrice: Double,
-    val discount: Double,
-    val serviceFee: Double,
-    val taxes: Double,
-    val totalPrice: Double,
-    val status: BookingStatus,
-    val paymentMethod: PaymentMethod,
+    val id: String = "",
+    val userId: String = "",
+    val hotelId: String = "",
+    val roomId: String = "",
+    val dateFrom: String = "",
+    val dateTo: String = "",
+    val guests: Int = 1,
+    val adults: Int = 1,
+    val children: Int = 0,
+    val rooms: Int = 1,
+    val price: Double = 0.0,
+    val originalPrice: Double = 0.0,
+    val discount: Double = 0.0,
+    val serviceFee: Double = 0.0,
+    val taxes: Double = 0.0,
+    val totalPrice: Double = 0.0,
+    val status: BookingStatus = BookingStatus.PENDING,
+    val paymentMethod: PaymentMethod = PaymentMethod.CREDIT_CARD,
     val specialRequests: String = "",
     val preferences: BookingPreferences = BookingPreferences(),
-    val createdAt: Instant,
-    val updatedAt: Instant,
-    val appliedVouchers: List<Voucher> = emptyList(),
+    val createdAt: Timestamp = Timestamp.now(),
+    val updatedAt: Timestamp = Timestamp.now(),
+    val appliedVouchers: List<String> = emptyList(),
     val hotel: Hotel? = null,
     val room: Room? = null
-) {
-    // Firestore mapping helper
-    constructor() : this(
-        id = "",
-        userId = "",
-        hotelId = "",
-        roomId = "",
-        dateFrom = LocalDate.now(),
-        dateTo = LocalDate.now().plusDays(1),
-        guests = 1,
-        adults = 1,
-        children = 0,
-        rooms = 1,
-        price = 0.0,
-        originalPrice = 0.0,
-        discount = 0.0,
-        serviceFee = 0.0,
-        taxes = 0.0,
-        totalPrice = 0.0,
-        status = BookingStatus.PENDING,
-        paymentMethod = PaymentMethod.CREDIT_CARD,
-        specialRequests = "",
-        preferences = BookingPreferences(),
-        createdAt = Instant.now(),
-        updatedAt = Instant.now(),
-        appliedVouchers = emptyList(),
-        hotel = null,
-        room = null
-    )
-}
+)
 
 enum class BookingStatus {
     PENDING,
     CONFIRMED,
     CHECKED_IN,
     CHECKED_OUT,
+    COMPLETED,
     CANCELLED,
     REFUNDED
 }

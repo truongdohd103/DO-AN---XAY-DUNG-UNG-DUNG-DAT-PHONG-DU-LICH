@@ -23,8 +23,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import org.koin.androidx.compose.get
+import org.koin.compose.koinInject
 import java.time.format.DateTimeFormatter
+import androidx.activity.compose.BackHandler
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import java.time.Instant
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,17 +38,23 @@ fun BookingScreen(
     roomId: String = "",
     dateFrom: String = "",
     dateTo: String = "",
+    bookingId: String = "",
     onBackClick: () -> Unit = {}
 ) {
     val viewModel: BookingViewModel = koinInject()
     val uiState by viewModel.state.collectAsStateWithLifecycle()
+    var showCancelDialog by remember { mutableStateOf(false) }
     
     // Load booking data when screen opens
-    LaunchedEffect(hotelId, roomId, dateFrom, dateTo) {
-        if (hotelId.isNotEmpty() && roomId.isNotEmpty() && dateFrom.isNotEmpty() && dateTo.isNotEmpty()) {
+    LaunchedEffect(hotelId, roomId, dateFrom, dateTo, bookingId) {
+        if (bookingId.isNotEmpty()) {
+            // Load existing booking by ID
+            viewModel.onEvent(BookingIntent.LoadBookingById(bookingId))
+        } else if (hotelId.isNotEmpty() && roomId.isNotEmpty() && dateFrom.isNotEmpty() && dateTo.isNotEmpty()) {
+            // Load new booking data
             val fromDate = java.time.LocalDate.parse(dateFrom)
             val toDate = java.time.LocalDate.parse(dateTo)
-            viewModel.handleIntent(BookingIntent.LoadBookingData(hotelId, roomId, fromDate, toDate))
+            viewModel.onEvent(BookingIntent.LoadBookingData(hotelId, roomId, fromDate, toDate))
         }
     }
     var cardNumber by remember { mutableStateOf("1234 5678 9012 3456") }
@@ -79,10 +90,12 @@ fun BookingScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
                     onClick = { 
-                        if (hotelId.isNotEmpty() && roomId.isNotEmpty() && dateFrom.isNotEmpty() && dateTo.isNotEmpty()) {
+                        if (bookingId.isNotEmpty()) {
+                            viewModel.onEvent(BookingIntent.LoadBookingById(bookingId))
+                        } else if (hotelId.isNotEmpty() && roomId.isNotEmpty() && dateFrom.isNotEmpty() && dateTo.isNotEmpty()) {
                             val fromDate = java.time.LocalDate.parse(dateFrom)
                             val toDate = java.time.LocalDate.parse(dateTo)
-                            viewModel.handleIntent(BookingIntent.LoadBookingData(hotelId, roomId, fromDate, toDate))
+                            viewModel.onEvent(BookingIntent.LoadBookingData(hotelId, roomId, fromDate, toDate))
                         }
                     }
                 ) {
@@ -91,6 +104,10 @@ fun BookingScreen(
             }
         }
         return
+    }
+
+    BackHandler(enabled = true) {
+        showCancelDialog = true
     }
 
     Scaffold(
@@ -113,7 +130,7 @@ fun BookingScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = { showCancelDialog = true }) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_arrow_back),
                             contentDescription = "Back",
@@ -147,9 +164,9 @@ fun BookingScreen(
                     rooms = uiState.rooms,
                     adults = uiState.adults,
                     children = uiState.children,
-                    onRoomsChange = { viewModel.handleIntent(BookingIntent.UpdateGuests(uiState.adults, uiState.children, it)) },
-                    onAdultsChange = { viewModel.handleIntent(BookingIntent.UpdateGuests(it, uiState.children, uiState.rooms)) },
-                    onChildrenChange = { viewModel.handleIntent(BookingIntent.UpdateGuests(uiState.adults, it, uiState.rooms)) }
+                    onRoomsChange = { viewModel.onEvent(BookingIntent.UpdateGuests(uiState.adults, uiState.children, it)) },
+                    onAdultsChange = { viewModel.onEvent(BookingIntent.UpdateGuests(it, uiState.children, uiState.rooms)) },
+                    onChildrenChange = { viewModel.onEvent(BookingIntent.UpdateGuests(uiState.adults, it, uiState.rooms)) }
                 )
             }
             
@@ -161,9 +178,9 @@ fun BookingScreen(
                 // Special Requests
                 SpecialRequestsSection(
                     specialRequests = uiState.specialRequests,
-                    onSpecialRequestsChange = { viewModel.handleIntent(BookingIntent.UpdateSpecialRequests(it)) },
+                    onSpecialRequestsChange = { viewModel.onEvent(BookingIntent.UpdateSpecialRequests(it)) },
                     preferences = uiState.preferences,
-                    onPreferencesChange = { viewModel.handleIntent(BookingIntent.UpdatePreferences(it)) }
+                    onPreferencesChange = { viewModel.onEvent(BookingIntent.UpdatePreferences(it)) }
                 )
             }
             
@@ -182,7 +199,7 @@ fun BookingScreen(
                     onPaymentMethodChange = { 
                         val method = if (it == 0) com.example.chillstay.domain.model.PaymentMethod.CREDIT_CARD 
                                    else com.example.chillstay.domain.model.PaymentMethod.DIGITAL_WALLET
-                        viewModel.handleIntent(BookingIntent.UpdatePaymentMethod(method))
+                        viewModel.onEvent(BookingIntent.UpdatePaymentMethod(method))
                     },
                     cardNumber = cardNumber,
                     onCardNumberChange = { cardNumber = it },
@@ -216,7 +233,7 @@ fun BookingScreen(
                 Button(
                     onClick = { 
                         if (!uiState.isCreatingBooking) {
-                            viewModel.handleIntent(BookingIntent.CreateBooking)
+                            viewModel.onEvent(BookingIntent.CreateBooking)
                         }
                     },
                     enabled = !uiState.isCreatingBooking && uiState.hotel != null && uiState.room != null,
@@ -249,6 +266,54 @@ fun BookingScreen(
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
+    }
+
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = { Text("Leave booking?") },
+            text = { Text("You can save this booking to continue later or cancel it.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    // Save to queue as PENDING booking draft
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+                    val hotel = uiState.hotel
+                    val room = uiState.room
+                    if (userId != null && hotel != null && room != null) {
+                        val data = hashMapOf(
+                            "userId" to userId,
+                            "hotelId" to hotel.id,
+                            "roomId" to room.id,
+                            "dateFrom" to uiState.dateFrom.toString(),
+                            "dateTo" to uiState.dateTo.toString(),
+                            "guests" to (uiState.adults + uiState.children),
+                            "adults" to uiState.adults,
+                            "children" to uiState.children,
+                            "rooms" to uiState.rooms,
+                            "price" to uiState.priceBreakdown.roomPrice,
+                            "originalPrice" to uiState.priceBreakdown.roomPrice,
+                            "discount" to uiState.priceBreakdown.discount,
+                            "serviceFee" to uiState.priceBreakdown.serviceFee,
+                            "taxes" to uiState.priceBreakdown.taxes,
+                            "totalPrice" to uiState.priceBreakdown.finalTotal,
+                            "status" to "PENDING",
+                            "createdAt" to Date.from(Instant.now()),
+                            "updatedAt" to Date.from(Instant.now())
+                        )
+                        FirebaseFirestore.getInstance().collection("bookings").add(data)
+                            .addOnCompleteListener { onBackClick() }
+                    } else {
+                        onBackClick()
+                    }
+                }) { Text("Save for later") }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { onBackClick() }) { Text("Cancel booking") }
+                    TextButton(onClick = { showCancelDialog = false }) { Text("Stay") }
+                }
+            }
+        )
     }
 }
 
@@ -880,7 +945,7 @@ fun PriceSummarySection(
             
             Spacer(modifier = Modifier.height(13.dp))
             
-            Divider(color = Color(0xFFE0E0E0))
+            HorizontalDivider(color = Color(0xFFE0E0E0))
             
             Spacer(modifier = Modifier.height(13.dp))
             

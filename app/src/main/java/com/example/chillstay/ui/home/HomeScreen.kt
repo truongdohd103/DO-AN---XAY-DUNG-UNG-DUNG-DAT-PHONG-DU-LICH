@@ -1,6 +1,5 @@
 package com.example.chillstay.ui.home
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -26,36 +24,56 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+import com.example.chillstay.domain.model.Hotel
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import androidx.compose.ui.res.painterResource
 import com.example.chillstay.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onHotelClick: (String) -> Unit = {}
+    onHotelClick: (String) -> Unit = {},
+    onVipClick: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
+    onSeeAllRecentClick: () -> Unit = {},
+    onContinueItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> }
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
     
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Chillstay",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1AB6B6)
+                )
+            )
+        }
+    ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(paddingValues)
                 .background(Color.White)
         ) {
-            item {
-                // Header
-                HeaderSection()
-            }
             
             item {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -63,7 +81,7 @@ fun HomeScreen(
             
             item {
                 // Search Bar
-                SearchBar()
+                SearchBar(onClick = onSearchClick)
             }
             
             item {
@@ -74,7 +92,7 @@ fun HomeScreen(
                 // Category Tabs (horizontal scroll)
                 CategoryTabs(
                     selected = uiState.selectedCategory,
-                    onSelect = { viewModel.handleIntent(HomeIntent.ChangeHotelCategory(it)) }
+                    onSelect = { viewModel.onEvent(HomeIntent.ChangeHotelCategory(it)) }
                 )
             }
             
@@ -90,9 +108,13 @@ fun HomeScreen(
                         .padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    items(uiState.hotels.size) { index ->
-                        val hotel = uiState.hotels[index]
-                        val minPrice = hotel.rooms.minByOrNull { it.price }?.price
+                    items(
+                        items = uiState.hotels,
+                        key = { hotel -> hotel.id }
+                    ) { hotel ->
+                        val minPrice = remember(hotel.rooms) { 
+                            hotel.rooms.minByOrNull { it.price }?.price 
+                        }
                         HotelCard(
                             title = hotel.name,
                             location = "${hotel.city}, ${hotel.country}",
@@ -100,6 +122,8 @@ fun HomeScreen(
                             rating = hotel.rating.toFloat(),
                             reviews = hotel.numberOfReviews,
                             imageUrl = hotel.imageUrl,
+                            isBookmarked = uiState.bookmarkedHotels.contains(hotel.id),
+                            onBookmarkClick = { viewModel.onEvent(HomeIntent.ToggleBookmark(hotel.id)) },
                             onClick = { onHotelClick(hotel.id) }
                         )
                     }
@@ -117,8 +141,8 @@ fun HomeScreen(
             }
             
             item {
-                // VIP Status (UI static for now)
-                VipStatusSection()
+                // VIP Status
+                VipStatusSection(onClick = onVipClick)
             }
             
             item {
@@ -126,8 +150,47 @@ fun HomeScreen(
             }
             
             item {
-                // Continue Planning (UI static for now)
-                ContinuePlanningSection()
+                // Continue Planning from pending bookings
+                
+                val userId = FirebaseAuth.getInstance().currentUser?.uid
+                var pending by remember(userId) { mutableStateOf(listOf<PendingDisplayItem>()) }
+                LaunchedEffect(userId) {
+                    if (userId != null) {
+                        // Move Firebase operations to background thread
+                        pending = withContext(Dispatchers.IO) {
+                            try {
+                                val db = FirebaseFirestore.getInstance()
+                                val docs = db.collection("bookings")
+                                    .whereEqualTo("userId", userId)
+                                    .whereEqualTo("status", "PENDING")
+                                    .limit(10)
+                                    .get()
+                                    .await()
+                                val items = mutableListOf<PendingDisplayItem>()
+                                for (d in docs.documents) {
+                                    val dateFrom = d.getString("dateFrom") ?: continue
+                                    val dateTo = d.getString("dateTo") ?: continue
+                                    val guests = (d.getLong("guests") ?: 0).toInt()
+                                    val createdAt = d.getDate("createdAt")
+                                    val hotelId = d.getString("hotelId")
+                                    val roomId = d.getString("roomId")
+                                    val hotelName = try {
+                                        val hid = d.getString("hotelId")
+                                        if (!hid.isNullOrEmpty()) {
+                                            val hdoc = db.collection("hotels").document(hid).get().await()
+                                            hdoc.getString("name")
+                                        } else null
+                                    } catch (_: Exception) { null }
+                                    items.add(PendingDisplayItem(hotelName, dateFrom, dateTo, guests, createdAt, hotelId ?: "", roomId ?: ""))
+                                }
+                                items.sortedByDescending { it.createdAt }
+                            } catch (e: Exception) {
+                                emptyList()
+                            }
+                        }
+                    }
+                }
+                ContinuePlanningSection(items = pending, onItemClick = onContinueItemClick)
             }
             
             item {
@@ -136,8 +199,45 @@ fun HomeScreen(
             
             if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null) {
                 item {
-                    // Recently Booked (only when signed in and has data)
-                    RecentlyBookedSection()
+                    // Recently Booked (user-specific)
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+                    var recentHotels by remember(userId) { mutableStateOf(listOf<Hotel>()) }
+                    LaunchedEffect(userId) {
+                        if (userId != null) {
+                            // Move Firebase operations to background thread
+                            recentHotels = withContext(Dispatchers.IO) {
+                                try {
+                                    val db = FirebaseFirestore.getInstance()
+                                    val bookingDocs = db.collection("bookings")
+                                        .whereEqualTo("userId", userId)
+                                        .whereEqualTo("status", "COMPLETED") // Only completed bookings
+                                        .limit(10)
+                                        .get()
+                                        .await()
+                                    val hotelIds = bookingDocs.documents
+                                        .sortedByDescending { it.getDate("createdAt") }
+                                        .mapNotNull { it.getString("hotelId") }
+                                        .distinct()
+                                        .take(2) // Only show 2 most recent completed bookings
+                                    val hotels = mutableListOf<Hotel>()
+                                    for (hid in hotelIds) {
+                                        val doc = db.collection("hotels").document(hid).get().await()
+                                        doc.toObject(Hotel::class.java)?.copy(id = doc.id)?.let { hotels.add(it) }
+                                    }
+                                    hotels
+                                } catch (e: Exception) {
+                                    emptyList()
+                                }
+                            }
+                        }
+                    }
+                    RecentlyBookedSection(
+                        hotels = recentHotels,
+                        bookmarkedHotels = uiState.bookmarkedHotels,
+                        onSeeAllClick = onSeeAllRecentClick,
+                        onHotelClick = onHotelClick,
+                        onBookmarkClick = { hotelId -> viewModel.onEvent(HomeIntent.ToggleBookmark(hotelId)) }
+                    )
                 }
             }
             
@@ -148,35 +248,9 @@ fun HomeScreen(
     }
 }
 
-@Composable
-fun HeaderSection() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF1AB6B6),
-                        Color(0xFF16A3A3)
-                    )
-                )
-            )
-    ) {
-        Text(
-            text = "Chillstay",
-            color = Color.White,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 21.dp)
-        )
-    }
-}
 
 @Composable
-fun SearchBar() {
+fun SearchBar(onClick: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,6 +260,7 @@ fun SearchBar() {
                 color = Color(0xFFF5F5F5),
                 shape = RoundedCornerShape(12.dp)
             )
+            .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
@@ -288,7 +363,9 @@ fun HotelCardsSection(
 @Composable
 fun PopularHotelsSection(
     hotels: List<com.example.chillstay.domain.model.Hotel>,
-    onHotelClick: (String) -> Unit = {}
+    bookmarkedHotels: Set<String> = emptySet(),
+    onHotelClick: (String) -> Unit = {},
+    onBookmarkClick: (String) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -312,6 +389,8 @@ fun PopularHotelsSection(
                     rating = hotel.rating.toFloat(),
                     reviews = hotel.numberOfReviews,
                     imageUrl = hotel.imageUrl,
+                    isBookmarked = bookmarkedHotels.contains(hotel.id),
+                    onBookmarkClick = { onBookmarkClick(hotel.id) },
                     onClick = { onHotelClick(hotel.id) }
                 )
             }
@@ -327,6 +406,8 @@ fun HotelCard(
     rating: Float?,
     reviews: Int?,
     imageUrl: String,
+    isBookmarked: Boolean = false,
+    onBookmarkClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
     Card(
@@ -351,8 +432,30 @@ fun HotelCard(
                         .fillMaxSize()
                         .padding(20.dp)
                         .clip(RoundedCornerShape(20.dp)),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.ic_home),
+                    error = painterResource(id = R.drawable.ic_home)
                 )
+                
+                // Bookmark button
+                IconButton(
+                    onClick = onBookmarkClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(20.dp)
+                        .size(24.dp)
+                        .background(
+                            color = if (isBookmarked) Color(0xFFF44235) else Color.White,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                        tint = if (isBookmarked) Color.White else Color(0xFF757575),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
             
             // Content
@@ -508,7 +611,7 @@ fun PromotionCard(
 }
 
 @Composable
-fun VipStatusSection() {
+fun VipStatusSection(onClick: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -535,6 +638,7 @@ fun VipStatusSection() {
                     ),
                     shape = RoundedCornerShape(16.dp)
                 )
+                .clickable { onClick() }
                 .padding(20.dp)
         ) {
             Row(
@@ -575,8 +679,18 @@ fun VipStatusSection() {
     }
 }
 
+data class PendingDisplayItem(
+    val hotelName: String?,
+    val dateFrom: String,
+    val dateTo: String,
+    val guests: Int,
+    val createdAt: java.util.Date?,
+    val hotelId: String,
+    val roomId: String
+)
+
 @Composable
-fun ContinuePlanningSection() {
+fun ContinuePlanningSection(items: List<PendingDisplayItem> = emptyList(), onItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> }) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -591,54 +705,54 @@ fun ContinuePlanningSection() {
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = Color(0xFFFFF8F8),
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .padding(20.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Box(
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items.forEach { it ->
+                Card(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFFFF6B6B),
-                                    Color(0xFFFF8E53)
-                                )
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        ),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .clickable { onItemClick(it.hotelId, it.roomId, it.dateFrom, it.dateTo) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8F8))
                 ) {
-                    Text(
-                        text = "🏨",
-                        fontSize = 20.sp
-                    )
-                }
-                
-                Column {
-                    Text(
-                        text = "BeachFront Villa",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF212121)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    Text(
-                        text = "📅 Sep 28 - Sep 29 👥 2",
-                        fontSize = 14.sp,
-                        color = Color(0xFF666666)
-                    )
+                    Row(
+                        modifier = Modifier.padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(
+                                            Color(0xFFFF6B6B),
+                                            Color(0xFFFF8E53)
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "🏨",
+                                fontSize = 20.sp
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = it.hotelName ?: "Pending booking",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF212121)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "📅 ${it.dateFrom} - ${it.dateTo} 👥 ${it.guests}",
+                                fontSize = 14.sp,
+                                color = Color(0xFF666666)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -646,7 +760,13 @@ fun ContinuePlanningSection() {
 }
 
 @Composable
-fun RecentlyBookedSection() {
+fun RecentlyBookedSection(
+    hotels: List<com.example.chillstay.domain.model.Hotel> = emptyList(), 
+    bookmarkedHotels: Set<String> = emptySet(),
+    onSeeAllClick: () -> Unit = {}, 
+    onHotelClick: (String) -> Unit = {},
+    onBookmarkClick: (String) -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -665,7 +785,7 @@ fun RecentlyBookedSection() {
             )
             
             Text(
-                text = "See All",
+                text = "View All",
                 fontSize = 15.62.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF1AB6B6),
@@ -674,6 +794,7 @@ fun RecentlyBookedSection() {
                         color = Color.Transparent,
                         shape = RoundedCornerShape(8.dp)
                     )
+                    .clickable { onSeeAllClick() }
                     .padding(8.dp)
             )
         }
@@ -683,16 +804,19 @@ fun RecentlyBookedSection() {
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            repeat(2) { index ->
+            hotels.forEach { hotel ->
                 RecentlyBookedCard(
-                    title = if (index == 0) "City Center Hotel" else "Beachfront Villa",
-                    location = if (index == 0) "New York, USA - 20 km to center" else "Maldives - 10 km to center",
-                    rating = 4.9f,
-                    originalPrice = "$700/night",
-                    discount = "- 28%",
-                    finalPrice = "$599",
-                    voucherApplied = "$100 applied",
-                    imageUrl = "https://placehold.co/287x159"
+                    title = hotel.name,
+                    location = "${hotel.city}, ${hotel.country}",
+                    rating = hotel.rating.toFloat(),
+                    originalPrice = if (hotel.minPrice != null) "$${hotel.minPrice?.toInt()}/night" else "",
+                    discount = if ((hotel.minPrice ?: 0.0) > 0.0) "- 5%" else "",
+                    finalPrice = if (hotel.minPrice != null) "$${(hotel.minPrice!! * 0.95).toInt()}" else "",
+                    voucherApplied = if ((hotel.minPrice ?: 0.0) > 0.0) "$${(hotel.minPrice!! * 0.05).toInt()} applied" else "",
+                    imageUrl = hotel.imageUrl,
+                    isBookmarked = bookmarkedHotels.contains(hotel.id),
+                    onBookmarkClick = { onBookmarkClick(hotel.id) },
+                    onClick = { onHotelClick(hotel.id) }
                 )
             }
         }
@@ -708,7 +832,10 @@ fun RecentlyBookedCard(
     discount: String,
     finalPrice: String,
     voucherApplied: String,
-    imageUrl: String
+    imageUrl: String,
+    isBookmarked: Boolean = false,
+    onBookmarkClick: () -> Unit = {},
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -717,7 +844,7 @@ fun RecentlyBookedCard(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA))
     ) {
-        Column {
+        Column(modifier = Modifier.clickable { onClick() }) {
             // Image
             Box(
                 modifier = Modifier
@@ -731,8 +858,30 @@ fun RecentlyBookedCard(
                         .fillMaxSize()
                         .padding(12.dp)
                         .clip(RoundedCornerShape(20.dp)),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.ic_home),
+                    error = painterResource(id = R.drawable.ic_home)
                 )
+                
+                // Bookmark button
+                IconButton(
+                    onClick = onBookmarkClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(15.dp)
+                        .size(20.dp)
+                        .background(
+                            color = if (isBookmarked) Color(0xFFF44235) else Color.White,
+                            shape = RoundedCornerShape(4.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                        tint = if (isBookmarked) Color.White else Color(0xFF757575),
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
             }
             
             // Content

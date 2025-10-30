@@ -20,17 +20,23 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WelcomeScreen(
     onGetStartedClick: () -> Unit = {}
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-    ) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize()
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color.Black)
+        ) {
         // Background gradient
         Box(
             modifier = Modifier
@@ -45,9 +51,9 @@ fun WelcomeScreen(
                 )
         )
         
-        // Main image
-        AsyncImage(
-            model = "https://placehold.co/414x621",
+        // Main image - Using Image instead of AsyncImage for local drawable
+        Image(
+            painter = painterResource(id = com.example.chillstay.R.drawable.welcome),
             contentDescription = "Welcome Image",
             modifier = Modifier
                 .fillMaxWidth()
@@ -127,5 +133,6 @@ fun WelcomeScreen(
                 )
             }
         }
+    }
     }
 }

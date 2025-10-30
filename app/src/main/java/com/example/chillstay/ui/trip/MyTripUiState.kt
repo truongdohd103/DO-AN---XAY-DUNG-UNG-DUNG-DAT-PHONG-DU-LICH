@@ -1,26 +1,45 @@
 package com.example.chillstay.ui.trip
 
 import androidx.compose.runtime.Immutable
+import com.example.chillstay.core.base.UiState
 import com.example.chillstay.domain.model.Booking
 import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.Room
 
 @Immutable
 data class MyTripUiState(
-    val isLoading: Boolean = true,
-    val selectedTab: Int = 0,
     val bookings: List<Booking> = emptyList(),
-    val roomMap: Map<String, Room> = emptyMap(),
-    val hotelMap: Map<String, Hotel> = emptyMap(),
+    val selectedTab: Int = 0,
+    val isLoading: Boolean = false,
     val error: String? = null,
-    val isEmpty: Boolean = false
-) {
-    fun updateIsLoading(value: Boolean) = copy(isLoading = value)
-    fun updateSelectedTab(value: Int) = copy(selectedTab = value)
-    fun updateBookings(value: List<Booking>) = copy(bookings = value)
-    fun updateRoomMap(value: Map<String, Room>) = copy(roomMap = value)
-    fun updateHotelMap(value: Map<String, Hotel>) = copy(hotelMap = value)
-    fun updateError(value: String?) = copy(error = value)
-    fun updateIsEmpty(value: Boolean) = copy(isEmpty = value)
+    val hotelMap: Map<String, Hotel> = emptyMap(),
+    val roomMap: Map<String, Room> = emptyMap(),
+    val showCancelDialog: Boolean = false,
+    val bookingToCancel: Booking? = null
+) : UiState {
+    fun updateBookings(bookings: List<Booking>) = copy(bookings = bookings)
+    
+    fun updateSelectedTab(tabIndex: Int) = copy(selectedTab = tabIndex)
+    
+    fun updateIsLoading(isLoading: Boolean) = copy(isLoading = isLoading)
+    
+    fun updateError(error: String?) = copy(error = error)
+    
     fun clearError() = copy(error = null)
+    
+    fun updateHotelMap(hotelMap: Map<String, Hotel>) = copy(hotelMap = hotelMap)
+    
+    fun updateRoomMap(roomMap: Map<String, Room>) = copy(roomMap = roomMap)
+    
+    fun updateShowCancelDialog(show: Boolean) = copy(showCancelDialog = show)
+    
+    fun updateBookingToCancel(booking: Booking?) = copy(bookingToCancel = booking)
+    
+    fun updateHotelMapEntry(hotelId: String, hotel: Hotel) = copy(
+        hotelMap = hotelMap + (hotelId to hotel)
+    )
+    
+    fun updateRoomMapEntry(roomId: String, room: Room) = copy(
+        roomMap = roomMap + (roomId to room)
+    )
 }
