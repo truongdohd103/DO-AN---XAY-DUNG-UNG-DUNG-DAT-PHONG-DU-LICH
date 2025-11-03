@@ -6,12 +6,19 @@ import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelRoomsUseCase
 import com.example.chillstay.domain.usecase.bookmark.AddBookmarkUseCase
 import com.example.chillstay.domain.usecase.bookmark.RemoveBookmarkUseCase
+import com.example.chillstay.domain.usecase.review.GetHotelReviewsUseCase
+import com.example.chillstay.domain.repository.UserRepository
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import android.util.Log
 
 class HotelDetailViewModel(
     private val getHotelById: GetHotelByIdUseCase,
     private val getHotelRooms: GetHotelRoomsUseCase,
+    private val getHotelReviews: GetHotelReviewsUseCase,
+    private val userRepository: UserRepository,
     private val addBookmark: AddBookmarkUseCase,
     private val removeBookmark: RemoveBookmarkUseCase
 ) : BaseViewModel<HotelDetailUiState, HotelDetailIntent, HotelDetailEffect>(HotelDetailUiState()) {
@@ -33,6 +40,7 @@ class HotelDetailViewModel(
                     is com.example.chillstay.core.common.Result.Success -> {
                         _state.update { it.updateHotel(result.data) }
                         loadHotelRooms(hotelId)
+                        loadHotelReviews(hotelId)
                     }
                     is com.example.chillstay.core.common.Result.Error -> {
                         _state.update {
@@ -126,6 +134,81 @@ class HotelDetailViewModel(
             viewModelScope.launch {
                 sendEffect { HotelDetailEffect.ShowError(exception.message ?: "Failed to load rooms") }
             }
+        }
+    }
+
+    private suspend fun loadHotelReviews(hotelId: String) {
+        try {
+            val result = getHotelReviews(hotelId, limit = 10, offset = 0)
+            when (result) {
+                is com.example.chillstay.core.common.Result.Success -> {
+                    val reviews = result.data
+                    Log.d("HotelDetailViewModel", "Successfully loaded ${reviews.size} reviews")
+                    
+                    _state.update { it.updateReviews(reviews) }
+                    
+                    // Load users cho reviews (song song để tăng tốc)
+                    loadUsersForReviews(reviews)
+                }
+                is com.example.chillstay.core.common.Result.Error -> {
+                    Log.e("HotelDetailViewModel", "Error loading reviews: ${result.throwable.message}", result.throwable)
+                    _state.update { 
+                        it.updateReviews(emptyList())
+                            .updateReviewsWithUser(emptyList())
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("HotelDetailViewModel", "Exception loading reviews: ${e.message}", e)
+            _state.update { 
+                it.updateReviews(emptyList())
+                    .updateReviewsWithUser(emptyList())
+            }
+        }
+    }
+
+    /**
+     * Load user info cho tất cả reviews (load song song để tăng tốc)
+     */
+    private suspend fun loadUsersForReviews(reviews: List<com.example.chillstay.domain.model.Review>) {
+        if (reviews.isEmpty()) {
+            _state.update { it.updateReviewsWithUser(emptyList()) }
+            return
+        }
+        
+        try {
+            Log.d("HotelDetailViewModel", "Loading users for ${reviews.size} reviews")
+            
+            coroutineScope {
+                // Load tất cả users song song (parallel) để tăng tốc
+                val reviewsWithUser = reviews.map { review ->
+                    async {
+                        val user = try {
+                            val user = userRepository.getUser(review.userId)
+                            if (user != null) {
+                                Log.d("HotelDetailViewModel", "Loaded user: id=${user.id}, fullName=${user.fullName}, email=${user.email}")
+                            } else {
+                                Log.w("HotelDetailViewModel", "User not found: ${review.userId}")
+                            }
+                            user
+                        } catch (e: Exception) {
+                            Log.e("HotelDetailViewModel", "Error loading user ${review.userId}: ${e.message}")
+                            null
+                        }
+                        ReviewWithUser(review, user)
+                    }
+                }.map { it.await() }
+                
+                Log.d("HotelDetailViewModel", "Loaded ${reviewsWithUser.size} reviews with user info")
+                _state.update { it.updateReviewsWithUser(reviewsWithUser) }
+            }
+        } catch (e: Exception) {
+            Log.e("HotelDetailViewModel", "Error loading users for reviews: ${e.message}", e)
+            // Fallback: tạo reviewsWithUser mà không có user info
+            val reviewsWithUser = reviews.map { review ->
+                ReviewWithUser(review, null)
+            }
+            _state.update { it.updateReviewsWithUser(reviewsWithUser) }
         }
     }
 }
