@@ -6,3 +6,4 @@ sealed interface BillIntent {
     object DownloadBill : BillIntent
     object ShareBill : BillIntent
 }
+

@@ -10,6 +10,7 @@ import com.example.chillstay.ui.voucher.VoucherViewModel
 import com.example.chillstay.ui.voucher.VoucherDetailViewModel
 import com.example.chillstay.ui.review.ReviewViewModel
 import com.example.chillstay.ui.bill.BillViewModel
+import com.example.chillstay.ui.vip.VipStatusViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
@@ -24,6 +25,7 @@ val viewModelModule = module {
     viewModel { VoucherDetailViewModel(get(), get(), get()) }
     viewModel { ReviewViewModel(get(), get()) }
     viewModel { BillViewModel(get(), get()) }
+    viewModel { VipStatusViewModel(get(), get(), get(), get(), get(), get(), get()) }
 }
 
 

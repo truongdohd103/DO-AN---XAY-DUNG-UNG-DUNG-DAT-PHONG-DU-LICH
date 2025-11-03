@@ -8,6 +8,7 @@ import com.example.chillstay.data.repository.firestore.FirestoreBookmarkReposito
 import com.example.chillstay.data.repository.firestore.FirestoreReviewRepository
 import com.example.chillstay.data.repository.firestore.FirestoreVoucherRepository
 import com.example.chillstay.data.repository.firestore.FirestoreBillRepository
+import com.example.chillstay.data.repository.firestore.FirestoreVipStatusRepository
 // removed SampleRepository binding
 import com.example.chillstay.domain.repository.HotelRepository
 import com.example.chillstay.domain.repository.UserRepository
@@ -16,6 +17,7 @@ import com.example.chillstay.domain.repository.BookmarkRepository
 import com.example.chillstay.domain.repository.ReviewRepository
 import com.example.chillstay.domain.repository.VoucherRepository
 import com.example.chillstay.domain.repository.BillRepository
+import com.example.chillstay.domain.repository.VipStatusRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import org.koin.dsl.module
@@ -38,5 +40,6 @@ val repositoryModule = module {
     single<ReviewRepository> { FirestoreReviewRepository(get()) }
     single<VoucherRepository> { FirestoreVoucherRepository(get()) }
     single<BillRepository> { FirestoreBillRepository(get()) }
+    single<VipStatusRepository> { FirestoreVipStatusRepository(get()) }
     single<ChillStayApi> { FirebaseChillStayApi(get()) }
 }

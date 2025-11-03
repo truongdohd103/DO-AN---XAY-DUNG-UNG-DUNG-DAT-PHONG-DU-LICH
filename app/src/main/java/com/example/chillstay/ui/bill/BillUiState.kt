@@ -28,3 +28,4 @@ data class BillUiState(
     
     fun updateIsSharing(isSharing: Boolean) = copy(isSharing = isSharing)
 }
+

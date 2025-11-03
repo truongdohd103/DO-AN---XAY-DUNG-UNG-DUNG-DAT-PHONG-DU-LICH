@@ -5,6 +5,7 @@
   "main": "firebase-complete-import.js",
   "scripts": {
     "import": "node firebase-complete-import.js",
+    "import-vip": "node firebase-complete-import.js --vip-only",
     "install-deps": "npm install"
   },
   "dependencies": {
@@ -19,3 +20,4 @@
   "author": "ChillStay Team",
   "license": "MIT"
 }
+

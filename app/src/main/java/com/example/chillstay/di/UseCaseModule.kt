@@ -37,9 +37,18 @@ import com.example.chillstay.domain.usecase.voucher.GetVoucherByIdUseCase
 import com.example.chillstay.domain.usecase.voucher.ClaimVoucherUseCase
 import com.example.chillstay.domain.usecase.voucher.CheckVoucherEligibilityUseCase
 
+// VIP use cases
+import com.example.chillstay.domain.usecase.vip.GetVipStatusUseCase
+import com.example.chillstay.domain.usecase.vip.GetVipBenefitsUseCase
+import com.example.chillstay.domain.usecase.vip.GetVipStatusHistoryUseCase
+import com.example.chillstay.domain.usecase.vip.CreateVipStatusUseCase
+import com.example.chillstay.domain.usecase.vip.UpdateVipStatusUseCase
+import com.example.chillstay.domain.usecase.vip.AddVipStatusHistoryUseCase
+
 
 import com.example.chillstay.domain.repository.VoucherRepository
 import com.example.chillstay.domain.repository.BookingRepository
+import com.example.chillstay.domain.repository.VipStatusRepository
 import org.koin.dsl.module
 
 val useCaseModule = module {
@@ -81,4 +90,12 @@ val useCaseModule = module {
     factory { GetVoucherByIdUseCase(get<VoucherRepository>()) }
     factory { ClaimVoucherUseCase(get<VoucherRepository>()) }
     factory { CheckVoucherEligibilityUseCase(get<VoucherRepository>()) }
+    
+    // VIP use cases
+    factory { GetVipStatusUseCase(get<VipStatusRepository>()) }
+    factory { GetVipBenefitsUseCase(get<VipStatusRepository>()) }
+    factory { GetVipStatusHistoryUseCase(get<VipStatusRepository>()) }
+    factory { CreateVipStatusUseCase(get<VipStatusRepository>(), get<BookingRepository>()) }
+    factory { UpdateVipStatusUseCase(get<VipStatusRepository>()) }
+    factory { AddVipStatusHistoryUseCase(get<VipStatusRepository>()) }
 }
