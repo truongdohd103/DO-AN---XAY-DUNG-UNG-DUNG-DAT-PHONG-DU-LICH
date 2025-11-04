@@ -2,7 +2,6 @@ package com.example.chillstay.data.repository.firestore
 
 import android.util.Log
 import com.example.chillstay.domain.model.Hotel
-import com.example.chillstay.domain.model.HotelDetail
 import com.example.chillstay.domain.model.Room
 import com.example.chillstay.domain.model.RoomDetail
 import com.example.chillstay.domain.repository.HotelRepository
@@ -59,15 +58,8 @@ class FirestoreHotelRepository @Inject constructor(
                         }
                     )
                 }
-                
-                // Create a simple HotelDetail
-                val hotelDetail = HotelDetail(
-                    description = "A beautiful hotel in ${hotel?.city}, ${hotel?.country}",
-                    facilities = listOf("WiFi", "Parking", "Restaurant", "Pool"),
-                    photoUrls = (1..(hotel?.photoCount ?: 5)).map { "https://placehold.co/600x400" }
-                )
-                
-                hotel?.copy(rooms = rooms, detail = hotelDetail)
+
+                hotel?.copy(rooms = rooms)
             }
         } catch (e: FirebaseFirestoreException) {
             when (e.code) {
@@ -177,16 +169,7 @@ class FirestoreHotelRepository @Inject constructor(
                         }
                     )
                 }
-                
-                
-                // Create a simple HotelDetail with basic info
-                val hotelDetail = HotelDetail(
-                    description = "A beautiful hotel in ${hotel?.city}, ${hotel?.country}",
-                    facilities = listOf("WiFi", "Parking", "Restaurant", "Pool"),
-                    photoUrls = (1..(hotel?.photoCount ?: 5)).map { "https://placehold.co/600x400" }
-                )
-                
-                hotel?.copy(rooms = rooms, detail = hotelDetail)
+                hotel?.copy(rooms = rooms)
             } else {
                 null
             }

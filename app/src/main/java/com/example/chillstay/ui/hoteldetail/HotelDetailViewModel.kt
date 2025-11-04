@@ -89,7 +89,7 @@ class HotelDetailViewModel(
                         }
                     }
                 }
-            } catch (exception: Exception) {
+            } catch (_: Exception) {
                 viewModelScope.launch {
                     sendEffect { HotelDetailEffect.ShowError("Something went wrong with bookmark operation") }
                 }

@@ -102,10 +102,7 @@ fun HotelDetailScreen(
         ) {
             item {
                 // Hotel Image with indicators
-                HotelImageSection(
-                    imageUrl = uiState.hotel?.imageUrl,
-                    photoCount = uiState.hotel?.detail?.photoUrls?.size ?: 0
-                )
+                HotelImageSection(imageUrls = uiState.hotel?.imageUrl ?: emptyList())
             }
 
             item {
@@ -135,21 +132,18 @@ fun HotelDetailScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            if (!uiState.hotel?.detail?.description.isNullOrBlank()) {
-                item {
-                    // Description
-                    DescriptionSection(description = uiState.hotel?.detail?.description.orEmpty())
-                }
+            if (!uiState.hotel?.description.isNullOrBlank()) {
+                item { DescriptionSection(description = uiState.hotel?.description.orEmpty()) }
             }
 
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            if (!uiState.hotel?.detail?.facilities.isNullOrEmpty()) {
+            if (!uiState.hotel?.feature.isNullOrEmpty()) {
                 item {
                     // Facilities
-                    FacilitiesSection(facilities = uiState.hotel?.detail?.facilities ?: emptyList())
+                    FacilitiesSection(facilities = uiState.hotel?.feature ?: emptyList())
                 }
             }
 
@@ -208,14 +202,15 @@ fun HotelDetailScreen(
 }
 
 @Composable
-fun HotelImageSection(imageUrl: String?, photoCount: Int) {
+fun HotelImageSection(imageUrls: List<String>) {
+    val photoCount = imageUrls.size
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(250.dp)
     ) {
         AsyncImage(
-            model = imageUrl ?: "https://placehold.co/414x250",
+            model = imageUrls.firstOrNull() ?: "https://placehold.co/414x250",
             contentDescription = "Hotel Image",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -228,7 +223,8 @@ fun HotelImageSection(imageUrl: String?, photoCount: Int) {
                 .padding(bottom = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            repeat(3) { index ->
+            val repeatTimes = if (photoCount >= 7) 7 else photoCount
+            repeat(repeatTimes) { index ->
                 Box(
                     modifier = Modifier
                         .size(8.dp)
@@ -271,6 +267,7 @@ fun HotelImageSection(imageUrl: String?, photoCount: Int) {
     }
 }
 
+@SuppressLint("DefaultLocale")
 @Composable
 fun HotelInfoSection(
     name: String,
@@ -631,7 +628,7 @@ fun ReviewsSection(
                 }
             }
         } else {
-            // Empty state nếu không có reviews
+            // Empty state if there are no reviews
             Text(
                 text = "No reviews yet",
                 color = Color(0xFF757575),
