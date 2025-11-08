@@ -1,7 +1,6 @@
 package com.example.chillstay.domain.model
 
 import com.google.firebase.Timestamp
-import java.time.LocalDate
 
 data class VipStatus(
     val id: String = "",
@@ -10,7 +9,7 @@ data class VipStatus(
     val points: Int = 0,
     val totalSpent: Double = 0.0,
     val totalBookings: Int = 0,
-    val joinDate: LocalDate = LocalDate.now(),
+    val joinDate: Timestamp = Timestamp.now(),
     val lastActivity: Timestamp = Timestamp.now(),
     val benefits: List<VipBenefit> = emptyList(),
     val nextLevelPoints: Int = 0,
@@ -25,8 +24,10 @@ data class VipBenefit(
     val title: String = "",
     val description: String = "",
     val icon: String = "",
-    val isActive: Boolean = true,
-    val level: VipLevel = VipLevel.BRONZE
+    val isActive: Boolean? = null,
+    val level: VipLevel = VipLevel.BRONZE,
+    val createdAt: Timestamp? = null,
+    val updatedAt: Timestamp? = null
 )
 
 enum class VipLevel(val displayName: String, val minPoints: Int, val color: String) {
@@ -52,6 +53,7 @@ enum class VipAction {
     POINTS_REDEEMED,
     LEVEL_UP,
     LEVEL_DOWN,
+    LEVEL_UPGRADED,
     BOOKING_COMPLETED,
     REVIEW_SUBMITTED,
     REFERRAL_BONUS
