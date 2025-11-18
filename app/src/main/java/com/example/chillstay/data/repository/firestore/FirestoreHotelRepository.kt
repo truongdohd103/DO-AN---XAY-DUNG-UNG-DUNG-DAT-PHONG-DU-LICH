@@ -1,12 +1,17 @@
 package com.example.chillstay.data.repository.firestore
 
 import android.util.Log
+import com.example.chillstay.domain.model.Coordinate
 import com.example.chillstay.domain.model.Hotel
+import com.example.chillstay.domain.model.Policy
+import com.example.chillstay.domain.model.PropertyType
 import com.example.chillstay.domain.model.Room
 import com.example.chillstay.domain.model.RoomDetail
 import com.example.chillstay.domain.repository.HotelRepository
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -27,7 +32,7 @@ class FirestoreHotelRepository @Inject constructor(
             
             Log.d("FirestoreHotelRepository", "Successfully fetched ${snapshot.documents.size} hotels")
             snapshot.documents.mapNotNull { document ->
-                val hotel = document.toObject(Hotel::class.java)?.copy(id = document.id)
+                val hotel = mapHotelDocument(document)
                 
                 // Load rooms for this hotel
                 val roomsSnapshot = firestore.collection("rooms")
@@ -132,13 +137,29 @@ class FirestoreHotelRepository @Inject constructor(
 
     override suspend fun getHotelById(id: String): Hotel? {
         return try {
+            Log.d("FirestoreHotelRepository", "Fetching hotel from Firestore, hotelId=$id")
             val document = firestore.collection("hotels")
                 .document(id)
                 .get()
                 .await()
             
             if (document.exists()) {
-                val hotel = document.toObject(Hotel::class.java)?.copy(id = document.id)
+                Log.d(
+                    "FirestoreHotelRepository",
+                    "Firestore returned hotel document for id=$id. Converting to model..."
+                )
+                val hotel = mapHotelDocument(document)
+                if (hotel != null) {
+                    Log.d(
+                        "FirestoreHotelRepository",
+                        "Converted hotelId=${hotel.id}, imageCount=${hotel.imageUrl.size}, images=${hotel.imageUrl}"
+                    )
+                } else {
+                    Log.w(
+                        "FirestoreHotelRepository",
+                        "Document for hotelId=$id exists but failed to map to Hotel model"
+                    )
+                }
                 
                 // Load rooms for this hotel
                 val roomsSnapshot = firestore.collection("rooms")
@@ -169,11 +190,24 @@ class FirestoreHotelRepository @Inject constructor(
                         }
                     )
                 }
-                hotel?.copy(rooms = rooms)
+                val hotelWithRooms = hotel?.copy(rooms = rooms)
+                if (hotelWithRooms != null) {
+                    Log.d(
+                        "FirestoreHotelRepository",
+                        "Returning hotelId=${hotelWithRooms.id} with ${hotelWithRooms.rooms.size} rooms"
+                    )
+                }
+                hotelWithRooms
             } else {
+                Log.w("FirestoreHotelRepository", "Hotel document not found for id=$id")
                 null
             }
         } catch (e: Exception) {
+            Log.e(
+                "FirestoreHotelRepository",
+                "Error fetching hotelId=$id from Firestore: ${e.message}",
+                e
+            )
             null
         }
     }
@@ -230,5 +264,58 @@ class FirestoreHotelRepository @Inject constructor(
         } catch (e: Exception) {
             null
         }
+    }
+
+    private fun mapHotelDocument(document: DocumentSnapshot): Hotel? {
+        val data = document.data ?: run {
+            Log.w("FirestoreHotelRepository", "Document ${document.id} has no data")
+            return null
+        }
+
+        val name = data["name"] as? String
+        if (name.isNullOrBlank()) {
+            Log.w("FirestoreHotelRepository", "Document ${document.id} missing name")
+            return null
+        }
+
+        val coordinate = when (val coord = data["coordinate"]) {
+            is GeoPoint -> Coordinate(coord.latitude, coord.longitude)
+            is Map<*, *> -> {
+                val lat = (coord["latitude"] as? Number)?.toDouble()
+                    ?: (coord["lat"] as? Number)?.toDouble()
+                    ?: 0.0
+                val lng = (coord["longitude"] as? Number)?.toDouble()
+                    ?: (coord["lng"] as? Number)?.toDouble()
+                    ?: 0.0
+                Coordinate(lat, lng)
+            }
+            else -> Coordinate()
+        }
+
+        return Hotel(
+            id = document.id,
+            city = data["city"] as? String ?: "",
+            coordinate = coordinate,
+            country = data["country"] as? String ?: "",
+            description = data["description"] as? String ?: "",
+            feature = (data["feature"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+            formattedAddress = data["formattedAddress"] as? String ?: "",
+            imageUrl = (data["imageUrl"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+            language = (data["language"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+            minPrice = (data["minPrice"] as? Number)?.toDouble(),
+            name = name,
+            numberOfReviews = (data["numberOfReviews"] as? Number)?.toInt() ?: 0,
+            policy = (data["policy"] as? List<*>)?.mapNotNull { entry ->
+                val map = entry as? Map<*, *>
+                val title = map?.get("title") as? String ?: ""
+                val content = map?.get("content") as? String ?: ""
+                Policy(title = title, content = content)
+            } ?: emptyList(),
+            propertyType = when ((data["propertyType"] as? String)?.uppercase()) {
+                "RESORT" -> PropertyType.RESORT
+                else -> PropertyType.HOTEL
+            },
+            rating = (data["rating"] as? Number)?.toDouble() ?: 0.0
+        )
     }
 }
