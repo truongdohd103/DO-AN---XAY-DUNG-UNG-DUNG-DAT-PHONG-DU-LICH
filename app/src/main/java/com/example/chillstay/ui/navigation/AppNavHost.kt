@@ -247,7 +247,7 @@ fun AppNavHost(
                 initialTab = 0,
                 onBackClick = { navController.popBackStack() },
                 onHotelClick = { hotelId, fromMyTrip -> 
-                    android.util.Log.d("AppNavHost", "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip")
+                    Log.d("AppNavHost", "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip")
                     navController.navigateToHotelDetail(hotelId, fromMyTrip)
                 },
                 onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
