@@ -115,17 +115,37 @@ fun HomeScreen(
                         val minPrice = remember(hotel.rooms) { 
                             hotel.rooms.minByOrNull { it.price }?.price 
                         }
+                        val imageUrl = if (hotel.imageUrl.isNotEmpty()) {
+                            hotel.imageUrl[0]
+                        } else {
+                            "" // Empty string will show placeholder
+                        }
                         HotelCard(
                             title = hotel.name,
                             location = "${hotel.city}, ${hotel.country}",
                             price = minPrice?.let { "$${it.toInt()}" },
                             rating = hotel.rating.toFloat(),
                             reviews = hotel.numberOfReviews,
-                            imageUrl = hotel.imageUrl,
+                            imageUrl = imageUrl,
                             isBookmarked = uiState.bookmarkedHotels.contains(hotel.id),
                             onBookmarkClick = { viewModel.onEvent(HomeIntent.ToggleBookmark(hotel.id)) },
                             onClick = { onHotelClick(hotel.id) }
                         )
+                    }
+                }
+            }
+            
+            // Debug: Log UI state
+            item {
+                LaunchedEffect(uiState.hotels.size, uiState.isLoading) {
+                    android.util.Log.d("HomeScreen", "UI State - hotels count: ${uiState.hotels.size}, isLoading: ${uiState.isLoading}")
+                    if (uiState.hotels.isEmpty() && !uiState.isLoading) {
+                        android.util.Log.w("HomeScreen", "⚠️ No hotels to display in UI")
+                    } else if (uiState.hotels.isNotEmpty()) {
+                        android.util.Log.d("HomeScreen", "Displaying ${uiState.hotels.size} hotels in UI")
+                        uiState.hotels.forEachIndexed { idx, hotel ->
+                            android.util.Log.d("HomeScreen", "  [$idx] ${hotel.name} - Images: ${hotel.imageUrl.size}")
+                        }
                     }
                 }
             }
@@ -184,7 +204,7 @@ fun HomeScreen(
                                     items.add(PendingDisplayItem(hotelName, dateFrom, dateTo, guests, createdAt, hotelId ?: "", roomId ?: ""))
                                 }
                                 items.sortedByDescending { it.createdAt }
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 emptyList()
                             }
                         }
@@ -197,7 +217,7 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
-            if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null) {
+            if (FirebaseAuth.getInstance().currentUser != null) {
                 item {
                     // Recently Booked (user-specific)
                     val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -225,7 +245,7 @@ fun HomeScreen(
                                         doc.toObject(Hotel::class.java)?.copy(id = doc.id)?.let { hotels.add(it) }
                                     }
                                     hotels
-                                } catch (e: Exception) {
+                                } catch (_: Exception) {
                                     emptyList()
                                 }
                             }
@@ -334,7 +354,7 @@ fun CategoryTabs(selected: Int, onSelect: (Int) -> Unit) {
 
 @Composable
 fun HotelCardsSection(
-    hotels: List<com.example.chillstay.domain.model.Hotel> = emptyList(),
+    hotels: List<Hotel> = emptyList(),
     onHotelClick: (String) -> Unit = {}
 ) {
     LazyRow(
@@ -347,13 +367,14 @@ fun HotelCardsSection(
             val hotel = hotels[index]
             // Compute minimum room price if rooms are embedded; otherwise, omit price
             val minPrice = hotel.rooms.minByOrNull { it.price }?.price
+            val imageUrl = hotel.imageUrl.firstOrNull() ?: ""
             HotelCard(
                 title = hotel.name,
                 location = "${hotel.city}, ${hotel.country}",
                 price = minPrice?.let { "$${it.toInt()}" },
                 rating = hotel.rating.toFloat(),
                 reviews = hotel.numberOfReviews,
-                imageUrl = hotel.imageUrl,
+                imageUrl = imageUrl,
                 onClick = { onHotelClick(hotel.id) }
             )
         }
@@ -362,7 +383,7 @@ fun HotelCardsSection(
 
 @Composable
 fun PopularHotelsSection(
-    hotels: List<com.example.chillstay.domain.model.Hotel>,
+    hotels: List<Hotel>,
     bookmarkedHotels: Set<String> = emptySet(),
     onHotelClick: (String) -> Unit = {},
     onBookmarkClick: (String) -> Unit = {}
@@ -382,13 +403,14 @@ fun PopularHotelsSection(
         LazyRow(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             items(hotels.size) { index ->
                 val hotel = hotels[index]
+                val imageUrl = hotel.imageUrl.firstOrNull() ?: ""
                 HotelCard(
                     title = hotel.name,
                     location = "${hotel.city}, ${hotel.country}",
                     price = hotel.rooms.minByOrNull { it.price }?.price?.let { "$${it.toInt()}" },
                     rating = hotel.rating.toFloat(),
                     reviews = hotel.numberOfReviews,
-                    imageUrl = hotel.imageUrl,
+                    imageUrl = imageUrl,
                     isBookmarked = bookmarkedHotels.contains(hotel.id),
                     onBookmarkClick = { onBookmarkClick(hotel.id) },
                     onClick = { onHotelClick(hotel.id) }
@@ -761,7 +783,7 @@ fun ContinuePlanningSection(items: List<PendingDisplayItem> = emptyList(), onIte
 
 @Composable
 fun RecentlyBookedSection(
-    hotels: List<com.example.chillstay.domain.model.Hotel> = emptyList(), 
+    hotels: List<Hotel> = emptyList(),
     bookmarkedHotels: Set<String> = emptySet(),
     onSeeAllClick: () -> Unit = {}, 
     onHotelClick: (String) -> Unit = {},
@@ -805,15 +827,16 @@ fun RecentlyBookedSection(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             hotels.forEach { hotel ->
+                val imageUrl = hotel.imageUrl.firstOrNull() ?: ""
                 RecentlyBookedCard(
                     title = hotel.name,
                     location = "${hotel.city}, ${hotel.country}",
                     rating = hotel.rating.toFloat(),
-                    originalPrice = if (hotel.minPrice != null) "$${hotel.minPrice?.toInt()}/night" else "",
+                    originalPrice = if (hotel.minPrice != null) "$${hotel.minPrice.toInt()}/night" else "",
                     discount = if ((hotel.minPrice ?: 0.0) > 0.0) "- 5%" else "",
-                    finalPrice = if (hotel.minPrice != null) "$${(hotel.minPrice!! * 0.95).toInt()}" else "",
+                    finalPrice = if (hotel.minPrice != null) "$${(hotel.minPrice * 0.95).toInt()}" else "",
                     voucherApplied = if ((hotel.minPrice ?: 0.0) > 0.0) "$${(hotel.minPrice!! * 0.05).toInt()} applied" else "",
-                    imageUrl = hotel.imageUrl,
+                    imageUrl = imageUrl,
                     isBookmarked = bookmarkedHotels.contains(hotel.id),
                     onBookmarkClick = { onBookmarkClick(hotel.id) },
                     onClick = { onHotelClick(hotel.id) }

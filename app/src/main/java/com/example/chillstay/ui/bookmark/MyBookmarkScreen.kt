@@ -144,7 +144,7 @@ fun BookmarkHotelCard(
                     .aspectRatio(16f / 9f) // Maintain aspect ratio
             ) {
                 AsyncImage(
-                    model = hotel.imageUrl,
+                    model = hotel.imageUrl[0],
                     contentDescription = hotel.name,
                     modifier = Modifier
                         .fillMaxSize()

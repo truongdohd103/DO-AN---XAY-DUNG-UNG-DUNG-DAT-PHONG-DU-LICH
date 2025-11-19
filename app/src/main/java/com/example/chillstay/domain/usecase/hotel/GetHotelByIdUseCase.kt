@@ -4,7 +4,6 @@ import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.repository.HotelRepository
 import com.example.chillstay.core.common.Result
 
-
 class GetHotelByIdUseCase constructor(
     private val hotelRepository: HotelRepository
 ) {
