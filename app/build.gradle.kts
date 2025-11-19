@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.chillstay"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -38,9 +38,17 @@ android {
     buildFeatures {
         compose = true
     }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.3"
+    }
+
 }
 
 dependencies {
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation(libs.androidx.compose.foundation)
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("androidx.compose.foundation:foundation:1.5.0")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

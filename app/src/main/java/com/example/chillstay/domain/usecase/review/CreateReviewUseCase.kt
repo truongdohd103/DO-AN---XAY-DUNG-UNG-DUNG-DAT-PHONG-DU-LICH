@@ -12,12 +12,12 @@ class CreateReviewUseCase constructor(
     suspend operator fun invoke(
         userId: String,
         hotelId: String,
-        text: String,
+        comment: String,
         rating: Int
     ): Result<Review> {
         return try {
             // Validate inputs
-            if (text.isBlank()) {
+            if (comment.isBlank()) {
                 return Result.failure(Exception("Review text cannot be empty"))
             }
             
@@ -35,9 +35,8 @@ class CreateReviewUseCase constructor(
                 id = "", // Will be set by repository
                 userId = userId,
                 hotelId = hotelId,
-                text = text.trim(),
-                rating = rating,
-                created = LocalDate.now()
+                comment = comment.trim(),
+                rating = rating
             )
             
             val createdReview = reviewRepository.createReview(review)

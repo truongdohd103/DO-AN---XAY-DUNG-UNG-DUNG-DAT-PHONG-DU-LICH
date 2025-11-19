@@ -52,11 +52,18 @@ class HomeViewModel(
      * Uses Dispatchers.IO for network operations
      */
     private fun loadCategory(index: Int) {
+        val categoryName = when (index) {
+            0 -> "Popular"
+            1 -> "Recommended"
+            else -> "Trending"
+        }
+        Log.d("HomeViewModel", "==========================================")
+        Log.d("HomeViewModel", "Loading category: $categoryName (index: $index)")
         _state.update { it.updateIsLoading(true).updateError(null) }
 
         viewModelScope.launch {
             try {
-                Log.d("HomeViewModel", "Loading category $index on background thread")
+                Log.d("HomeViewModel", "Calling API on background thread (IO dispatcher)")
                 
                 val hotels = withContext(Dispatchers.IO) {
                     val loader = when (index) {
@@ -67,11 +74,30 @@ class HomeViewModel(
                     loader()
                 }
                 
-                Log.d("HomeViewModel", "Successfully loaded ${hotels.size} hotels for category $index")
-                _state.update { it.updateIsLoading(false).updateHotels(hotels) }
+                Log.d("HomeViewModel", "API returned ${hotels.size} hotels for category $categoryName")
+                if (hotels.isEmpty()) {
+                    Log.w("HomeViewModel", "⚠️ WARNING: No hotels returned from API for category $categoryName")
+                } else {
+                    Log.d("HomeViewModel", "Hotels received:")
+                    hotels.forEachIndexed { idx, hotel ->
+                        Log.d("HomeViewModel", "  [$idx] ${hotel.name} (ID: ${hotel.id}) - ${hotel.city}, ${hotel.country} - Rating: ${hotel.rating}")
+                        Log.d("HomeViewModel", "      Image URLs: ${hotel.imageUrl.size} images")
+                        Log.d("HomeViewModel", "      Rooms: ${hotel.rooms.size} rooms")
+                    }
+                }
+                
+                Log.d("HomeViewModel", "Updating UI state with ${hotels.size} hotels")
+                _state.update { 
+                    it.updateIsLoading(false).updateHotels(hotels) 
+                }
+                
+                val updatedState = _state.value
+                Log.d("HomeViewModel", "UI State updated - hotels count: ${updatedState.hotels.size}, isLoading: ${updatedState.isLoading}")
+                Log.d("HomeViewModel", "==========================================")
                 
             } catch (exception: Exception) {
-                Log.e("HomeViewModel", "Error loading category $index: ${exception.message}", exception)
+                Log.e("HomeViewModel", "❌ ERROR loading category $categoryName: ${exception.message}", exception)
+                Log.e("HomeViewModel", "Exception stack trace:", exception)
                 _state.update {
                     it.updateIsLoading(false).updateError(exception.message ?: "Unknown error")
                 }

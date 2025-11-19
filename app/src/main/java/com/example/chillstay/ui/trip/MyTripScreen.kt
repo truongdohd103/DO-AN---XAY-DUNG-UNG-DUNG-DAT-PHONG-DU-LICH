@@ -275,8 +275,8 @@ fun MyTripScreen(
                         
                         val hotelName = hotel?.name ?: "Hotel not found"
                         val roomType = room?.detail?.name ?: room?.type ?: "Room type not available"
-                        val location = if (hotel != null) "${hotel.city}, ${hotel.country}" else "Location not available"
-                        val hotelImageUrl = hotel?.imageUrl
+                        val location = if (hotel != null) "${hotel.city}, ${hotel.country}" else "Coordinate not available"
+                        val hotelImageUrl = hotel?.imageUrl[0]
                         
                         val status = when (uiState.selectedTab) {
                             0 -> "PENDING"
@@ -487,7 +487,7 @@ fun NewTripCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Location
+                // Coordinate
                 Text(
                     text = location,
                     color = Color(0xFF999999),

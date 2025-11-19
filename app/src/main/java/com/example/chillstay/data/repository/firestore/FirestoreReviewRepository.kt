@@ -1,9 +1,9 @@
 package com.example.chillstay.data.repository.firestore
 
+import android.util.Log
 import com.example.chillstay.domain.model.Review
 import com.example.chillstay.domain.repository.ReviewRepository
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,29 +17,35 @@ class FirestoreReviewRepository @Inject constructor(
         return try {
             val documentRef = firestore.collection("reviews").add(review).await()
             review.copy(id = documentRef.id)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             review
         }
     }
 
-    override suspend fun getHotelReviews(
-        hotelId: String,
-        limit: Int?,
-        offset: Int
-    ): List<Review> {
+    override suspend fun getHotelReviews(hotelId: String, offset: Int): List<Review> {
         return try {
-            var query = firestore.collection("reviews")
+            Log.d("FirestoreReviewRepository", "Getting reviews for hotelId: $hotelId")
+            
+            val query = firestore.collection("reviews")
                 .whereEqualTo("hotelId", hotelId)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
-            
-            limit?.let { query = query.limit(it.toLong()) }
-            
             val snapshot = query.get().await()
-            
-            snapshot.documents.mapNotNull { document ->
-                document.toObject(Review::class.java)?.copy(id = document.id)
+            val reviews = snapshot.documents.mapNotNull { document ->
+                try {
+                    val review = document.toObject(Review::class.java)?.copy(id = document.id)
+                    if (review != null) {
+                        Log.d("FirestoreReviewRepository", "Parsed review: id=${review.id}, userId=${review.userId}, rating=${review.rating}, comment=${review.comment.take(50)}...")
+                    }
+                    review
+                } catch (e: Exception) {
+                    Log.e("FirestoreReviewRepository", "Error parsing review document ${document.id}: ${e.message}", e)
+                    null
+                }
             }
+            
+            Log.d("FirestoreReviewRepository", "Returning ${reviews.size} reviews")
+            reviews
         } catch (e: Exception) {
+            Log.e("FirestoreReviewRepository", "Error getting hotel reviews: ${e.message}", e)
             emptyList()
         }
     }
@@ -58,7 +64,7 @@ class FirestoreReviewRepository @Inject constructor(
             } else {
                 null
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -70,7 +76,7 @@ class FirestoreReviewRepository @Inject constructor(
                 .set(review)
                 .await()
             review
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             review
         }
     }
@@ -82,7 +88,7 @@ class FirestoreReviewRepository @Inject constructor(
                 .delete()
                 .await()
             true
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }

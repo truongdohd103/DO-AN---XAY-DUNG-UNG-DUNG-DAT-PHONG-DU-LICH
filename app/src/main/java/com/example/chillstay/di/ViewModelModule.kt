@@ -16,7 +16,16 @@ import org.koin.dsl.module
 
 val viewModelModule = module {
     viewModel { HomeViewModel(get(), get(), get(), get()) }
-    viewModel { HotelDetailViewModel(get(), get(), get(), get()) }
+    viewModel { 
+        HotelDetailViewModel(
+            get(),  // GetHotelByIdUseCase
+            get(),  // GetHotelRoomsUseCase
+            get(),  // GetHotelReviewsUseCase
+            get(),  // UserRepository
+            get(),  // AddBookmarkUseCase
+            get()   // RemoveBookmarkUseCase
+        )
+    }
     viewModel { MyBookmarkViewModel(get(), get(), get()) }
     viewModel { MyTripViewModel(get(), get(), get(), get()) }
     viewModel { RoomViewModel(get(), get()) }
