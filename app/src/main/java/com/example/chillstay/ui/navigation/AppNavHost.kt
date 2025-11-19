@@ -21,6 +21,10 @@ import com.example.chillstay.ui.vip.VipStatusScreen
 import com.example.chillstay.ui.search.SearchScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.FirebaseApp
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import java.time.LocalDate
 
 // Navigation imports
@@ -39,6 +43,9 @@ import com.example.chillstay.ui.review.reviewRoute
 import com.example.chillstay.ui.review.navigateToReview
 import com.example.chillstay.ui.bill.billRoute
 import com.example.chillstay.ui.bill.navigateToBill
+import android.util.Log
+
+private const val TAG = "SignUpCheck"
 
 @Composable
 fun AppNavHost(
@@ -138,14 +145,41 @@ fun AppNavHost(
             SignUpScreen(
                 onBackClick = { navController.popBackStack() },
                 onSignUpClick = { email, password, confirmPassword -> 
-                    if (email.isNotBlank() && password.isNotBlank() && password == confirmPassword) {
-                        val auth = FirebaseAuth.getInstance()
-                        val db = FirebaseFirestore.getInstance()
-                        auth.createUserWithEmailAndPassword(email, password)
-                            .addOnCompleteListener { task ->
-                                if (task.isSuccessful) {
-                                    val uid = auth.currentUser?.uid ?: return@addOnCompleteListener
+                    Log.d(TAG, "=== SIGN UP CLICKED ===")
+                    Log.d(TAG, "Email: $email, Password length: ${password.length}, Confirm length: ${confirmPassword.length}")
+                    
+                    try {
+                        if (email.isNotBlank() && password.isNotBlank() && password == confirmPassword) {
+                            Log.d(TAG, "Validation passed. Initializing Firebase...")
+                            
+                            val auth = FirebaseAuth.getInstance()
+                            val db = FirebaseFirestore.getInstance()
+
+                            Log.d(TAG, "FirebaseAuth instance: ${if (auth != null) "OK" else "NULL"}")
+                            Log.d(TAG, "FirebaseFirestore instance: ${if (db != null) "OK" else "NULL"}")
+                            Log.d(TAG, "Current user before signup: ${auth.currentUser?.uid ?: "null"}")
+                            
+                            Log.d(TAG, "Calling FirebaseAuth.createUserWithEmailAndPassword...")
+                            val task = auth.createUserWithEmailAndPassword(email, password)
+                            
+                            Log.d(TAG, "Task created, adding listeners...")
+                            
+                            task.addOnCompleteListener { completedTask ->
+                                Log.d(TAG, "=== addOnCompleteListener CALLED ===")
+                                Log.d(TAG, "Task isComplete: ${completedTask.isComplete}, isSuccessful: ${completedTask.isSuccessful}, isCanceled: ${completedTask.isCanceled}")
+                                
+                                if (completedTask.isSuccessful) {
+                                    Log.d(TAG, "✅ FirebaseAuth.createUserWithEmailAndPassword SUCCEEDED")
+                                    val uid = auth.currentUser?.uid
+                                    Log.d(TAG, "User UID: ${uid ?: "NULL"}")
+                                    
+                                    if (uid == null) {
+                                        Log.e(TAG, "❌ UID is null after successful signup!")
+                                        return@addOnCompleteListener
+                                    }
+                                    
                                     val userDoc = mapOf(
+                                        "e-mail" to email,  // Note: using "e-mail" to match FirestoreUserRepository
                                         "email" to email,
                                         "password" to password,
                                         "fullName" to "",
@@ -153,17 +187,53 @@ fun AppNavHost(
                                         "photoUrl" to "",
                                         "dateOfBirth" to LocalDate.now().toString()
                                     )
+                                    
+                                    Log.d(TAG, "Creating Firestore document for uid=$uid...")
                                     db.collection("users").document(uid).set(userDoc)
                                         .addOnSuccessListener {
-                                            navController.navigate("${Routes.SIGN_IN}?message=Account created successfully!") {
-                                                popUpTo(Routes.SIGN_UP) { inclusive = true }
+                                            Log.d(TAG, "✅ Firestore profile created successfully for uid=$uid")
+                                            try {
+                                                navController.navigate("${Routes.SIGN_IN}?message=Account created successfully!") {
+                                                    popUpTo(Routes.SIGN_UP) { inclusive = true }
+                                                }
+                                                Log.d(TAG, "✅ Navigation to SIGN_IN completed")
+                                            } catch (e: Exception) {
+                                                Log.e(TAG, "❌ Navigation error: ${e.message}", e)
                                             }
                                         }
+                                        .addOnFailureListener { e ->
+                                            Log.e(TAG, "❌ Failed to create Firestore profile for uid=$uid: ${e.message}", e)
+                                        }
                                 } else {
-                                    val err = task.exception?.message ?: "Sign up failed"
-                                    navController.navigate("${Routes.SIGN_UP}")
+                                    val exception = completedTask.exception
+                                    val err = exception?.message ?: "Sign up failed"
+                                    Log.e(TAG, "❌ FirebaseAuth.createUserWithEmailAndPassword FAILED: $err", exception)
+                                    Log.e(TAG, "Exception type: ${exception?.javaClass?.simpleName ?: "null"}")
+                                    
+                                    try {
+                                        navController.navigate("${Routes.SIGN_UP}?error=${java.net.URLEncoder.encode(err, "UTF-8")}")
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Navigation error after signup failure", e)
+                                    }
                                 }
                             }
+                            
+                            task.addOnFailureListener { e ->
+                                Log.e(TAG, "❌ addOnFailureListener CALLED: ${e.message}", e)
+                                Log.e(TAG, "Exception type: ${e.javaClass.simpleName}")
+                            }
+                            
+                            task.addOnSuccessListener {
+                                Log.d(TAG, "✅ addOnSuccessListener CALLED")
+                            }
+                            
+                            Log.d(TAG, "All listeners added, waiting for Firebase response...")
+                        } else {
+                            Log.w(TAG, "❌ Validation failed. emailBlank=${email.isBlank()}, passwordBlank=${password.isBlank()}, passwordsMatch=${password == confirmPassword}")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ EXCEPTION in onSignUpClick: ${e.message}", e)
+                        e.printStackTrace()
                     }
                 },
                 onSignInClick = { navController.navigate(Routes.SIGN_IN) },
@@ -177,7 +247,7 @@ fun AppNavHost(
                 initialTab = 0,
                 onBackClick = { navController.popBackStack() },
                 onHotelClick = { hotelId, fromMyTrip -> 
-                    android.util.Log.d("AppNavHost", "onHotelClick called with hotelId: $hotelId, fromMyTrip: $fromMyTrip")
+                    android.util.Log.d("AppNavHost", "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip")
                     navController.navigateToHotelDetail(hotelId, fromMyTrip)
                 },
                 onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
@@ -228,7 +298,7 @@ fun AppNavHost(
                 initialTab = tabParam,
                 onBackClick = { navController.popBackStack() },
                 onHotelClick = { hotelId, fromMyTrip -> 
-                    android.util.Log.d("AppNavHost", "onHotelClick called with hotelId: $hotelId, fromMyTrip: $fromMyTrip")
+                    android.util.Log.d("AppNavHost", "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip")
                     navController.navigateToHotelDetail(hotelId, fromMyTrip)
                 },
                 onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
@@ -318,7 +388,7 @@ fun AppNavHost(
                 navController.navigateToHotelDetail(hotelId, fromMyTrip)
             },
             onBookingClick = { bookingId: String -> 
-                android.util.Log.d("AppNavHost", "onBookingClick called with bookingId: $bookingId")
+                android.util.Log.d("AppNavHost", "onBookingClick called with bookingId=$bookingId")
                 navController.navigateToBookingDetail(bookingId)
             },
             onWriteReview = { bookingId: String -> 

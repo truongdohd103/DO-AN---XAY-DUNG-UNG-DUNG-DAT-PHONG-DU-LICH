@@ -16,7 +16,6 @@ import org.koin.core.context.startKoin
 class ChillStayApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
-        
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
         
