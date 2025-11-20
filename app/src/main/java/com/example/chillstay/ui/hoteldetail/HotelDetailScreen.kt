@@ -1,6 +1,10 @@
 package com.example.chillstay.ui.hoteldetail
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,13 +43,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chillstay.R
+import com.example.chillstay.domain.model.Coordinate
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,9 +120,8 @@ fun HotelDetailScreen(
                 // Hotel Info
                 HotelInfoSection(
                     name = uiState.hotel?.name.orEmpty(),
-                    address = listOfNotNull(uiState.hotel?.city, uiState.hotel?.country).filter { it.isNotBlank() }.joinToString(", "),
-                    rating = uiState.hotel?.rating ?: 0.0,
-                    reviews = uiState.hotel?.numberOfReviews ?: 0
+                    address = uiState.hotel?.formattedAddress.orEmpty(),
+                    rating = uiState.hotel?.rating ?: 0.0
                 )
             }
 
@@ -197,54 +203,6 @@ fun HotelDetailScreen(
             item {
                 Spacer(modifier = Modifier.height(100.dp)) // Space for bottom bar
             }
-        }
-    }
-}
-
-@SuppressLint("DefaultLocale")
-@Composable
-fun HotelInfoSection(
-    name: String,
-    address: String,
-    rating: Double,
-    reviews: Int
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 21.dp)
-    ) {
-        Text(
-            text = name,
-            color = Color(0xFF212121),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            text = address,
-            color = Color(0xFF757575),
-            fontSize = 16.sp
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            repeat(5) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_star),
-                    contentDescription = "Rating Star",
-                    tint = Color(0xFFFBC40D),
-                    modifier = Modifier.size(12.dp)
-                )
-            }
-            Text(
-                text = String.format("%.1f", rating),
-                color = Color(0xFF1AB6B6),
-                fontSize = 13.67.sp,
-                fontWeight = FontWeight.Bold
-            )
         }
     }
 }
