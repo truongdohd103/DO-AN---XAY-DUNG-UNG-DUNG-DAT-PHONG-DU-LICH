@@ -1,10 +1,7 @@
 package com.example.chillstay.ui.hoteldetail
 
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.Intent
-import android.net.Uri
-import android.util.Log
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,22 +34,24 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chillstay.R
-import com.example.chillstay.domain.model.Coordinate
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -158,15 +157,6 @@ fun HotelDetailScreen(
             }
 
             item {
-                // Location
-                LocationSection(address = listOfNotNull(uiState.hotel?.city, uiState.hotel?.country).filter { it.isNotBlank() }.joinToString(", "))
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            item {
                 // Languages spoken
                 LanguagesSection()
             }
@@ -239,11 +229,22 @@ fun SellingOutWarning() {
 }
 
 @Composable
-fun DescriptionSection(description: String) {
+fun DescriptionSection(
+    description: String,
+    collapsedMaxLines: Int = 3
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    // isTextLong = true nếu text vượt quá collapsedMaxLines khi ở trạng thái collapsed
+    var isTextLong by remember { mutableStateOf(false) }
+
+    val teal = Color(0xFF1AB6B6)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 23.dp)
+            .animateContentSize() // animate expand/collapse
     ) {
         Text(
             text = "Description",
@@ -258,8 +259,44 @@ fun DescriptionSection(description: String) {
             text = description,
             color = Color(0xFF757575),
             fontSize = 15.88.sp,
-            lineHeight = 25.60.sp
+            lineHeight = 25.60.sp,
+            maxLines = if (expanded) Int.MAX_VALUE else collapsedMaxLines,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+            onTextLayout = { layoutResult: TextLayoutResult ->
+                // Chỉ đánh giá overflow khi đang ở trạng thái collapsed
+                if (!expanded) {
+                    val hasOverflow = layoutResult.hasVisualOverflow
+                    if (hasOverflow != isTextLong) {
+                        isTextLong = hasOverflow
+                    }
+                }
+            }
         )
+
+        // Nếu text dài (isTextLong == true) thì hiển thị nút (dù đang expanded hay collapsed)
+        if (isTextLong) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (expanded) "Hide" else "More",
+                    color = teal, // nút màu teal
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .clickable {
+                            expanded = !expanded
+                        }
+                        .padding(4.dp)
+                )
+            }
+        }
     }
 }
 
@@ -336,45 +373,6 @@ fun FacilityItem(
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
-    }
-}
-
-@Composable
-fun LocationSection(address: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 21.dp)
-    ) {
-        Text(
-            text = "Location",
-            color = Color(0xFF212121),
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            AsyncImage(
-                model = "https://placehold.co/71x70",
-                contentDescription = "Location Map",
-                modifier = Modifier
-                    .size(71.dp)
-                    .clip(RoundedCornerShape(10.dp)),
-                contentScale = ContentScale.Crop
-            )
-
-            Text(
-                text = address,
-                color = Color(0xFF757575),
-                fontSize = 16.sp,
-                lineHeight = 24.sp
-            )
-        }
     }
 }
 
