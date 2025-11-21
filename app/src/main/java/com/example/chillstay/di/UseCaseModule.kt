@@ -1,8 +1,10 @@
 package com.example.chillstay.di
 
 // removed sample use case
-import com.example.chillstay.domain.usecase.SignUpUseCase
-import com.example.chillstay.domain.usecase.SignInUseCase
+import com.example.chillstay.domain.usecase.user.SignUpUseCase
+import com.example.chillstay.domain.usecase.user.SignInUseCase
+import com.example.chillstay.domain.usecase.user.SignOutUseCase
+import com.example.chillstay.domain.usecase.user.GetCurrentUserIdUseCase
 
 // Hotel use cases
 import com.example.chillstay.domain.usecase.hotel.GetHotelsUseCase
@@ -50,13 +52,17 @@ import com.example.chillstay.domain.repository.VoucherRepository
 import com.example.chillstay.domain.repository.BookingRepository
 import com.example.chillstay.domain.repository.VipStatusRepository
 import org.koin.dsl.module
+import com.example.chillstay.domain.repository.AuthRepository
+import com.example.chillstay.domain.repository.UserRepository
 
 val useCaseModule = module {
     // Sample use cases removed
     
     // Authentication use cases
-    factory { SignUpUseCase(get()) }
-    factory { SignInUseCase(get()) }
+    factory { SignUpUseCase(get<AuthRepository>(), get<UserRepository>()) }
+    factory { SignInUseCase(get<AuthRepository>(), get<UserRepository>()) }
+    factory { SignOutUseCase(get<AuthRepository>()) }
+    factory { GetCurrentUserIdUseCase(get<AuthRepository>()) }
     
     // Hotel use cases
     factory { GetHotelsUseCase(get()) }

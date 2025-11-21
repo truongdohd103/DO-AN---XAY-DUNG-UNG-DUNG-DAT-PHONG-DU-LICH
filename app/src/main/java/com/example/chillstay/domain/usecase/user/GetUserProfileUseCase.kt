@@ -1,25 +1,20 @@
 package com.example.chillstay.domain.usecase.user
 
+import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.User
 import com.example.chillstay.domain.repository.UserRepository
-import com.example.chillstay.core.common.Result
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flow
 
 
 class GetUserProfileUseCase constructor(
     private val userRepository: UserRepository
 ) {
-    suspend operator fun invoke(userId: String): Result<User> {
-        return try {
-            val user = userRepository.getUser(userId)
-            if (user != null) {
-                Result.success(user)
-            } else {
-                Result.failure(Exception("User not found"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    operator fun invoke(userId: String): Flow<Result<User>> = flow {
+        val user = userRepository.getUser(userId) ?: throw IllegalStateException("User not found")
+        emit(Result.success(user))
+    }.catch { throwable ->
+        emit(Result.failure(throwable))
     }
 }
-
-

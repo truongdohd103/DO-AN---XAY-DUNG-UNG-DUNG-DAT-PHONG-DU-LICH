@@ -8,8 +8,29 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.painter.Painter
 import com.example.chillstay.R
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,17 +39,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.material3.CircularProgressIndicator
+import com.example.chillstay.ui.auth.AuthUiEvent
+import com.example.chillstay.ui.auth.AuthUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onLogout: () -> Unit = {}
+    state: AuthUiState,
+    onEvent: (AuthUiEvent) -> Unit
 ) {
     var isDarkTheme by remember { mutableStateOf(false) }
-    val currentUser = FirebaseAuth.getInstance().currentUser
+    val currentUser = state.currentUser
     val userEmail = currentUser?.email ?: "demo@chillstay.com"
-    val userName = currentUser?.displayName ?: "User"
+    val userName = currentUser?.fullName?.takeIf { it.isNotBlank() } ?: "User"
+
+    LaunchedEffect(Unit) {
+        onEvent(AuthUiEvent.LoadProfile)
+    }
     
     Scaffold(
         topBar = {
@@ -123,7 +151,122 @@ fun ProfileScreen(
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
         }
-        
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Profile details",
+                    color = Color(0xFF212121),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                OutlinedTextField(
+                    value = state.profileFullName,
+                    onValueChange = { onEvent(AuthUiEvent.ProfileFullNameChanged(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Full name") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF1AB6B6),
+                        unfocusedBorderColor = Color(0xFFE0E0E0)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                OutlinedTextField(
+                    value = state.profileGender,
+                    onValueChange = { onEvent(AuthUiEvent.ProfileGenderChanged(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Gender (Male / Female / Other)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF1AB6B6),
+                        unfocusedBorderColor = Color(0xFFE0E0E0)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                OutlinedTextField(
+                    value = state.profileDateOfBirth,
+                    onValueChange = { onEvent(AuthUiEvent.ProfileDateOfBirthChanged(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Date of birth (yyyy-MM-dd)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF1AB6B6),
+                        unfocusedBorderColor = Color(0xFFE0E0E0)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                OutlinedTextField(
+                    value = state.profilePhotoUrl,
+                    onValueChange = { onEvent(AuthUiEvent.ProfilePhotoUrlChanged(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Photo URL") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF1AB6B6),
+                        unfocusedBorderColor = Color(0xFFE0E0E0)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                if (state.profileMessage != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (state.profileMessage.contains("success", ignoreCase = true)) {
+                                Color(0xFFE8F5E8)
+                            } else {
+                                Color(0xFFFFEBEE)
+                            }
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = state.profileMessage,
+                            modifier = Modifier.padding(16.dp),
+                            color = if (state.profileMessage.contains("success", ignoreCase = true)) {
+                                Color(0xFF2E7D32)
+                            } else {
+                                Color(0xFFC62828)
+                            },
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = { onEvent(AuthUiEvent.SaveProfile) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    enabled = state.currentUser != null && !state.isProfileLoading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1AB6B6)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (state.isProfileLoading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = "Save changes",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
         // Menu items
         item {
             ProfileMenuItem(
@@ -238,7 +381,7 @@ fun ProfileScreen(
                 Spacer(Modifier.width(24.dp))
                 
                 TextButton(onClick = { 
-                    onLogout()
+                    onEvent(AuthUiEvent.SignOut)
                 }) {
                     Text(
                         text = "Logout",

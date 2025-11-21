@@ -11,10 +11,21 @@ import com.example.chillstay.ui.voucher.VoucherDetailViewModel
 import com.example.chillstay.ui.review.ReviewViewModel
 import com.example.chillstay.ui.bill.BillViewModel
 import com.example.chillstay.ui.vip.VipStatusViewModel
+import com.example.chillstay.ui.auth.AuthViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
 val viewModelModule = module {
+    viewModel {
+        AuthViewModel(
+            get(), // SignInUseCase
+            get(), // SignUpUseCase
+            get(), // SignOutUseCase
+            get(), // GetCurrentUserIdUseCase
+            get(), // GetUserProfileUseCase
+            get()  // UpdateUserProfileUseCase
+        )
+    }
     viewModel { HomeViewModel(get(), get(), get(), get()) }
     viewModel { 
         HotelDetailViewModel(

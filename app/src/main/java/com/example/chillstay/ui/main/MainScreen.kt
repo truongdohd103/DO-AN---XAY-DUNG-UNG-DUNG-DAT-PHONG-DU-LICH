@@ -5,7 +5,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import com.google.firebase.auth.FirebaseAuth
 import com.example.chillstay.ui.components.BottomNavigationBar
 import com.example.chillstay.ui.home.HomeScreen
 import com.example.chillstay.ui.home.HomeViewModel
@@ -21,15 +20,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import android.util.Log
+import com.example.chillstay.ui.auth.AuthUiEvent
+import com.example.chillstay.ui.auth.AuthUiState
 
 @Composable
 fun MainScreen(
     homeViewModel: HomeViewModel,
+    authState: AuthUiState,
+    onAuthEvent: (AuthUiEvent) -> Unit,
     initialTab: Int = 0,
     onBackClick: () -> Unit = {},
     onHotelClick: (String, Boolean) -> Unit = { _, _ -> },
     onRequireAuth: () -> Unit = {},
-    onLogout: () -> Unit = {},
     onVipClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onContinueItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> },
@@ -50,10 +52,7 @@ fun MainScreen(
         selectedTab = initialTab
     }
 
-    // Memoize FirebaseAuth check to avoid repeated calls
-    val isSignedIn by remember {
-        derivedStateOf { FirebaseAuth.getInstance().currentUser != null }
-    }
+    val isSignedIn = authState.isAuthenticated
 
     // Use coroutine scope for background operations
     val coroutineScope = rememberCoroutineScope()
@@ -86,7 +85,6 @@ fun MainScreen(
                 onTabSelected = { tabIndex ->
                     Log.d("MainScreen", "Tab selected: $tabIndex, isSignedIn: $isSignedIn")
 
-                    // Use memoized isSignedIn value to avoid repeated FirebaseAuth calls
                     if (tabIndex == 2 || tabIndex == 3 || tabIndex == 4) {
                         if (isSignedIn) {
                             selectedTab = tabIndex
@@ -177,14 +175,8 @@ fun MainScreen(
                            initialTab = 1 // Show COMPLETED tab by default
                        )
                 4 -> ProfileScreen(
-                    onLogout = {
-                        Log.d("MainScreen", "User logged out, navigating to authentication")
-                        // Use coroutine scope for Firebase sign out
-                        coroutineScope.launch {
-                            FirebaseAuth.getInstance().signOut()
-                            onLogout() // Navigate to authentication screen
-                        }
-                    }
+                    state = authState,
+                    onEvent = onAuthEvent
                 )
             }
         }
