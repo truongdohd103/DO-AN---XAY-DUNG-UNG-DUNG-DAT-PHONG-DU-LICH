@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chillstay.R
+import com.example.chillstay.core.feature.IconRegistry
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -325,7 +326,7 @@ fun FacilitiesSection(facilities: List<String>) {
             ) {
                 rowItems.forEach { name ->
                     FacilityItem(
-                        icon = R.drawable.ic_check, // simple check icon placeholder
+                        icon = IconRegistry.getIconResId(name) ?: R.drawable.ic_check,
                         name = name
                     )
                 }
