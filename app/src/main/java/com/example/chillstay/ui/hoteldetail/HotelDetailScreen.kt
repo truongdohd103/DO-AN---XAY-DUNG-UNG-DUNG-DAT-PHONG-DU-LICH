@@ -2,6 +2,7 @@ package com.example.chillstay.ui.hoteldetail
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -46,6 +48,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -159,7 +162,7 @@ fun HotelDetailScreen(
 
             item {
                 // Languages spoken
-                LanguagesSection()
+                LanguagesSection(uiState.hotel?.language ?: emptyList())
             }
 
             item {
@@ -170,7 +173,8 @@ fun HotelDetailScreen(
                 ReviewsSection(
                     rating = uiState.hotel?.rating ?: 0.0,
                     reviewCount = uiState.hotel?.numberOfReviews ?: 0,
-                    reviewsWithUser = uiState.reviewsWithUser)
+                    reviewsWithUser = uiState.reviewsWithUser
+                )
             }
 
             item {
@@ -206,7 +210,7 @@ fun SellingOutWarning() {
             .padding(horizontal = 24.dp),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF9800))
+        border = BorderStroke(1.dp, Color(0xFFFF9800))
     ) {
         Column(
             modifier = Modifier.padding(13.dp)
@@ -230,16 +234,11 @@ fun SellingOutWarning() {
 }
 
 @Composable
-fun DescriptionSection(
-    description: String,
-    collapsedMaxLines: Int = 3
-) {
+fun DescriptionSection(description: String) {
     var expanded by remember { mutableStateOf(false) }
-
     // isTextLong = true nếu text vượt quá collapsedMaxLines khi ở trạng thái collapsed
     var isTextLong by remember { mutableStateOf(false) }
-
-    val teal = Color(0xFF1AB6B6)
+    val collapsedMaxLines = 3
 
     Column(
         modifier = Modifier
@@ -261,48 +260,26 @@ fun DescriptionSection(
             color = Color(0xFF757575),
             fontSize = 15.88.sp,
             lineHeight = 25.60.sp,
-            maxLines = if (expanded) Int.MAX_VALUE else collapsedMaxLines,
+            maxLines = if (expanded) 1000 else collapsedMaxLines,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.fillMaxWidth(),
             onTextLayout = { layoutResult: TextLayoutResult ->
                 // Chỉ đánh giá overflow khi đang ở trạng thái collapsed
                 if (!expanded) {
                     val hasOverflow = layoutResult.hasVisualOverflow
-                    if (hasOverflow != isTextLong) {
-                        isTextLong = hasOverflow
-                    }
+                    if (hasOverflow != isTextLong) isTextLong = hasOverflow
                 }
             }
         )
-
-        // Nếu text dài (isTextLong == true) thì hiển thị nút (dù đang expanded hay collapsed)
-        if (isTextLong) {
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (expanded) "Hide" else "More",
-                    color = teal, // nút màu teal
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier
-                        .clickable {
-                            expanded = !expanded
-                        }
-                        .padding(4.dp)
-                )
-            }
-        }
+        if(isTextLong) MoreAndHideButton(expanded, onClick = { expanded = !expanded })
     }
 }
 
 @Composable
 fun FacilitiesSection(facilities: List<String>) {
+    val maxRows = 2
+    var expanded by remember { mutableStateOf(false) }
+    var isRowLong by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -319,6 +296,7 @@ fun FacilitiesSection(facilities: List<String>) {
 
         // Dynamic facilities list
         val chunks = facilities.chunked(4)
+        var count = 0
         chunks.forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -331,16 +309,19 @@ fun FacilitiesSection(facilities: List<String>) {
                     )
                 }
             }
+            count++
+            if (!expanded && count >= maxRows) {
+                isRowLong = chunks.size > maxRows
+                return@forEach
+            }
             Spacer(modifier = Modifier.height(16.dp))
         }
+        if(isRowLong) MoreAndHideButton(expanded, onClick = { expanded = !expanded })
     }
 }
 
 @Composable
-fun FacilityItem(
-    icon: Int,
-    name: String
-) {
+fun FacilityItem(icon: Int, name: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(80.dp)
@@ -371,14 +352,17 @@ fun FacilityItem(
             color = Color(0xFF757575),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
     }
 }
 
 @Composable
-fun LanguagesSection() {
+fun LanguagesSection(languages: List<String>) {
+    val maxRows = 2
+    var expanded by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -393,63 +377,112 @@ fun LanguagesSection() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Language flags and names
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            LanguageItem(
-                flagUrl = "https://placehold.co/40x40",
-                name = "English"
-            )
-            LanguageItem(
-                flagUrl = "https://placehold.co/40x40",
-                name = "Italian"
-            )
+        // chia danh sách thành các hàng, mỗi hàng 2 item
+        val rows = languages.chunked(2)
+        val rowsToShow = if (expanded) rows else rows.take(maxRows)
+
+        rowsToShow.forEach { rowItems ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // first item (luôn có)
+                val first = rowItems.getOrNull(0)
+                if (first != null) {
+                    LanguageItem(
+                        icon = IconRegistry.getIconResId(first) ?: R.drawable.ic_vietnamese,
+                        name = first,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+
+                // small space between the two items
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // second item (có thể null)
+                val second = rowItems.getOrNull(1)
+                if (second != null) {
+                    LanguageItem(
+                        icon = IconRegistry.getIconResId(second) ?: R.drawable.ic_vietnamese,
+                        name = second,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    // ô trống để cân bằng nếu chỉ có 1 item
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+
+        // Hiển thị nút More / Hide nếu có nhiều hàng hơn maxRows
+        if (rows.size > maxRows) {
+            Spacer(modifier = Modifier.height(8.dp))
+            MoreAndHideButton(expanded, onClick = { expanded = !expanded })
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            LanguageItem(
-                flagUrl = "https://placehold.co/40x40",
-                name = "Chinese"
-            )
-            LanguageItem(
-                flagUrl = "https://placehold.co/40x40",
-                name = "Vietnamese"
-            )
-        }
     }
 }
 
 @Composable
-fun LanguageItem(
-    flagUrl: String,
-    name: String
-) {
+fun LanguageItem(icon: Int, name: String, modifier: Modifier = Modifier) {
     Row(
+        modifier = modifier
+            .padding(vertical = 6.dp)
+            .wrapContentHeight(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.Center
     ) {
-        AsyncImage(
-            model = flagUrl,
-            contentDescription = "Flag",
-            modifier = Modifier.size(40.dp),
-            contentScale = ContentScale.Crop
+        Icon(
+            painter = painterResource(id = icon),
+            contentDescription = name,
+            tint = Color.Unspecified,
+            modifier = Modifier
+                .size(40.dp)
         )
+
+        Spacer(modifier = Modifier.width(6.dp))
 
         Text(
             text = name,
             color = Color.Black,
-            fontSize = 16.sp
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Normal,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 4.dp)
         )
     }
 }
 
+
+@Composable
+fun MoreAndHideButton(expanded: Boolean, onClick: () -> Unit) {
+    val teal = Color(0xFF1AB6B6)
+
+    Spacer(modifier = Modifier.height(8.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = if (expanded) "Hide" else "More",
+            color = teal,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier
+                .clickable (onClick = onClick)
+                .padding(4.dp)
+        )
+    }
+}
 @SuppressLint("DefaultLocale")
 @Composable
 fun ReviewsSection(
