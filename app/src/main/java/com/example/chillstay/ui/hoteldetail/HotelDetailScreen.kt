@@ -46,17 +46,23 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chillstay.R
 import com.example.chillstay.core.feature.IconRegistry
+import com.example.chillstay.domain.model.Policy
 import org.koin.compose.koinInject
+import java.time.format.TextStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -183,7 +189,7 @@ fun HotelDetailScreen(
 
             item {
                 // Hotel policies
-                HotelPoliciesSection()
+                HotelPoliciesSection(uiState.hotel?.policy ?: emptyList())
             }
 
             item {
@@ -271,7 +277,7 @@ fun DescriptionSection(description: String) {
                 }
             }
         )
-        if(isTextLong) MoreAndHideButton(expanded, onClick = { expanded = !expanded })
+        if (isTextLong) MoreAndHideButton(expanded, onClick = { expanded = !expanded })
     }
 }
 
@@ -316,7 +322,7 @@ fun FacilitiesSection(facilities: List<String>) {
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
-        if(isRowLong) MoreAndHideButton(expanded, onClick = { expanded = !expanded })
+        if (isRowLong) MoreAndHideButton(expanded, onClick = { expanded = !expanded })
     }
 }
 
@@ -478,11 +484,12 @@ fun MoreAndHideButton(expanded: Boolean, onClick: () -> Unit) {
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier
-                .clickable (onClick = onClick)
+                .clickable(onClick = onClick)
                 .padding(4.dp)
         )
     }
 }
+
 @SuppressLint("DefaultLocale")
 @Composable
 fun ReviewsSection(
@@ -653,86 +660,65 @@ fun ReviewCard(
 }
 
 @Composable
-fun HotelPoliciesSection() {
+fun HotelPoliciesSection(policies: List<Policy>) {
+    val policyText = remember(policies) {
+        buildAnnotatedString {
+            policies.forEachIndexed { index, p ->
+                withStyle(
+                    style = SpanStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color(0xFF212121)
+                    )
+                ) {
+                    append(p.title)
+                }
+                append("\n")
+                withStyle(
+                    style = SpanStyle(
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 14.sp,
+                        color = Color(0xFF757575)
+                    )
+                ) {
+                    append(p.content)
+                }
+                if (index != policies.lastIndex) append("\n\n")
+            }
+        }
+    }
+    var expanded by remember { mutableStateOf(false) }
+    var isTextLong by remember { mutableStateOf(false) }
+    val collapsedMaxLines = 6
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 21.dp)
     ) {
-        Row(
+        Text(
+            text = "Policies",
+            color = Color(0xFF212121),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = policyText,
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Hotel policies",
-                color = Color(0xFF212121),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "See all",
-                color = Color(0xFF1AB6B6),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable { /* TODO: Navigate to all policies */ }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Children and extra beds",
-            color = Color(0xFF212121),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
+            maxLines = if (expanded) 1000 else collapsedMaxLines,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { layoutResult: TextLayoutResult ->
+                // Chỉ đánh giá overflow khi đang ở trạng thái collapsed
+                if (!expanded) {
+                    val hasOverflow = layoutResult.hasVisualOverflow
+                    if (hasOverflow != isTextLong) isTextLong = hasOverflow
+                }
+            }
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Infant 0-2 year(s)",
-            color = Color(0xFF212121),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = "Stay for free if using existing bedding. Note, if you need a cot, it may incur an extra charge and is subject to availability.",
-            color = Color(0xFF757575),
-            fontSize = 14.sp,
-            lineHeight = 19.60.sp
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Children 3-12 year(s)",
-            color = Color(0xFF212121),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = "Must use an extra bed",
-            color = Color(0xFF757575),
-            fontSize = 14.sp,
-            lineHeight = 19.60.sp
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Guests 13 years and older are considered adults.",
-            color = Color(0xFF757575),
-            fontSize = 14.sp,
-            lineHeight = 19.60.sp
-        )
+        if (isTextLong) MoreAndHideButton(expanded, onClick = { expanded = !expanded })
     }
 }
 
