@@ -9,35 +9,35 @@ object IconRegistry {
 
     init {
         // Facilities
-        register("swimmingPool", R.drawable.ic_swimming_pool)
-        register("beachFront", R.drawable.ic_beach_front)
+        register("swimming pool", R.drawable.ic_swimming_pool)
+        register("beach front", R.drawable.ic_beach_front)
         register("fitness", R.drawable.ic_fitness)
-        register("nightClub", R.drawable.ic_nightclub)
+        register("nightclub", R.drawable.ic_nightclub)
         register("restaurant", R.drawable.ic_restaurant)
         register("spa", R.drawable.ic_spa)
 
         // Features
-        register("cityCenter", R.drawable.ic_city_center)
-        register("Nature", R.drawable.ic_nature)
-        register("nearAirport", R.drawable.ic_near_airport)
-        register("shoppingDistrict", R.drawable.ic_shopping_district)
-        register("smokingArea", R.drawable.ic_smoking_area)
-        register("stylishArea", R.drawable.ic_stylish_area)
-        register("historicArea", R.drawable.ic_historic_area)
-        register("petAllowed", R.drawable.ic_pet_allowed)
-        register("24hReception", R.drawable.ic_24h)
+        register("city center", R.drawable.ic_city_center)
+        register("nature", R.drawable.ic_nature)
+        register("near airport", R.drawable.ic_near_airport)
+        register("shopping district", R.drawable.ic_shopping_district)
+        register("smoking area", R.drawable.ic_smoking_area)
+        register("stylish area", R.drawable.ic_stylish_area)
+        register("historic area", R.drawable.ic_historic_area)
+        register("pet allowed", R.drawable.ic_pet_allowed)
+        register("24h reception", R.drawable.ic_24h)
 
         // Languages
-        register("chinese", R.drawable.ic_chinese)
-        register("english", R.drawable.ic_english)
-        register("hindi", R.drawable.ic_hindi)
-        register("indonesian", R.drawable.ic_indonesian)
-        register("japanese", R.drawable.ic_japanese)
-        register("malaysian", R.drawable.ic_malaysian)
-        register("spanish", R.drawable.ic_spanish)
-        register("french", R.drawable.ic_french)
-        register("italian", R.drawable.ic_italian)
-        register("vietnamese", R.drawable.ic_vietnamese)
+        register("Chinese", R.drawable.ic_chinese)
+        register("English", R.drawable.ic_english)
+        register("Hindi", R.drawable.ic_hindi)
+        register("Indonesian", R.drawable.ic_indonesian)
+        register("Japanese", R.drawable.ic_japanese)
+        register("Malaysian", R.drawable.ic_malaysian)
+        register("Spanish", R.drawable.ic_spanish)
+        register("French", R.drawable.ic_french)
+        register("Italian", R.drawable.ic_italian)
+        register("Vietnamese", R.drawable.ic_vietnamese)
     }
 
     /** Register by resource id */
