@@ -1,6 +1,8 @@
 package com.example.chillstay.ui.hoteldetail
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -33,6 +36,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,13 +46,23 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.ParagraphStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chillstay.R
+import com.example.chillstay.core.feature.IconRegistry
+import com.example.chillstay.domain.model.Policy
 import org.koin.compose.koinInject
+import java.time.format.TextStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,9 +129,8 @@ fun HotelDetailScreen(
                 // Hotel Info
                 HotelInfoSection(
                     name = uiState.hotel?.name.orEmpty(),
-                    address = listOfNotNull(uiState.hotel?.city, uiState.hotel?.country).filter { it.isNotBlank() }.joinToString(", "),
-                    rating = uiState.hotel?.rating ?: 0.0,
-                    reviews = uiState.hotel?.numberOfReviews ?: 0
+                    address = uiState.hotel?.formattedAddress.orEmpty(),
+                    rating = uiState.hotel?.rating ?: 0.0
                 )
             }
 
@@ -152,17 +167,8 @@ fun HotelDetailScreen(
             }
 
             item {
-                // Location
-                LocationSection(address = listOfNotNull(uiState.hotel?.city, uiState.hotel?.country).filter { it.isNotBlank() }.joinToString(", "))
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            item {
                 // Languages spoken
-                LanguagesSection()
+                LanguagesSection(uiState.hotel?.language ?: emptyList())
             }
 
             item {
@@ -173,7 +179,8 @@ fun HotelDetailScreen(
                 ReviewsSection(
                     rating = uiState.hotel?.rating ?: 0.0,
                     reviewCount = uiState.hotel?.numberOfReviews ?: 0,
-                    reviewsWithUser = uiState.reviewsWithUser)
+                    reviewsWithUser = uiState.reviewsWithUser
+                )
             }
 
             item {
@@ -182,7 +189,7 @@ fun HotelDetailScreen(
 
             item {
                 // Hotel policies
-                HotelPoliciesSection()
+                HotelPoliciesSection(uiState.hotel?.policy ?: emptyList())
             }
 
             item {
@@ -201,54 +208,6 @@ fun HotelDetailScreen(
     }
 }
 
-@SuppressLint("DefaultLocale")
-@Composable
-fun HotelInfoSection(
-    name: String,
-    address: String,
-    rating: Double,
-    reviews: Int
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 21.dp)
-    ) {
-        Text(
-            text = name,
-            color = Color(0xFF212121),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            text = address,
-            color = Color(0xFF757575),
-            fontSize = 16.sp
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            repeat(5) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_star),
-                    contentDescription = "Rating Star",
-                    tint = Color(0xFFFBC40D),
-                    modifier = Modifier.size(12.dp)
-                )
-            }
-            Text(
-                text = String.format("%.1f", rating),
-                color = Color(0xFF1AB6B6),
-                fontSize = 13.67.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
 @Composable
 fun SellingOutWarning() {
     Card(
@@ -257,7 +216,7 @@ fun SellingOutWarning() {
             .padding(horizontal = 24.dp),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF9800))
+        border = BorderStroke(1.dp, Color(0xFFFF9800))
     ) {
         Column(
             modifier = Modifier.padding(13.dp)
@@ -282,10 +241,16 @@ fun SellingOutWarning() {
 
 @Composable
 fun DescriptionSection(description: String) {
+    var expanded by remember { mutableStateOf(false) }
+    // isTextLong = true nếu text vượt quá collapsedMaxLines khi ở trạng thái collapsed
+    var isTextLong by remember { mutableStateOf(false) }
+    val collapsedMaxLines = 3
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 23.dp)
+            .animateContentSize() // animate expand/collapse
     ) {
         Text(
             text = "Description",
@@ -300,13 +265,27 @@ fun DescriptionSection(description: String) {
             text = description,
             color = Color(0xFF757575),
             fontSize = 15.88.sp,
-            lineHeight = 25.60.sp
+            lineHeight = 25.60.sp,
+            maxLines = if (expanded) 1000 else collapsedMaxLines,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+            onTextLayout = { layoutResult: TextLayoutResult ->
+                // Chỉ đánh giá overflow khi đang ở trạng thái collapsed
+                if (!expanded) {
+                    val hasOverflow = layoutResult.hasVisualOverflow
+                    if (hasOverflow != isTextLong) isTextLong = hasOverflow
+                }
+            }
         )
+        if (isTextLong) MoreAndHideButton(expanded, onClick = { expanded = !expanded })
     }
 }
 
 @Composable
 fun FacilitiesSection(facilities: List<String>) {
+    val maxRows = 2
+    var expanded by remember { mutableStateOf(false) }
+    var isRowLong by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -323,6 +302,7 @@ fun FacilitiesSection(facilities: List<String>) {
 
         // Dynamic facilities list
         val chunks = facilities.chunked(4)
+        var count = 0
         chunks.forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -330,21 +310,24 @@ fun FacilitiesSection(facilities: List<String>) {
             ) {
                 rowItems.forEach { name ->
                     FacilityItem(
-                        icon = R.drawable.ic_check, // simple check icon placeholder
+                        icon = IconRegistry.getIconResId(name) ?: R.drawable.ic_check,
                         name = name
                     )
                 }
             }
+            count++
+            if (!expanded && count >= maxRows) {
+                isRowLong = chunks.size > maxRows
+                return@forEach
+            }
             Spacer(modifier = Modifier.height(16.dp))
         }
+        if (isRowLong) MoreAndHideButton(expanded, onClick = { expanded = !expanded })
     }
 }
 
 @Composable
-fun FacilityItem(
-    icon: Int,
-    name: String
-) {
+fun FacilityItem(icon: Int, name: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(80.dp)
@@ -375,53 +358,17 @@ fun FacilityItem(
             color = Color(0xFF757575),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
     }
 }
 
 @Composable
-fun LocationSection(address: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 21.dp)
-    ) {
-        Text(
-            text = "Location",
-            color = Color(0xFF212121),
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
+fun LanguagesSection(languages: List<String>) {
+    val maxRows = 2
+    var expanded by remember { mutableStateOf(false) }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            AsyncImage(
-                model = "https://placehold.co/71x70",
-                contentDescription = "Location Map",
-                modifier = Modifier
-                    .size(71.dp)
-                    .clip(RoundedCornerShape(10.dp)),
-                contentScale = ContentScale.Crop
-            )
-
-            Text(
-                text = address,
-                color = Color(0xFF757575),
-                fontSize = 16.sp,
-                lineHeight = 24.sp
-            )
-        }
-    }
-}
-
-@Composable
-fun LanguagesSection() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -436,59 +383,109 @@ fun LanguagesSection() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Language flags and names
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            LanguageItem(
-                flagUrl = "https://placehold.co/40x40",
-                name = "English"
-            )
-            LanguageItem(
-                flagUrl = "https://placehold.co/40x40",
-                name = "Italian"
-            )
+        // chia danh sách thành các hàng, mỗi hàng 2 item
+        val rows = languages.chunked(2)
+        val rowsToShow = if (expanded) rows else rows.take(maxRows)
+
+        rowsToShow.forEach { rowItems ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // first item (luôn có)
+                val first = rowItems.getOrNull(0)
+                if (first != null) {
+                    LanguageItem(
+                        icon = IconRegistry.getIconResId(first) ?: R.drawable.ic_vietnamese,
+                        name = first,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+
+                // small space between the two items
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // second item (có thể null)
+                val second = rowItems.getOrNull(1)
+                if (second != null) {
+                    LanguageItem(
+                        icon = IconRegistry.getIconResId(second) ?: R.drawable.ic_vietnamese,
+                        name = second,
+                        modifier = Modifier.weight(1f)
+                    )
+                } else {
+                    // ô trống để cân bằng nếu chỉ có 1 item
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+
+        // Hiển thị nút More / Hide nếu có nhiều hàng hơn maxRows
+        if (rows.size > maxRows) {
+            Spacer(modifier = Modifier.height(8.dp))
+            MoreAndHideButton(expanded, onClick = { expanded = !expanded })
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            LanguageItem(
-                flagUrl = "https://placehold.co/40x40",
-                name = "Chinese"
-            )
-            LanguageItem(
-                flagUrl = "https://placehold.co/40x40",
-                name = "Vietnamese"
-            )
-        }
     }
 }
 
 @Composable
-fun LanguageItem(
-    flagUrl: String,
-    name: String
-) {
+fun LanguageItem(icon: Int, name: String, modifier: Modifier = Modifier) {
     Row(
+        modifier = modifier
+            .padding(vertical = 6.dp)
+            .wrapContentHeight(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.Center
     ) {
-        AsyncImage(
-            model = flagUrl,
-            contentDescription = "Flag",
-            modifier = Modifier.size(40.dp),
-            contentScale = ContentScale.Crop
+        Icon(
+            painter = painterResource(id = icon),
+            contentDescription = name,
+            tint = Color.Unspecified,
+            modifier = Modifier
+                .size(40.dp)
         )
+
+        Spacer(modifier = Modifier.width(6.dp))
 
         Text(
             text = name,
             color = Color.Black,
-            fontSize = 16.sp
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Normal,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
+    }
+}
+
+
+@Composable
+fun MoreAndHideButton(expanded: Boolean, onClick: () -> Unit) {
+    val teal = Color(0xFF1AB6B6)
+
+    Spacer(modifier = Modifier.height(8.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = if (expanded) "Hide" else "More",
+            color = teal,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(4.dp)
         )
     }
 }
@@ -663,86 +660,65 @@ fun ReviewCard(
 }
 
 @Composable
-fun HotelPoliciesSection() {
+fun HotelPoliciesSection(policies: List<Policy>) {
+    val policyText = remember(policies) {
+        buildAnnotatedString {
+            policies.forEachIndexed { index, p ->
+                withStyle(
+                    style = SpanStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color(0xFF212121)
+                    )
+                ) {
+                    append(p.title)
+                }
+                append("\n")
+                withStyle(
+                    style = SpanStyle(
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 14.sp,
+                        color = Color(0xFF757575)
+                    )
+                ) {
+                    append(p.content)
+                }
+                if (index != policies.lastIndex) append("\n\n")
+            }
+        }
+    }
+    var expanded by remember { mutableStateOf(false) }
+    var isTextLong by remember { mutableStateOf(false) }
+    val collapsedMaxLines = 6
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 21.dp)
     ) {
-        Row(
+        Text(
+            text = "Policies",
+            color = Color(0xFF212121),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = policyText,
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Hotel policies",
-                color = Color(0xFF212121),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "See all",
-                color = Color(0xFF1AB6B6),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable { /* TODO: Navigate to all policies */ }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Children and extra beds",
-            color = Color(0xFF212121),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
+            maxLines = if (expanded) 1000 else collapsedMaxLines,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { layoutResult: TextLayoutResult ->
+                // Chỉ đánh giá overflow khi đang ở trạng thái collapsed
+                if (!expanded) {
+                    val hasOverflow = layoutResult.hasVisualOverflow
+                    if (hasOverflow != isTextLong) isTextLong = hasOverflow
+                }
+            }
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Infant 0-2 year(s)",
-            color = Color(0xFF212121),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = "Stay for free if using existing bedding. Note, if you need a cot, it may incur an extra charge and is subject to availability.",
-            color = Color(0xFF757575),
-            fontSize = 14.sp,
-            lineHeight = 19.60.sp
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Children 3-12 year(s)",
-            color = Color(0xFF212121),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = "Must use an extra bed",
-            color = Color(0xFF757575),
-            fontSize = 14.sp,
-            lineHeight = 19.60.sp
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Guests 13 years and older are considered adults.",
-            color = Color(0xFF757575),
-            fontSize = 14.sp,
-            lineHeight = 19.60.sp
-        )
+        if (isTextLong) MoreAndHideButton(expanded, onClick = { expanded = !expanded })
     }
 }
 
