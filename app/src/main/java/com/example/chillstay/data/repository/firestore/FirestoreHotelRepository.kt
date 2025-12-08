@@ -99,25 +99,37 @@ class FirestoreHotelRepository @Inject constructor(
             var firestoreQuery: Query = firestore.collection("hotels")
             
             // Apply filters
-            country?.let { firestoreQuery = firestoreQuery.whereEqualTo("country", it) }
-            city?.let { firestoreQuery = firestoreQuery.whereEqualTo("city", it) }
-            minRating?.let { firestoreQuery = firestoreQuery.whereGreaterThanOrEqualTo("rating", it) }
-            maxPrice?.let { firestoreQuery = firestoreQuery.whereLessThanOrEqualTo("priceRange.max", it) }
+            country?.trim()?.let { firestoreQuery = firestoreQuery.whereEqualTo("country", it) }
+            city?.trim()?.let { firestoreQuery = firestoreQuery.whereEqualTo("city", it) }
+            // Avoid inequality filters in Firestore to prevent composite index requirements
             
             val snapshot = firestoreQuery.get().await()
-            
-            snapshot.documents.mapNotNull { document ->
-                document.toObject(Hotel::class.java)?.copy(id = document.id)
-            }.filter { hotel ->
-                // Text search in memory (for development)
-                query.isEmpty() || hotel.name.contains(query, ignoreCase = true) ||
-                hotel.city.contains(query, ignoreCase = true)
+            Log.d("FirestoreHotelRepository", "searchHotels fetched ${snapshot.documents.size} docs from Firestore")
+            val mapped = snapshot.documents.mapNotNull { document ->
+                mapHotelDocument(document)
             }
+            Log.d("FirestoreHotelRepository", "searchHotels mapped ${mapped.size} hotels")
+
+            val q = query.trim()
+            val filtered = mapped
+                .filter { hotel ->
+                    q.isEmpty() ||
+                    hotel.name.contains(q, ignoreCase = true) ||
+                    hotel.city.contains(q, ignoreCase = true) ||
+                    hotel.country.contains(q, ignoreCase = true) ||
+                    hotel.description.contains(q, ignoreCase = true)
+                }
+
+            Log.d(
+                "FirestoreHotelRepository",
+                "searchHotels mapped names=${mapped.joinToString(limit = 10, truncated = "...") { it.name }}"
+            )
+            Log.d("FirestoreHotelRepository", "searchHotels returning ${filtered.size} hotels after filters")
+            filtered
         } catch (e: FirebaseFirestoreException) {
             when (e.code) {
                 FirebaseFirestoreException.Code.FAILED_PRECONDITION -> {
-                    Log.w("FirestoreHotelRepository", "Index not found for search query. Please create composite index in Firebase Console: ${e.message}")
-                    Log.w("FirestoreHotelRepository", "Index required: collection=hotels, fields=country(asc),city(asc),rating(desc)")
+                    Log.w("FirestoreHotelRepository", "Index not found. Consider using client-side filtering or create composite index if needed: ${e.message}")
                     emptyList()
                 }
                 FirebaseFirestoreException.Code.PERMISSION_DENIED -> {
@@ -220,7 +232,7 @@ class FirestoreHotelRepository @Inject constructor(
                 .await()
             
             snapshot.documents.mapNotNull { document ->
-                document.toObject(Hotel::class.java)?.copy(id = document.id)
+                mapHotelDocument(document)
             }
         } catch (e: Exception) {
             emptyList()

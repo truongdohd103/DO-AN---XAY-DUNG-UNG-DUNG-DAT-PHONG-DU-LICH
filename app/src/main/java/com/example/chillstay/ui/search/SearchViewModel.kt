@@ -22,6 +22,24 @@ class SearchViewModel(
             is SearchUiEvent.CityChanged -> _state.update { it.copy(city = event.value) }
             is SearchUiEvent.MinRatingChanged -> _state.update { it.copy(minRating = event.value) }
             is SearchUiEvent.MaxPriceChanged -> _state.update { it.copy(maxPrice = event.value) }
+            is SearchUiEvent.SortChanged -> {
+                _state.update { it.copy(sortBy = event.value) }
+                val current = _state.value.results
+                val sorted = when (event.value) {
+                    SortOption.RatingDesc -> current.sortedByDescending { it.rating }
+                    SortOption.PriceAsc -> current.sortedBy { it.minPrice ?: it.rooms.minOfOrNull { room -> room.price } ?: Double.MAX_VALUE }
+                    SortOption.Relevance -> current
+                }
+                _state.update { it.copy(results = sorted) }
+            }
+            is SearchUiEvent.ApplyQuickFilter -> {
+                _state.update {
+                    it.copy(
+                        minRating = event.minRating?.toString() ?: it.minRating,
+                        maxPrice = event.maxPrice?.toString() ?: it.maxPrice
+                    )
+                }
+            }
             SearchUiEvent.Submit -> performSearch()
             SearchUiEvent.ClearFilters -> _state.update {
                 it.copy(
@@ -36,9 +54,11 @@ class SearchViewModel(
 
     private fun performSearch() {
         val currentQuery = _state.value.query.trim()
-        if (currentQuery.isBlank()) {
+        val hasAnyFilter = _state.value.country.isNotBlank() || _state.value.city.isNotBlank() ||
+                _state.value.minRating.isNotBlank() || _state.value.maxPrice.isNotBlank()
+        if (currentQuery.isBlank() && !hasAnyFilter) {
             viewModelScope.launch {
-                sendEffect { SearchUiEffect.ShowMessage("Vui lòng nhập từ khoá tìm kiếm") }
+                sendEffect { SearchUiEffect.ShowMessage("Please enter a keyword or select filters") }
             }
             return
         }
@@ -48,26 +68,37 @@ class SearchViewModel(
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             searchHotelsUseCase(
                 query = currentQuery,
-                country = _state.value.country.takeIf { it.isNotBlank() },
-                city = _state.value.city.takeIf { it.isNotBlank() },
+                country = _state.value.country.trim().takeIf { it.isNotBlank() },
+                city = _state.value.city.trim().takeIf { it.isNotBlank() },
                 minRating = _state.value.minRating.toDoubleOrNull(),
                 maxPrice = _state.value.maxPrice.toDoubleOrNull()
             ).collectLatest { result ->
                 when (result) {
                     is Result.Success -> {
-                        _state.update { it.copy(isLoading = false, results = result.data, errorMessage = null) }
+                        val hotels = when (_state.value.sortBy) {
+                            SortOption.RatingDesc -> result.data.sortedByDescending { it.rating }
+                            SortOption.PriceAsc -> result.data.sortedBy { it.minPrice ?: it.rooms.minOfOrNull { room -> room.price } ?: Double.MAX_VALUE }
+                            SortOption.Relevance -> result.data
+                        }
+                        val topCities = result.data
+                            .groupBy { it.city }
+                            .mapValues { (_, list) -> list.sumOf { it.numberOfReviews } }
+                            .toList()
+                            .sortedByDescending { it.second }
+                            .take(5)
+                            .map { it.first }
+
+                        _state.update { it.copy(isLoading = false, results = hotels, errorMessage = null, suggestions = topCities) }
                         if (result.data.isEmpty()) {
-                            sendEffect { SearchUiEffect.ShowMessage("Không tìm thấy khách sạn phù hợp") }
+                            sendEffect { SearchUiEffect.ShowMessage("No matching hotels found") }
                         }
                     }
                     is Result.Error -> {
                         _state.update { it.copy(isLoading = false, errorMessage = result.throwable.message) }
-                        sendEffect { SearchUiEffect.ShowMessage(result.throwable.message ?: "Tìm kiếm thất bại") }
+                        sendEffect { SearchUiEffect.ShowMessage(result.throwable.message ?: "Search failed") }
                     }
                 }
             }
         }
     }
 }
-
-

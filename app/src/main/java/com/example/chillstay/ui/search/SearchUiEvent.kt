@@ -8,6 +8,8 @@ sealed interface SearchUiEvent : UiEvent {
     data class CityChanged(val value: String) : SearchUiEvent
     data class MinRatingChanged(val value: String) : SearchUiEvent
     data class MaxPriceChanged(val value: String) : SearchUiEvent
+    data class SortChanged(val value: SortOption) : SearchUiEvent
+    data class ApplyQuickFilter(val minRating: Double? = null, val maxPrice: Double? = null) : SearchUiEvent
     object Submit : SearchUiEvent
     object ClearFilters : SearchUiEvent
 }

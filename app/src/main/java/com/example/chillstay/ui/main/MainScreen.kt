@@ -27,6 +27,7 @@ import org.koin.androidx.compose.koinViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import com.example.chillstay.core.common.OnboardingManager
 
 @Composable
 fun MainScreen(
@@ -51,10 +52,15 @@ fun MainScreen(
         mutableStateOf(initialTab) 
     }
 
+    val onboardingContext = LocalContext.current
     // Update selectedTab when initialTab changes
     LaunchedEffect(initialTab) {
         android.util.Log.d("MainScreen", "LaunchedEffect: initialTab changed to $initialTab")
         selectedTab = initialTab
+        val lastRoute = "${Routes.MAIN}?tab=$initialTab"
+        val tabIndex = initialTab
+        OnboardingManager.setLastRoute(onboardingContext, lastRoute)
+        OnboardingManager.setLastTab(onboardingContext, tabIndex)
     }
 
     val isSignedIn = authState.isAuthenticated
@@ -104,11 +110,19 @@ fun MainScreen(
                     if (tabIndex == 2 || tabIndex == 3 || tabIndex == 4) {
                         if (isSignedIn) {
                             selectedTab = tabIndex
+                            val lastRoute = "${Routes.MAIN}?tab=$tabIndex"
+                            val idx = tabIndex
+                            coroutineScope.launch { OnboardingManager.setLastRoute(onboardingContext, lastRoute) }
+                            coroutineScope.launch { OnboardingManager.setLastTab(onboardingContext, idx) }
                         } else {
                             onRequireAuth()
                         }
                     } else {
                         selectedTab = tabIndex
+                        val lastRoute = "${Routes.MAIN}?tab=$tabIndex"
+                        val idx = tabIndex
+                        coroutineScope.launch { OnboardingManager.setLastRoute(onboardingContext, lastRoute) }
+                        coroutineScope.launch { OnboardingManager.setLastTab(onboardingContext, idx) }
                     }
                 }
             )

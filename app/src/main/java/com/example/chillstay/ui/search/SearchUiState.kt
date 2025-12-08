@@ -13,7 +13,14 @@ data class SearchUiState(
     val maxPrice: String = "",
     val isLoading: Boolean = false,
     val results: List<Hotel> = emptyList(),
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val sortBy: SortOption = SortOption.Relevance,
+    val suggestions: List<String> = emptyList()
 ) : UiState
 
+enum class SortOption {
+    Relevance,
+    RatingDesc,
+    PriceAsc
+}
 

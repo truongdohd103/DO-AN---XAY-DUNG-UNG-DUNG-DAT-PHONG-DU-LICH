@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items as lazyRowItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -80,7 +83,7 @@ fun SearchScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Tìm kiếm khách sạn",
+                        text = "Search Hotels",
                         color = Color.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
@@ -110,7 +113,35 @@ fun SearchScreen(
                 .padding(horizontal = 24.dp)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
-            SearchFilters(uiState = uiState, onEvent = viewModel::onEvent)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    SearchFilters(uiState = uiState, onEvent = viewModel::onEvent)
+                }
+            }
+
+            if (uiState.suggestions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Top Cities",
+                    color = Color(0xFF1AB6B6),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    lazyRowItems(uiState.suggestions, key = { it }) { city ->
+                        androidx.compose.material3.AssistChip(
+                            onClick = { viewModel.onEvent(SearchUiEvent.CityChanged(city)) },
+                            label = { Text(city) }
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -125,7 +156,7 @@ fun SearchScreen(
                         .height(52.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1AB6B6))
                 ) {
-                    Text(text = "Tìm kiếm", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "Search", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
 
                 TextButton(
@@ -134,7 +165,33 @@ fun SearchScreen(
                         .weight(1f)
                         .height(52.dp)
                 ) {
-                    Text(text = "Xoá bộ lọc", color = Color(0xFF1AB6B6), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "Clear Filters", color = Color(0xFF1AB6B6), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                item {
+                    androidx.compose.material3.FilterChip(
+                        selected = uiState.sortBy == SortOption.RatingDesc,
+                        onClick = { viewModel.onEvent(SearchUiEvent.SortChanged(SortOption.RatingDesc)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF1AB6B6),
+                            selectedLabelColor = Color.White
+                        ),
+                        label = { Text("Sort: Rating") }
+                    )
+                }
+                item {
+                    androidx.compose.material3.FilterChip(
+                        selected = uiState.sortBy == SortOption.PriceAsc,
+                        onClick = { viewModel.onEvent(SearchUiEvent.SortChanged(SortOption.PriceAsc)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFF1AB6B6),
+                            selectedLabelColor = Color.White
+                        ),
+                        label = { Text("Sort: Price") }
+                    )
                 }
             }
 
@@ -188,7 +245,7 @@ private fun SearchFilters(
         OutlinedTextField(
             value = uiState.query,
             onValueChange = { onEvent(SearchUiEvent.QueryChanged(it)) },
-            label = { Text("Từ khoá") },
+            label = { Text("Keyword") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
@@ -200,34 +257,19 @@ private fun SearchFilters(
             OutlinedTextField(
                 value = uiState.country,
                 onValueChange = { onEvent(SearchUiEvent.CountryChanged(it)) },
-                label = { Text("Quốc gia") },
+                label = { Text("Country") },
                 modifier = Modifier.weight(1f),
                 singleLine = true
             )
             OutlinedTextField(
                 value = uiState.city,
                 onValueChange = { onEvent(SearchUiEvent.CityChanged(it)) },
-                label = { Text("Thành phố") },
+                label = { Text("City") },
                 modifier = Modifier.weight(1f),
                 singleLine = true
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(
-                value = uiState.minRating,
-                onValueChange = { onEvent(SearchUiEvent.MinRatingChanged(it)) },
-                label = { Text("Rating tối thiểu") },
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
-            OutlinedTextField(
-                value = uiState.maxPrice,
-                onValueChange = { onEvent(SearchUiEvent.MaxPriceChanged(it)) },
-                label = { Text("Giá tối đa") },
-                modifier = Modifier.weight(1f),
-                singleLine = true
-            )
-        }
+        
     }
 }
 
@@ -295,7 +337,7 @@ private fun SearchResultCard(
                 val minPrice = hotel.rooms.minOfOrNull { it.price } ?: hotel.minPrice
                 if (minPrice != null) {
                     Text(
-                        text = "Giá từ $${"%.0f".format(minPrice)} / đêm",
+                        text = "From $${"%.0f".format(minPrice)} / night",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1AB6B6)

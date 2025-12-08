@@ -20,7 +20,7 @@ import com.example.chillstay.ui.welcome.WelcomeScreen
 import com.example.chillstay.ui.welcome.CarouselScreen
 import com.example.chillstay.ui.profile.profileRoute
 import com.example.chillstay.ui.vip.VipStatusScreen
-import com.example.chillstay.ui.search.SearchScreen
+import com.example.chillstay.ui.search.searchRoute
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import androidx.compose.ui.platform.LocalContext
@@ -83,7 +83,47 @@ fun AppNavHost(
 
     val isSignedIn = authState.isAuthenticated
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    val computedStart = run {
+        val ctx = context
+        when {
+            OnboardingManager.isFirstLaunch(ctx) -> Routes.WELCOME
+            !OnboardingManager.isOnboardingDone(ctx) -> Routes.CAROUSEL
+            else -> Routes.MAIN
+        }
+    }
+
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(navController) {
+        navController.addOnDestinationChangedListener { _, destination, arguments ->
+            val route = destination.route ?: Routes.MAIN
+            val last = if (route.contains("${Routes.MAIN}?tab")) {
+                val tabVal = arguments?.getString("tab") ?: "0"
+                "${Routes.MAIN}?tab=$tabVal"
+            } else if (route == Routes.MAIN) {
+                val tabVal = arguments?.getString("tab") ?: "0"
+                "${Routes.MAIN}?tab=$tabVal"
+            } else route
+            scope.launch { OnboardingManager.setLastRoute(context, last) }
+            if (route.contains("${Routes.MAIN}")) {
+                val tabInt = arguments?.getString("tab")?.toIntOrNull() ?: 0
+                scope.launch { OnboardingManager.setLastTab(context, tabInt) }
+            }
+        }
+    }
+
+    LaunchedEffect(computedStart) {
+        if (computedStart == Routes.MAIN) {
+            val last = OnboardingManager.getLastRoute(context)
+            if (last != null && last.startsWith("${Routes.MAIN}?tab=")) {
+                navController.navigate(last) {
+                    popUpTo(Routes.MAIN) { inclusive = true }
+                }
+            }
+        }
+    }
+
+    NavHost(navController = navController, startDestination = computedStart) {
         composable(Routes.WELCOME) {
             val coroutineScope = rememberCoroutineScope()
             WelcomeScreen(
@@ -265,12 +305,10 @@ fun AppNavHost(
                 onBackClick = { navController.popBackStack() }
             )
         }
-        composable(Routes.SEARCH) {
-            SearchScreen(
-                onBackClick = { navController.popBackStack() },
-                onHotelClick = { hotelId -> navController.navigateToHotelDetail(hotelId, false) }
-            )
-        }
+        searchRoute(
+            onBackClick = { navController.popBackStack() },
+            onHotelClick = { hotelId -> navController.navigateToHotelDetail(hotelId, false) }
+        )
         // Bookmark Route
         bookmarkRoute(
             onBackClick = {},
