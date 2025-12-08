@@ -7,9 +7,7 @@ import com.example.chillstay.domain.usecase.user.GetCurrentUserIdUseCase
 import com.example.chillstay.domain.usecase.user.SignInUseCase
 import com.example.chillstay.domain.usecase.user.SignOutUseCase
 import com.example.chillstay.domain.usecase.user.SignUpUseCase
-import com.example.chillstay.domain.usecase.user.GetUserProfileUseCase
-import com.example.chillstay.domain.usecase.user.UpdateUserProfileUseCase
-import java.time.LocalDate
+// Profile-specific use cases removed from AuthViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,15 +21,13 @@ class AuthViewModel(
     private val signInUseCase: SignInUseCase,
     private val signUpUseCase: SignUpUseCase,
     private val signOutUseCase: SignOutUseCase,
-    private val getCurrentUserIdUseCase: GetCurrentUserIdUseCase,
-    private val getUserProfileUseCase: GetUserProfileUseCase,
-    private val updateUserProfileUseCase: UpdateUserProfileUseCase
+    private val getCurrentUserIdUseCase: GetCurrentUserIdUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AuthUiState())
+    private val _uiState = MutableStateFlow(AuthState())
     val uiState = _uiState.asStateFlow()
 
-    private val _uiEffect = MutableSharedFlow<AuthUiEffect>()
+    private val _uiEffect = MutableSharedFlow<AuthEffect>()
     val uiEffect = _uiEffect.asSharedFlow()
 
     private var loadProfileJob: Job? = null
@@ -40,21 +36,16 @@ class AuthViewModel(
         refreshAuthenticatedUser()
     }
 
-    fun onEvent(event: AuthUiEvent) {
+    fun onEvent(event: AuthIntent) {
         when (event) {
-            is AuthUiEvent.EmailChanged -> _uiState.update { it.copy(email = event.value) }
-            is AuthUiEvent.PasswordChanged -> _uiState.update { it.copy(password = event.value) }
-            is AuthUiEvent.ConfirmPasswordChanged -> _uiState.update { it.copy(confirmPassword = event.value) }
-            is AuthUiEvent.ProfileFullNameChanged -> _uiState.update { it.copy(profileFullName = event.value) }
-            is AuthUiEvent.ProfileGenderChanged -> _uiState.update { it.copy(profileGender = event.value) }
-            is AuthUiEvent.ProfilePhotoUrlChanged -> _uiState.update { it.copy(profilePhotoUrl = event.value) }
-            is AuthUiEvent.ProfileDateOfBirthChanged -> _uiState.update { it.copy(profileDateOfBirth = event.value) }
-            AuthUiEvent.SignIn -> signIn()
-            AuthUiEvent.SignUp -> signUp()
-            AuthUiEvent.SignOut -> signOut()
-            AuthUiEvent.LoadProfile -> refreshAuthenticatedUser()
-            AuthUiEvent.SaveProfile -> saveProfile()
-            AuthUiEvent.ClearMessage -> clearMessages()
+            is AuthIntent.EmailChanged -> _uiState.update { it.copy(email = event.value) }
+            is AuthIntent.PasswordChanged -> _uiState.update { it.copy(password = event.value) }
+            is AuthIntent.ConfirmPasswordChanged -> _uiState.update { it.copy(confirmPassword = event.value) }
+            AuthIntent.SignIn -> signIn()
+            AuthIntent.SignUp -> signUp()
+            AuthIntent.SignOut -> signOut()
+            // Auth no longer loads or saves profile details
+            AuthIntent.ClearMessage -> clearMessages()
         }
     }
 
@@ -72,26 +63,19 @@ class AuthViewModel(
             signInUseCase(email, password).collectLatest { result ->
                 when (result) {
                     is Result.Success -> {
-                        val user = result.data
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                currentUser = user,
                                 isAuthenticated = true,
                                 email = "",
                                 password = "",
                                 confirmPassword = "",
-                                profileFullName = user.fullName,
-                                profileGender = user.gender,
-                                profilePhotoUrl = user.photoUrl,
-                                profileDateOfBirth = user.dateOfBirth.toString(),
                                 errorMessage = null,
                                 successMessage = null,
-                                profileMessage = null,
                                 preserveMessage = false
                             )
                         }
-                        sendEffect(AuthUiEffect.NavigateToMain)
+                        sendEffect(AuthEffect.NavigateToMain)
                     }
 
                     is Result.Error -> {
@@ -139,7 +123,7 @@ class AuthViewModel(
                                 confirmPassword = ""
                             )
                         }
-                        sendEffect(AuthUiEffect.NavigateToSignIn)
+                        sendEffect(AuthEffect.NavigateToSignIn)
                     }
 
                     is Result.Error -> {
@@ -161,8 +145,8 @@ class AuthViewModel(
             signOutUseCase().collectLatest { result ->
                 when (result) {
                     is Result.Success -> {
-                        _uiState.value = AuthUiState()
-                        sendEffect(AuthUiEffect.NavigateToAuth)
+                        _uiState.value = AuthState()
+                        sendEffect(AuthEffect.NavigateToAuth)
                     }
 
                     is Result.Error -> {
@@ -178,112 +162,22 @@ class AuthViewModel(
         }
     }
 
-    private fun saveProfile() {
-        val user = _uiState.value.currentUser ?: return
-        val dateInput = _uiState.value.profileDateOfBirth
-        val parsedDate = if (dateInput.isBlank()) {
-            null
-        } else {
-            runCatching { LocalDate.parse(dateInput) }.getOrElse {
-                _uiState.update { it.copy(profileMessage = "Date of birth must follow yyyy-MM-dd") }
-                return
-            }
-        }
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isProfileLoading = true, profileMessage = null) }
-            updateUserProfileUseCase(
-                userId = user.id,
-                fullName = _uiState.value.profileFullName.ifBlank { null },
-                gender = _uiState.value.profileGender.ifBlank { null },
-                photoUrl = _uiState.value.profilePhotoUrl.ifBlank { null },
-                dateOfBirth = parsedDate
-            ).collectLatest { result ->
-                when (result) {
-                    is Result.Success -> {
-                        val updated = result.data
-                        _uiState.update {
-                            it.copy(
-                                isProfileLoading = false,
-                                currentUser = updated,
-                                profileFullName = updated.fullName,
-                                profileGender = updated.gender,
-                                profilePhotoUrl = updated.photoUrl,
-                                profileDateOfBirth = updated.dateOfBirth.toString(),
-                                profileMessage = "Profile updated successfully"
-                            )
-                        }
-                    }
-
-                    is Result.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                isProfileLoading = false,
-                                profileMessage = result.throwable.message ?: "Failed to update profile"
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private fun refreshAuthenticatedUser() {
         viewModelScope.launch {
             getCurrentUserIdUseCase().collectLatest { result ->
                 when (result) {
                     is Result.Success -> {
                         val userId = result.data
-                        if (userId.isNullOrBlank()) {
-                            _uiState.update {
-                                it.copy(
-                                    currentUser = null,
-                                    isAuthenticated = false
-                                )
-                            }
-                        } else {
-                            loadProfile(userId)
+                        _uiState.update {
+                            it.copy(
+                                isAuthenticated = !userId.isNullOrBlank()
+                            )
                         }
                     }
 
                     is Result.Error -> {
                         _uiState.update {
                             it.copy(errorMessage = result.throwable.message ?: "Failed to load user session")
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun loadProfile(userId: String) {
-        loadProfileJob?.cancel()
-        loadProfileJob = viewModelScope.launch {
-            _uiState.update { it.copy(isProfileLoading = true) }
-            getUserProfileUseCase(userId).collectLatest { result ->
-                when (result) {
-                    is Result.Success -> {
-                        val user = result.data
-                        _uiState.update {
-                            it.copy(
-                                isProfileLoading = false,
-                                currentUser = user,
-                                isAuthenticated = true,
-                                profileFullName = user.fullName,
-                                profileGender = user.gender,
-                                profilePhotoUrl = user.photoUrl,
-                                profileDateOfBirth = user.dateOfBirth.toString(),
-                                profileMessage = null
-                            )
-                        }
-                    }
-
-                    is Result.Error -> {
-                        _uiState.update {
-                            it.copy(
-                                isProfileLoading = false,
-                                profileMessage = result.throwable.message ?: "Failed to load profile"
-                            )
                         }
                     }
                 }
@@ -298,17 +192,15 @@ class AuthViewModel(
             } else {
                 state.copy(
                     errorMessage = null,
-                    successMessage = null,
-                    profileMessage = null
+                    successMessage = null
                 )
             }
         }
     }
 
-    private fun sendEffect(effect: AuthUiEffect) {
+    private fun sendEffect(effect: AuthEffect) {
         viewModelScope.launch {
             _uiEffect.emit(effect)
         }
     }
 }
-

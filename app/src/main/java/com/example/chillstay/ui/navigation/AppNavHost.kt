@@ -13,12 +13,12 @@ import com.example.chillstay.ui.auth.AuthenticationScreen
 import com.example.chillstay.ui.auth.SignInScreen
 import com.example.chillstay.ui.auth.SignUpScreen
 import com.example.chillstay.ui.auth.AuthViewModel
-import com.example.chillstay.ui.auth.AuthUiEffect
+import com.example.chillstay.ui.auth.AuthEffect
 import com.example.chillstay.ui.home.HomeViewModel
 import com.example.chillstay.ui.main.MainScreen
 import com.example.chillstay.ui.welcome.WelcomeScreen
 import com.example.chillstay.ui.welcome.CarouselScreen
-import com.example.chillstay.ui.profile.ProfileScreen
+import com.example.chillstay.ui.profile.profileRoute
 import com.example.chillstay.ui.vip.VipStatusScreen
 import com.example.chillstay.ui.search.SearchScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,7 +42,6 @@ import com.example.chillstay.ui.review.reviewRoute
 import com.example.chillstay.ui.review.navigateToReview
 import com.example.chillstay.ui.bill.billRoute
 import com.example.chillstay.ui.bill.navigateToBill
-import android.util.Log
 
 @Composable
 fun AppNavHost(
@@ -57,25 +56,25 @@ fun AppNavHost(
     LaunchedEffect(authViewModel) {
         authViewModel.uiEffect.collect { effect ->
             when (effect) {
-                AuthUiEffect.NavigateToMain -> {
+                AuthEffect.NavigateToMain -> {
                     navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.AUTHENTICATION) { inclusive = true }
                     }
                 }
 
-                AuthUiEffect.NavigateToSignIn -> {
+                AuthEffect.NavigateToSignIn -> {
                     navController.navigate(Routes.SIGN_IN) {
                         popUpTo(Routes.SIGN_UP) { inclusive = true }
                     }
                 }
 
-                AuthUiEffect.NavigateToAuth -> {
+                AuthEffect.NavigateToAuth -> {
                     navController.navigate(Routes.AUTHENTICATION) {
                         popUpTo(Routes.MAIN) { inclusive = true }
                     }
                 }
 
-                is AuthUiEffect.ShowMessage -> {
+                is AuthEffect.ShowMessage -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
                 }
             }
@@ -268,7 +267,8 @@ fun AppNavHost(
         }
         composable(Routes.SEARCH) {
             SearchScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onHotelClick = { hotelId -> navController.navigateToHotelDetail(hotelId, false) }
             )
         }
         // Bookmark Route
@@ -295,12 +295,9 @@ fun AppNavHost(
                 // TODO: Handle booking cancellation
             }
         )
-        composable(Routes.PROFILE) {
-            ProfileScreen(
-                state = authState,
-                onEvent = authViewModel::onEvent
-            )
-        }
+        profileRoute(
+            onLogoutClick = { authViewModel.onEvent(com.example.chillstay.ui.auth.AuthIntent.SignOut) }
+        )
         // Voucher Routes
         voucherRoutes(
             onBackClick = { navController.popBackStack() },

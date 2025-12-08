@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelRoomsUseCase
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -27,14 +28,14 @@ class RoomViewModel(
         viewModelScope.launch {
             try {
                 // Load hotel name (optional, for top bar)
-                when (val hotelResult = getHotelById(hotelId)) {
+                when (val hotelResult = getHotelById(hotelId).first()) {
                     is com.example.chillstay.core.common.Result.Success ->
                         _state.update { it.updateHotelName(hotelResult.data.name) }
                     is com.example.chillstay.core.common.Result.Error -> Unit
                 }
 
                 // Load rooms
-                when (val roomsResult = getHotelRooms(hotelId)) {
+                when (val roomsResult = getHotelRooms(hotelId).first()) {
                     is com.example.chillstay.core.common.Result.Success ->
                         _state.update { it.updateRooms(roomsResult.data).updateIsLoading(false) }
                     is com.example.chillstay.core.common.Result.Error -> {

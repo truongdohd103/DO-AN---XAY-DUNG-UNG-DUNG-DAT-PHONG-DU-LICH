@@ -15,8 +15,30 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,9 +48,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
 import com.example.chillstay.domain.model.Hotel
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,8 +55,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import androidx.compose.ui.res.painterResource
 import com.example.chillstay.R
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,11 +64,27 @@ fun HomeScreen(
     onVipClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onSeeAllRecentClick: () -> Unit = {},
-    onContinueItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> }
+    onContinueItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> },
+    onRequireAuth: () -> Unit = {}
 ) {
     val uiState by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is HomeEffect.ShowError -> snackbarHostState.showSnackbar(effect.message)
+                is HomeEffect.ShowSuccess -> snackbarHostState.showSnackbar(effect.message)
+                HomeEffect.ShowBookmarkAdded -> snackbarHostState.showSnackbar("Đã thêm vào danh sách yêu thích")
+                HomeEffect.ShowBookmarkRemoved -> snackbarHostState.showSnackbar("Đã xoá khỏi danh sách yêu thích")
+                HomeEffect.RequireAuthentication -> onRequireAuth()
+                else -> Unit
+            }
+        }
+    }
     
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -91,7 +124,7 @@ fun HomeScreen(
             item {
                 // Category Tabs (horizontal scroll)
                 CategoryTabs(
-                    selected = uiState.selectedCategory,
+                    selected = uiState.selectedCategory.ordinal,
                     onSelect = { viewModel.onEvent(HomeIntent.ChangeHotelCategory(it)) }
                 )
             }
@@ -170,89 +203,20 @@ fun HomeScreen(
             }
             
             item {
-                // Continue Planning from pending bookings
-                
-                val userId = FirebaseAuth.getInstance().currentUser?.uid
-                var pending by remember(userId) { mutableStateOf(listOf<PendingDisplayItem>()) }
-                LaunchedEffect(userId) {
-                    if (userId != null) {
-                        // Move Firebase operations to background thread
-                        pending = withContext(Dispatchers.IO) {
-                            try {
-                                val db = FirebaseFirestore.getInstance()
-                                val docs = db.collection("bookings")
-                                    .whereEqualTo("userId", userId)
-                                    .whereEqualTo("status", "PENDING")
-                                    .limit(10)
-                                    .get()
-                                    .await()
-                                val items = mutableListOf<PendingDisplayItem>()
-                                for (d in docs.documents) {
-                                    val dateFrom = d.getString("dateFrom") ?: continue
-                                    val dateTo = d.getString("dateTo") ?: continue
-                                    val guests = (d.getLong("guests") ?: 0).toInt()
-                                    val createdAt = d.getDate("createdAt")
-                                    val hotelId = d.getString("hotelId")
-                                    val roomId = d.getString("roomId")
-                                    val hotelName = try {
-                                        val hid = d.getString("hotelId")
-                                        if (!hid.isNullOrEmpty()) {
-                                            val hdoc = db.collection("hotels").document(hid).get().await()
-                                            hdoc.getString("name")
-                                        } else null
-                                    } catch (_: Exception) { null }
-                                    items.add(PendingDisplayItem(hotelName, dateFrom, dateTo, guests, createdAt, hotelId ?: "", roomId ?: ""))
-                                }
-                                items.sortedByDescending { it.createdAt }
-                            } catch (_: Exception) {
-                                emptyList()
-                            }
-                        }
-                    }
-                }
-                ContinuePlanningSection(items = pending, onItemClick = onContinueItemClick)
+                ContinuePlanningSection(
+                    items = uiState.pendingBookings,
+                    onItemClick = onContinueItemClick
+                )
             }
             
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
-            if (FirebaseAuth.getInstance().currentUser != null) {
+            if (uiState.recentHotels.isNotEmpty()) {
                 item {
-                    // Recently Booked (user-specific)
-                    val userId = FirebaseAuth.getInstance().currentUser?.uid
-                    var recentHotels by remember(userId) { mutableStateOf(listOf<Hotel>()) }
-                    LaunchedEffect(userId) {
-                        if (userId != null) {
-                            // Move Firebase operations to background thread
-                            recentHotels = withContext(Dispatchers.IO) {
-                                try {
-                                    val db = FirebaseFirestore.getInstance()
-                                    val bookingDocs = db.collection("bookings")
-                                        .whereEqualTo("userId", userId)
-                                        .whereEqualTo("status", "COMPLETED") // Only completed bookings
-                                        .limit(10)
-                                        .get()
-                                        .await()
-                                    val hotelIds = bookingDocs.documents
-                                        .sortedByDescending { it.getDate("createdAt") }
-                                        .mapNotNull { it.getString("hotelId") }
-                                        .distinct()
-                                        .take(2) // Only show 2 most recent completed bookings
-                                    val hotels = mutableListOf<Hotel>()
-                                    for (hid in hotelIds) {
-                                        val doc = db.collection("hotels").document(hid).get().await()
-                                        doc.toObject(Hotel::class.java)?.copy(id = doc.id)?.let { hotels.add(it) }
-                                    }
-                                    hotels
-                                } catch (_: Exception) {
-                                    emptyList()
-                                }
-                            }
-                        }
-                    }
                     RecentlyBookedSection(
-                        hotels = recentHotels,
+                        hotels = uiState.recentHotels,
                         bookmarkedHotels = uiState.bookmarkedHotels,
                         onSeeAllClick = onSeeAllRecentClick,
                         onHotelClick = onHotelClick,
@@ -700,16 +664,6 @@ fun VipStatusSection(onClick: () -> Unit = {}) {
         }
     }
 }
-
-data class PendingDisplayItem(
-    val hotelName: String?,
-    val dateFrom: String,
-    val dateTo: String,
-    val guests: Int,
-    val createdAt: java.util.Date?,
-    val hotelId: String,
-    val roomId: String
-)
 
 @Composable
 fun ContinuePlanningSection(items: List<PendingDisplayItem> = emptyList(), onItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> }) {

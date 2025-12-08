@@ -8,4 +8,5 @@ sealed interface HomeEffect : UiEffect {
     data class NavigateToHotelDetail(val hotelId: String) : HomeEffect
     object ShowBookmarkAdded : HomeEffect
     object ShowBookmarkRemoved : HomeEffect
+    object RequireAuthentication : HomeEffect
 }

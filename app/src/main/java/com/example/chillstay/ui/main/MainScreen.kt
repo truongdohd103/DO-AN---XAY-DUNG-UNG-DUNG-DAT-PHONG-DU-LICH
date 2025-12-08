@@ -13,21 +13,26 @@ import com.example.chillstay.ui.voucher.VoucherDetailScreen  // Import thêm
 import com.example.chillstay.ui.bookmark.MyBookmarkScreen
 import com.example.chillstay.ui.trip.MyTripScreen
 import com.example.chillstay.ui.profile.ProfileScreen
+import com.example.chillstay.ui.profile.ProfileViewModel
+import com.example.chillstay.ui.profile.ProfileUiEffect
 import com.example.chillstay.ui.navigation.Routes
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import android.util.Log
-import com.example.chillstay.ui.auth.AuthUiEvent
-import com.example.chillstay.ui.auth.AuthUiState
+import com.example.chillstay.ui.auth.AuthIntent
+import com.example.chillstay.ui.auth.AuthState
+import org.koin.androidx.compose.koinViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun MainScreen(
     homeViewModel: HomeViewModel,
-    authState: AuthUiState,
-    onAuthEvent: (AuthUiEvent) -> Unit,
+    authState: AuthState,
+    onAuthEvent: (AuthIntent) -> Unit,
     initialTab: Int = 0,
     onBackClick: () -> Unit = {},
     onHotelClick: (String, Boolean) -> Unit = { _, _ -> },
@@ -56,6 +61,17 @@ fun MainScreen(
 
     // Use coroutine scope for background operations
     val coroutineScope = rememberCoroutineScope()
+
+    val profileViewModel: ProfileViewModel = koinViewModel()
+    val profileState by profileViewModel.uiState.collectAsStateWithLifecycle()
+    val profileContext = LocalContext.current
+    LaunchedEffect(profileViewModel) {
+        profileViewModel.uiEffect.collect { effect ->
+            when (effect) {
+                is ProfileUiEffect.ShowMessage -> Toast.makeText(profileContext, effect.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     // Nested NavController cho Voucher tab (sub-stack: Voucher list → Detail)
     val voucherNavController = rememberNavController()
@@ -113,7 +129,8 @@ fun MainScreen(
                         selectedTab = 3 // My Trip tab
                         // Note: MyTripScreen will show COMPLETED tab by default
                     },
-                    onContinueItemClick = onContinueItemClick
+                    onContinueItemClick = onContinueItemClick,
+                    onRequireAuth = onRequireAuth
                 )
                 1 -> {
                     // Nested NavHost cho Voucher tab: Handle sub-navigation (list → detail)
@@ -175,8 +192,9 @@ fun MainScreen(
                            initialTab = 1 // Show COMPLETED tab by default
                        )
                 4 -> ProfileScreen(
-                    state = authState,
-                    onEvent = onAuthEvent
+                    state = profileState,
+                    onEvent = profileViewModel::onEvent,
+                    onLogoutClick = { onAuthEvent(AuthIntent.SignOut) }
                 )
             }
         }

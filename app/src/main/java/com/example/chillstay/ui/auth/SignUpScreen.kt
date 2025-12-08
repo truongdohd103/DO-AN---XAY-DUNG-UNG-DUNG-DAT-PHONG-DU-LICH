@@ -44,8 +44,8 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
-    state: AuthUiState,
-    onEvent: (AuthUiEvent) -> Unit,
+    state: AuthState,
+    onEvent: (AuthIntent) -> Unit,
     onBackClick: () -> Unit,
     onSignInClick: () -> Unit,
     onGoogleClick: () -> Unit,
@@ -55,7 +55,7 @@ fun SignUpScreen(
     var confirmPasswordVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        onEvent(AuthUiEvent.ClearMessage)
+        onEvent(AuthIntent.ClearMessage)
     }
 
     Scaffold(
@@ -135,7 +135,7 @@ fun SignUpScreen(
                 )
                 OutlinedTextField(
                     value = state.email,
-                    onValueChange = { onEvent(AuthUiEvent.EmailChanged(it)) },
+                    onValueChange = { onEvent(AuthIntent.EmailChanged(it)) },
                     placeholder = { Text("Email", color = Color(0xFF757575)) },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -158,7 +158,7 @@ fun SignUpScreen(
                 )
                 OutlinedTextField(
                     value = state.password,
-                    onValueChange = { onEvent(AuthUiEvent.PasswordChanged(it)) },
+                    onValueChange = { onEvent(AuthIntent.PasswordChanged(it)) },
                     placeholder = { Text("Password", color = Color(0xFF757575)) },
                     modifier = Modifier.fillMaxWidth(),
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -190,7 +190,7 @@ fun SignUpScreen(
                  )
                  OutlinedTextField(
                      value = state.confirmPassword,
-                     onValueChange = { onEvent(AuthUiEvent.ConfirmPasswordChanged(it)) },
+                     onValueChange = { onEvent(AuthIntent.ConfirmPasswordChanged(it)) },
                      placeholder = { Text("Password", color = Color(0xFF757575)) },
                      modifier = Modifier.fillMaxWidth(),
                      visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -238,7 +238,7 @@ fun SignUpScreen(
              }
              
              Button(
-                 onClick = { onEvent(AuthUiEvent.SignUp) },
+                 onClick = { onEvent(AuthIntent.SignUp) },
                  enabled = isFormValid && !state.isLoading,
                  modifier = Modifier
                      .fillMaxWidth()

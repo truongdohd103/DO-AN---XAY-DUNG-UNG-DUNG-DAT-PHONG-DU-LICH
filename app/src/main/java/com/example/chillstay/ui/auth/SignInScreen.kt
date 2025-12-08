@@ -58,8 +58,8 @@ import com.example.chillstay.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignInScreen(
-    state: AuthUiState,
-    onEvent: (AuthUiEvent) -> Unit,
+    state: AuthState,
+    onEvent: (AuthIntent) -> Unit,
     onBackClick: () -> Unit,
     onSignUpClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
@@ -70,7 +70,7 @@ fun SignInScreen(
     var passwordVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        onEvent(AuthUiEvent.ClearMessage)
+        onEvent(AuthIntent.ClearMessage)
     }
 
     Scaffold(
@@ -169,7 +169,7 @@ fun SignInScreen(
                     )
                     OutlinedTextField(
                         value = state.email,
-                        onValueChange = { onEvent(AuthUiEvent.EmailChanged(it)) },
+                        onValueChange = { onEvent(AuthIntent.EmailChanged(it)) },
                         placeholder = { Text("Email", color = Color(0xFF757575)) },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -192,7 +192,7 @@ fun SignInScreen(
                     )
                     OutlinedTextField(
                         value = state.password,
-                        onValueChange = { onEvent(AuthUiEvent.PasswordChanged(it)) },
+                        onValueChange = { onEvent(AuthIntent.PasswordChanged(it)) },
                         placeholder = { Text("Password", color = Color(0xFF757575)) },
                         modifier = Modifier.fillMaxWidth(),
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -233,7 +233,7 @@ fun SignInScreen(
                 
                 // Sign in button
                 Button(
-                    onClick = { onEvent(AuthUiEvent.SignIn) },
+                    onClick = { onEvent(AuthIntent.SignIn) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(62.dp),

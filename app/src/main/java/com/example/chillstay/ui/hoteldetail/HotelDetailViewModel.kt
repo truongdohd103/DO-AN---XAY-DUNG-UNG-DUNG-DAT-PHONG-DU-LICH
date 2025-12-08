@@ -8,6 +8,7 @@ import com.example.chillstay.domain.usecase.bookmark.AddBookmarkUseCase
 import com.example.chillstay.domain.usecase.bookmark.RemoveBookmarkUseCase
 import com.example.chillstay.domain.usecase.review.GetHotelReviewsUseCase
 import com.example.chillstay.domain.repository.UserRepository
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
@@ -34,8 +35,7 @@ class HotelDetailViewModel(
         _state.update { it.updateIsLoading(true).clearError() }
 
         viewModelScope.launch {
-            try {
-                val result = getHotelById(hotelId)
+            getHotelById(hotelId).collectLatest { result ->
                 when (result) {
                     is com.example.chillstay.core.common.Result.Success -> {
                         _state.update { it.updateHotel(result.data) }
@@ -46,14 +46,8 @@ class HotelDetailViewModel(
                         _state.update {
                             it.updateIsLoading(false).updateError(result.throwable.message ?: "Failed to load hotel")
                         }
+                        sendEffect { HotelDetailEffect.ShowError(result.throwable.message ?: "Failed to load hotel details") }
                     }
-                }
-            } catch (exception: Exception) {
-                _state.update {
-                    it.updateIsLoading(false).updateError(exception.message ?: "Unknown error")
-                }
-                viewModelScope.launch {
-                    sendEffect { HotelDetailEffect.ShowError(exception.message ?: "Failed to load hotel details") }
                 }
             }
         }
@@ -109,30 +103,23 @@ class HotelDetailViewModel(
     }
 
     private suspend fun loadHotelRooms(hotelId: String) {
-        try {
-            val result = getHotelRooms(hotelId)
+        getHotelRooms(hotelId).collectLatest { result ->
             when (result) {
                 is com.example.chillstay.core.common.Result.Success -> {
                     val rooms = result.data
                     val minPrice = rooms.minByOrNull { it.price }?.price?.toInt()
-                    _state.update { 
+                    _state.update {
                         it.updateRooms(rooms)
                             .updateMinPrice(minPrice)
                             .updateIsLoading(false)
                     }
                 }
                 is com.example.chillstay.core.common.Result.Error -> {
-                    _state.update { 
+                    _state.update {
                         it.updateIsLoading(false).updateError(result.throwable.message ?: "Failed to load rooms")
                     }
+                    sendEffect { HotelDetailEffect.ShowError(result.throwable.message ?: "Failed to load rooms") }
                 }
-            }
-        } catch (exception: Exception) {
-            _state.update { 
-                it.updateIsLoading(false).updateError(exception.message ?: "Failed to load rooms")
-            }
-            viewModelScope.launch {
-                sendEffect { HotelDetailEffect.ShowError(exception.message ?: "Failed to load rooms") }
             }
         }
     }
