@@ -5,6 +5,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.dp
 import com.example.chillstay.ui.components.BottomNavigationBar
 import com.example.chillstay.ui.home.HomeScreen
 import com.example.chillstay.ui.home.HomeViewModel
@@ -28,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import com.example.chillstay.core.common.OnboardingManager
+import android.content.pm.ApplicationInfo
 
 @Composable
 fun MainScreen(
@@ -82,6 +86,8 @@ fun MainScreen(
     // Nested NavController cho Voucher tab (sub-stack: Voucher list → Detail)
     val voucherNavController = rememberNavController()
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
     // Optimize bookmark refresh with debouncing
     LaunchedEffect(selectedTab) {
         Log.d("MainScreen", "Tab changed to $selectedTab, refreshing bookmarks if needed")
@@ -101,6 +107,7 @@ fun MainScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             BottomNavigationBar(
                 selectedTab = selectedTab,
@@ -127,6 +134,7 @@ fun MainScreen(
                 }
             )
         }
+        
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -211,6 +219,7 @@ fun MainScreen(
                     onLogoutClick = { onAuthEvent(AuthIntent.SignOut) }
                 )
             }
+            
         }
     }
 }

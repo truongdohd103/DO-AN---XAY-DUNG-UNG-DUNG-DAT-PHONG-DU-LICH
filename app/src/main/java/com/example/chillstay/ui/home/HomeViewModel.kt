@@ -37,6 +37,7 @@ class HomeViewModel(
     init {
         observeCurrentUser()
         loadCategory(HotelCategory.POPULAR, force = true)
+        prefetchCategories()
     }
 
     override fun onEvent(event: HomeIntent) {
@@ -116,6 +117,29 @@ class HomeViewModel(
                         }
                         sendEffect { HomeEffect.ShowError(result.throwable.message ?: "Không thể tải danh sách khách sạn") }
                     }
+                }
+            }
+        }
+    }
+
+    private fun prefetchCategories() {
+        viewModelScope.launch {
+            // Prefetch Recommended
+            getHotelsUseCase(
+                HotelListFilter(category = HotelCategory.RECOMMENDED, limit = 3)
+            ).collectLatest { result ->
+                if (result is Result.Success) {
+                    _state.update { it.storeHotels(HotelCategory.RECOMMENDED, result.data) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            // Prefetch Trending
+            getHotelsUseCase(
+                HotelListFilter(category = HotelCategory.TRENDING, limit = 6)
+            ).collectLatest { result ->
+                if (result is Result.Success) {
+                    _state.update { it.storeHotels(HotelCategory.TRENDING, result.data) }
                 }
             }
         }

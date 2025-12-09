@@ -15,6 +15,7 @@ import com.example.chillstay.ui.auth.SignUpScreen
 import com.example.chillstay.ui.auth.AuthViewModel
 import com.example.chillstay.ui.auth.AuthEffect
 import com.example.chillstay.ui.home.HomeViewModel
+import com.example.chillstay.ui.home.HomeIntent
 import com.example.chillstay.ui.main.MainScreen
 import com.example.chillstay.ui.welcome.WelcomeScreen
 import com.example.chillstay.ui.welcome.CarouselScreen
@@ -298,7 +299,11 @@ fun AppNavHost(
         )
         // Booking Routes
         bookingRoutes(
-            onBackClick = { navController.popBackStack() }
+            onBackClick = {
+                homeViewModel.onEvent(HomeIntent.RefreshUserSections)
+                homeViewModel.onEvent(HomeIntent.RefreshBookmarks)
+                navController.popBackStack()
+            }
         )
         composable(Routes.VIP_STATUS) {
             VipStatusScreen(

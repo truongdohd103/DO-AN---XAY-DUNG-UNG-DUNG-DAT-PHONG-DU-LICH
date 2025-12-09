@@ -51,12 +51,20 @@ import androidx.compose.ui.text.style.TextDecoration
 import com.example.chillstay.domain.model.Hotel
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import androidx.compose.ui.res.painterResource
 import com.example.chillstay.R
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
@@ -134,36 +142,60 @@ fun HomeScreen(
             }
             
             item {
-                // Horizontal list of hotels per selected category
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-                    items(
-                        items = uiState.hotels,
-                        key = { hotel -> hotel.id }
-                    ) { hotel ->
-                        val minPrice = remember(hotel.rooms) { 
-                            hotel.rooms.minByOrNull { it.price }?.price 
+                AnimatedContent(
+                    targetState = uiState.selectedCategory,
+                    transitionSpec = {
+                        (slideInHorizontally(animationSpec = tween(250)) + fadeIn(tween(250))) togetherWith
+                        (slideOutHorizontally(animationSpec = tween(250)) + fadeOut(tween(250)))
+                    },
+                    label = "CategoryTransition"
+                ) { _ ->
+                    if (uiState.isLoading && uiState.hotels.isEmpty()) {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(24.dp)
+                        ) {
+                            items(3) {
+                                Card(
+                                    modifier = Modifier
+                                        .width(240.dp)
+                                        .height(280.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(Color(0xFFF5F5F5)),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                                ) {}
+                            }
                         }
-                        val imageUrl = if (hotel.imageUrl.isNotEmpty()) {
-                            hotel.imageUrl[0]
-                        } else {
-                            "" // Empty string will show placeholder
+                    } else {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(24.dp)
+                        ) {
+                            items(
+                                items = uiState.hotels,
+                                key = { hotel -> hotel.id }
+                            ) { hotel ->
+                                val minPrice = remember(hotel.rooms, hotel.minPrice) {
+                                    hotel.rooms.minByOrNull { it.price }?.price ?: hotel.minPrice
+                                }
+                                val imageUrl = if (hotel.imageUrl.isNotEmpty()) hotel.imageUrl[0] else ""
+                                HotelCard(
+                                    title = hotel.name,
+                                    location = "${hotel.city}, ${hotel.country}",
+                                    price = minPrice?.let { "$${it.toInt()}" },
+                                    rating = hotel.rating.toFloat(),
+                                    reviews = hotel.numberOfReviews,
+                                    imageUrl = imageUrl,
+                                    isBookmarked = uiState.bookmarkedHotels.contains(hotel.id),
+                                    onBookmarkClick = { viewModel.onEvent(HomeIntent.ToggleBookmark(hotel.id)) },
+                                    onClick = { onHotelClick(hotel.id) }
+                                )
+                            }
                         }
-                        HotelCard(
-                            title = hotel.name,
-                            location = "${hotel.city}, ${hotel.country}",
-                            price = minPrice?.let { "$${it.toInt()}" },
-                            rating = hotel.rating.toFloat(),
-                            reviews = hotel.numberOfReviews,
-                            imageUrl = imageUrl,
-                            isBookmarked = uiState.bookmarkedHotels.contains(hotel.id),
-                            onBookmarkClick = { viewModel.onEvent(HomeIntent.ToggleBookmark(hotel.id)) },
-                            onClick = { onHotelClick(hotel.id) }
-                        )
                     }
                 }
             }
@@ -330,7 +362,7 @@ fun HotelCardsSection(
         items(hotels.size) { index ->
             val hotel = hotels[index]
             // Compute minimum room price if rooms are embedded; otherwise, omit price
-            val minPrice = hotel.rooms.minByOrNull { it.price }?.price
+                val minPrice = hotel.rooms.minByOrNull { it.price }?.price ?: hotel.minPrice
             val imageUrl = hotel.imageUrl.firstOrNull() ?: ""
             HotelCard(
                 title = hotel.name,

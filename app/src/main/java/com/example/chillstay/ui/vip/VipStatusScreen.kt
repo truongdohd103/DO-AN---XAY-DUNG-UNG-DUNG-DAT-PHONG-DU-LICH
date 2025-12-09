@@ -58,14 +58,6 @@ fun VipStatusScreen(
                                    fontSize = 20.sp,
                                    fontWeight = FontWeight.Bold
                                )
-                               val uid = FirebaseAuth.getInstance().currentUser?.uid
-                               if (!uid.isNullOrEmpty()) {
-                                   Text(
-                                       text = "uid: $uid",
-                                       color = Color(0xFFE0F2F1),
-                                       fontSize = 10.sp
-                                   )
-                               }
                            }
                        },
                 navigationIcon = {
