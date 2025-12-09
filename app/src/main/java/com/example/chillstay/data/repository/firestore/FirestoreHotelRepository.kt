@@ -13,6 +13,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,6 +22,17 @@ import javax.inject.Singleton
 class FirestoreHotelRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) : HotelRepository {
+
+    data class HotelDataConsistencyReport(
+        val hotelsChecked: Int,
+        val hotelsFixed: Int,
+        val roomsChecked: Int,
+        val roomsFixed: Int,
+        val roomsDeleted: Int,
+        val bookingsChecked: Int,
+        val bookingsUpdated: Int,
+        val issues: List<String>
+    )
 
     override suspend fun getHotels(): List<Hotel> {
         return try {
@@ -46,7 +58,9 @@ class FirestoreHotelRepository @Inject constructor(
                         id = roomDoc.id,
                         hotelId = roomData?.get("hotelId") as? String ?: "",
                         type = roomData?.get("type") as? String ?: "",
-                        price = (roomData?.get("price") as? Double) ?: 0.0,
+                        price = (roomData?.get("price") as? Number)?.toDouble()
+                            ?: (roomData?.get("price") as? String)?.toDoubleOrNull()
+                            ?: 0.0,
                         imageUrl = roomData?.get("imageUrl") as? String ?: "",
                         isAvailable = roomData?.get("isAvailable") as? Boolean ?: true,
                         capacity = (roomData?.get("capacity") as? Long)?.toInt() ?: 0,
@@ -99,25 +113,37 @@ class FirestoreHotelRepository @Inject constructor(
             var firestoreQuery: Query = firestore.collection("hotels")
             
             // Apply filters
-            country?.let { firestoreQuery = firestoreQuery.whereEqualTo("country", it) }
-            city?.let { firestoreQuery = firestoreQuery.whereEqualTo("city", it) }
-            minRating?.let { firestoreQuery = firestoreQuery.whereGreaterThanOrEqualTo("rating", it) }
-            maxPrice?.let { firestoreQuery = firestoreQuery.whereLessThanOrEqualTo("priceRange.max", it) }
+            country?.trim()?.let { firestoreQuery = firestoreQuery.whereEqualTo("country", it) }
+            city?.trim()?.let { firestoreQuery = firestoreQuery.whereEqualTo("city", it) }
+            // Avoid inequality filters in Firestore to prevent composite index requirements
             
             val snapshot = firestoreQuery.get().await()
-            
-            snapshot.documents.mapNotNull { document ->
-                document.toObject(Hotel::class.java)?.copy(id = document.id)
-            }.filter { hotel ->
-                // Text search in memory (for development)
-                query.isEmpty() || hotel.name.contains(query, ignoreCase = true) ||
-                hotel.city.contains(query, ignoreCase = true)
+            Log.d("FirestoreHotelRepository", "searchHotels fetched ${snapshot.documents.size} docs from Firestore")
+            val mapped = snapshot.documents.mapNotNull { document ->
+                mapHotelDocument(document)
             }
+            Log.d("FirestoreHotelRepository", "searchHotels mapped ${mapped.size} hotels")
+
+            val q = query.trim()
+            val filtered = mapped
+                .filter { hotel ->
+                    q.isEmpty() ||
+                    hotel.name.contains(q, ignoreCase = true) ||
+                    hotel.city.contains(q, ignoreCase = true) ||
+                    hotel.country.contains(q, ignoreCase = true) ||
+                    hotel.description.contains(q, ignoreCase = true)
+                }
+
+            Log.d(
+                "FirestoreHotelRepository",
+                "searchHotels mapped names=${mapped.joinToString(limit = 10, truncated = "...") { it.name }}"
+            )
+            Log.d("FirestoreHotelRepository", "searchHotels returning ${filtered.size} hotels after filters")
+            filtered
         } catch (e: FirebaseFirestoreException) {
             when (e.code) {
                 FirebaseFirestoreException.Code.FAILED_PRECONDITION -> {
-                    Log.w("FirestoreHotelRepository", "Index not found for search query. Please create composite index in Firebase Console: ${e.message}")
-                    Log.w("FirestoreHotelRepository", "Index required: collection=hotels, fields=country(asc),city(asc),rating(desc)")
+                    Log.w("FirestoreHotelRepository", "Index not found. Consider using client-side filtering or create composite index if needed: ${e.message}")
                     emptyList()
                 }
                 FirebaseFirestoreException.Code.PERMISSION_DENIED -> {
@@ -173,7 +199,9 @@ class FirestoreHotelRepository @Inject constructor(
                         id = roomDoc.id,
                         hotelId = roomData?.get("hotelId") as? String ?: "",
                         type = roomData?.get("type") as? String ?: "",
-                        price = (roomData?.get("price") as? Double) ?: 0.0,
+                        price = (roomData?.get("price") as? Number)?.toDouble()
+                            ?: (roomData?.get("price") as? String)?.toDoubleOrNull()
+                            ?: 0.0,
                         imageUrl = roomData?.get("imageUrl") as? String ?: "",
                         isAvailable = roomData?.get("isAvailable") as? Boolean ?: true,
                         capacity = (roomData?.get("capacity") as? Long)?.toInt() ?: 0,
@@ -220,7 +248,7 @@ class FirestoreHotelRepository @Inject constructor(
                 .await()
             
             snapshot.documents.mapNotNull { document ->
-                document.toObject(Hotel::class.java)?.copy(id = document.id)
+                mapHotelDocument(document)
             }
         } catch (e: Exception) {
             emptyList()
@@ -266,6 +294,180 @@ class FirestoreHotelRepository @Inject constructor(
         }
     }
 
+    suspend fun checkAndFixHotelData(): HotelDataConsistencyReport {
+        val issues = mutableListOf<String>()
+
+        val hotelsSnapshot = firestore.collection("hotels").get().await()
+        val hotelDocs = hotelsSnapshot.documents
+        var hotelsFixed = 0
+
+        for (doc in hotelDocs) {
+            val data = doc.data ?: continue
+            val updates = mutableMapOf<String, Any?>()
+
+            val name = data["name"]
+            if (name !is String || name.isBlank()) {
+                issues.add("hotel ${doc.id} thiếu hoặc name không hợp lệ")
+            }
+
+            when (val imageVal = data["imageUrl"]) {
+                is String -> {
+                    updates["imageUrl"] = listOf(imageVal)
+                }
+                is List<*> -> {
+                    val normalized = imageVal.mapNotNull { it as? String }
+                    if (normalized.size != imageVal.size) {
+                        updates["imageUrl"] = normalized
+                    }
+                }
+                null -> updates["imageUrl"] = emptyList<String>()
+            }
+
+            when (val langVal = data["language"]) {
+                is String -> updates["language"] = listOf(langVal)
+                is List<*> -> {
+                    val normalized = langVal.mapNotNull { it as? String }
+                    if (normalized.size != langVal.size) updates["language"] = normalized
+                }
+                null -> updates["language"] = emptyList<String>()
+            }
+
+            when (val minPrice = data["minPrice"]) {
+                is Number -> {}
+                is String -> minPrice.toDoubleOrNull()?.let { updates["minPrice"] = it }
+                else -> {}
+            }
+
+            when (val reviews = data["numberOfReviews"]) {
+                is Number -> {}
+                is String -> reviews.toIntOrNull()?.let { updates["numberOfReviews"] = it }
+                else -> {}
+            }
+
+            val propertyType = (data["propertyType"] as? String)?.uppercase()
+            if (propertyType == null || (propertyType != "HOTEL" && propertyType != "RESORT")) {
+                updates["propertyType"] = "HOTEL"
+            }
+
+            when (val rating = data["rating"]) {
+                is Number -> {}
+                is String -> rating.toDoubleOrNull()?.let { updates["rating"] = it }
+                else -> updates["rating"] = 0.0
+            }
+
+            val policyVal = data["policy"]
+            when (policyVal) {
+                is Map<*, *> -> {
+                    val title = policyVal["title"] as? String ?: ""
+                    val content = policyVal["content"] as? String ?: ""
+                    updates["policy"] = listOf(mapOf("title" to title, "content" to content))
+                }
+                is List<*> -> {
+                    val normalized = policyVal.mapNotNull { entry ->
+                        val m = entry as? Map<*, *>
+                        val t = m?.get("title") as? String
+                        val c = m?.get("content") as? String
+                        if (t != null && c != null) mapOf("title" to t, "content" to c) else null
+                    }
+                    if (normalized.size != policyVal.size) updates["policy"] = normalized
+                }
+                else -> {}
+            }
+
+            if (updates.isNotEmpty()) {
+                doc.reference.set(updates, SetOptions.merge()).await()
+                hotelsFixed++
+            }
+        }
+
+        val roomsSnapshot = firestore.collection("rooms").get().await()
+        val roomDocs = roomsSnapshot.documents
+        var roomsFixed = 0
+        var roomsDeleted = 0
+
+        val hotelIds = hotelDocs.map { it.id }.toSet()
+        for (room in roomDocs) {
+            val data = room.data ?: continue
+            val updates = mutableMapOf<String, Any?>()
+
+            val hid = data["hotelId"] as? String
+            if (hid.isNullOrBlank() || !hotelIds.contains(hid)) {
+                room.reference.delete().await()
+                roomsDeleted++
+                issues.add("room ${room.id} tham chiếu hotelId không tồn tại")
+                continue
+            }
+
+            when (val price = data["price"]) {
+                is Number -> {}
+                is String -> price.toDoubleOrNull()?.let { updates["price"] = it }
+                else -> {}
+            }
+
+            when (val available = data["isAvailable"]) {
+                is Boolean -> {}
+                is String -> updates["isAvailable"] = available.equals("true", true)
+                null -> updates["isAvailable"] = true
+                else -> {}
+            }
+
+            when (val cap = data["capacity"]) {
+                is Number -> updates["capacity"] = cap.toInt()
+                is String -> cap.toIntOrNull()?.let { updates["capacity"] = it }
+                else -> {}
+            }
+
+            val detail = data["detail"]
+            if (detail is Map<*, *>) {
+                val name = detail["name"] as? String
+                val size = (detail["size"] as? Number)?.toDouble() ?: (detail["size"] as? String)?.toDoubleOrNull()
+                val view = detail["view"] as? String
+                val normalized = mutableMapOf<String, Any>()
+                if (name != null) normalized["name"] = name
+                if (size != null) normalized["size"] = size
+                if (view != null) normalized["view"] = view
+                updates["detail"] = normalized
+            }
+
+            if (updates.isNotEmpty()) {
+                room.reference.set(updates, SetOptions.merge()).await()
+                roomsFixed++
+            }
+        }
+
+        val bookingsSnapshot = firestore.collection("bookings").get().await()
+        var bookingsUpdated = 0
+        for (b in bookingsSnapshot.documents) {
+            val data = b.data ?: continue
+            val hid = data["hotelId"] as? String
+            val rid = data["roomId"] as? String
+            val update = mutableMapOf<String, Any?>()
+            if (hid.isNullOrBlank() || !hotelIds.contains(hid)) {
+                update["status"] = "CANCELLED"
+                issues.add("booking ${b.id} tham chiếu hotelId không tồn tại")
+            }
+            if (rid.isNullOrBlank() || roomDocs.none { it.id == rid }) {
+                update["status"] = "CANCELLED"
+                issues.add("booking ${b.id} tham chiếu roomId không tồn tại")
+            }
+            if (update.isNotEmpty()) {
+                b.reference.set(update, SetOptions.merge()).await()
+                bookingsUpdated++
+            }
+        }
+
+        return HotelDataConsistencyReport(
+            hotelsChecked = hotelDocs.size,
+            hotelsFixed = hotelsFixed,
+            roomsChecked = roomDocs.size,
+            roomsFixed = roomsFixed,
+            roomsDeleted = roomsDeleted,
+            bookingsChecked = bookingsSnapshot.size(),
+            bookingsUpdated = bookingsUpdated,
+            issues = issues
+        )
+    }
+
     private fun mapHotelDocument(document: DocumentSnapshot): Hotel? {
         val data = document.data ?: run {
             Log.w("FirestoreHotelRepository", "Document ${document.id} has no data")
@@ -302,7 +504,8 @@ class FirestoreHotelRepository @Inject constructor(
             formattedAddress = data["formattedAddress"] as? String ?: "",
             imageUrl = (data["imageUrl"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
             language = (data["language"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
-            minPrice = (data["minPrice"] as? Number)?.toDouble(),
+            minPrice = (data["minPrice"] as? Number)?.toDouble()
+                ?: (data["minPrice"] as? String)?.toDoubleOrNull(),
             name = name,
             numberOfReviews = (data["numberOfReviews"] as? Number)?.toInt() ?: 0,
             policy = (data["policy"] as? List<*>)?.mapNotNull { entry ->

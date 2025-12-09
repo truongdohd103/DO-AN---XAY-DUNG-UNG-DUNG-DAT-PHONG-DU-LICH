@@ -5,6 +5,7 @@ import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.domain.usecase.bookmark.GetUserBookmarksUseCase
 import com.example.chillstay.domain.usecase.bookmark.RemoveBookmarkUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -96,7 +97,7 @@ class MyBookmarkViewModel(
         
         for (hotelId in hotelIds) {
             try {
-                val result = getHotelById(hotelId)
+                val result = getHotelById(hotelId).first()
                 when (result) {
                     is com.example.chillstay.core.common.Result.Success -> hotels.add(result.data)
                     is com.example.chillstay.core.common.Result.Error -> {

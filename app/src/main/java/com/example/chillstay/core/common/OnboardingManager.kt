@@ -9,6 +9,8 @@ object OnboardingManager {
     private const val PREFS_NAME = "chillstay_prefs"
     private const val KEY_WELCOME_SEEN = "welcome_seen"
     private const val KEY_ONBOARDING_DONE = "onboarding_done"
+    private const val KEY_LAST_ROUTE = "last_route"
+    private const val KEY_LAST_TAB = "last_tab"
 
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -30,6 +32,24 @@ object OnboardingManager {
     suspend fun markOnboardingDone(context: Context) {
         withContext(Dispatchers.IO) {
             prefs(context).edit().putBoolean(KEY_ONBOARDING_DONE, true).apply()
+        }
+    }
+
+    fun getLastRoute(context: Context): String? =
+        prefs(context).getString(KEY_LAST_ROUTE, null)
+
+    suspend fun setLastRoute(context: Context, route: String) {
+        withContext(Dispatchers.IO) {
+            prefs(context).edit().putString(KEY_LAST_ROUTE, route).apply()
+        }
+    }
+
+    fun getLastTab(context: Context): Int =
+        prefs(context).getInt(KEY_LAST_TAB, 0)
+
+    suspend fun setLastTab(context: Context, tab: Int) {
+        withContext(Dispatchers.IO) {
+            prefs(context).edit().putInt(KEY_LAST_TAB, tab).apply()
         }
     }
 }

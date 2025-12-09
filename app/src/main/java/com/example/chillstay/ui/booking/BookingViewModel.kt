@@ -18,6 +18,7 @@ import com.example.chillstay.domain.usecase.voucher.GetAvailableVouchersUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.google.firebase.Timestamp
 import java.time.LocalDate
@@ -71,14 +72,14 @@ class BookingViewModel(
             
             try {
                 // Load hotel data
-                val hotelResult = getHotelByIdUseCase(hotelId)
+                val hotelResult = getHotelByIdUseCase(hotelId).first()
                 val hotel = when (hotelResult) {
                     is com.example.chillstay.core.common.Result.Success -> hotelResult.data
                     is com.example.chillstay.core.common.Result.Error -> null
                 }
                 
                 // Load room data
-                val roomResult = getRoomByIdUseCase(roomId)
+                val roomResult = getRoomByIdUseCase(roomId).first()
                 val room = when (roomResult) {
                     is com.example.chillstay.core.common.Result.Success -> roomResult.data
                     is com.example.chillstay.core.common.Result.Error -> null
@@ -124,8 +125,8 @@ class BookingViewModel(
                         val booking = bookingResult.data
                         if (booking != null) {
                             // Load hotel and room data
-                            val hotelResult = getHotelByIdUseCase(booking.hotelId)
-                            val roomResult = getRoomByIdUseCase(booking.roomId)
+                            val hotelResult = getHotelByIdUseCase(booking.hotelId).first()
+                            val roomResult = getRoomByIdUseCase(booking.roomId).first()
                             
                             val hotel = when (hotelResult) {
                                 is com.example.chillstay.core.common.Result.Success -> hotelResult.data

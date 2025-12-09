@@ -9,6 +9,7 @@ import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
 import com.example.chillstay.domain.usecase.booking.CancelBookingUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
@@ -185,7 +186,7 @@ _state.update { it.updateIsLoading(true).clearError() }
         
         try {
             val hotels = hotelIds.map { hotelId ->
-                val result = getHotelById(hotelId)
+                val result = getHotelById(hotelId).first()
                 when (result) {
                     is com.example.chillstay.core.common.Result.Success -> hotelId to result.data
                     is com.example.chillstay.core.common.Result.Error -> {
@@ -211,7 +212,7 @@ _state.update { it.updateIsLoading(true).clearError() }
         
         try {
             val rooms = roomIds.map { roomId ->
-                val result = getRoomById(roomId)
+                val result = getRoomById(roomId).first()
                 when (result) {
                     is com.example.chillstay.core.common.Result.Success -> roomId to result.data
                     is com.example.chillstay.core.common.Result.Error -> {

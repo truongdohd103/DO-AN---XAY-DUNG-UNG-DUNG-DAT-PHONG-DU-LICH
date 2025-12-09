@@ -2,7 +2,7 @@ package com.example.chillstay.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -12,20 +12,20 @@ import kotlinx.coroutines.launch
 import com.example.chillstay.ui.auth.AuthenticationScreen
 import com.example.chillstay.ui.auth.SignInScreen
 import com.example.chillstay.ui.auth.SignUpScreen
+import com.example.chillstay.ui.auth.AuthViewModel
+import com.example.chillstay.ui.auth.AuthEffect
 import com.example.chillstay.ui.home.HomeViewModel
+import com.example.chillstay.ui.home.HomeIntent
 import com.example.chillstay.ui.main.MainScreen
 import com.example.chillstay.ui.welcome.WelcomeScreen
 import com.example.chillstay.ui.welcome.CarouselScreen
-import com.example.chillstay.ui.profile.ProfileScreen
+import com.example.chillstay.ui.profile.profileRoute
 import com.example.chillstay.ui.vip.VipStatusScreen
-import com.example.chillstay.ui.search.SearchScreen
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.FirebaseApp
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import java.time.LocalDate
+import com.example.chillstay.ui.search.searchRoute
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.androidx.compose.koinViewModel
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 
 // Navigation imports
 import com.example.chillstay.ui.hoteldetail.hotelDetailRoutes
@@ -43,9 +43,6 @@ import com.example.chillstay.ui.review.reviewRoute
 import com.example.chillstay.ui.review.navigateToReview
 import com.example.chillstay.ui.bill.billRoute
 import com.example.chillstay.ui.bill.navigateToBill
-import android.util.Log
-
-private const val TAG = "SignUpCheck"
 
 @Composable
 fun AppNavHost(
@@ -53,7 +50,81 @@ fun AppNavHost(
     startDestination: String = Routes.WELCOME,
     homeViewModel: HomeViewModel
 ) {
-    NavHost(navController = navController, startDestination = startDestination) {
+    val authViewModel: AuthViewModel = koinViewModel()
+    val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    LaunchedEffect(authViewModel) {
+        authViewModel.uiEffect.collect { effect ->
+            when (effect) {
+                AuthEffect.NavigateToMain -> {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.AUTHENTICATION) { inclusive = true }
+                    }
+                }
+
+                AuthEffect.NavigateToSignIn -> {
+                    navController.navigate(Routes.SIGN_IN) {
+                        popUpTo(Routes.SIGN_UP) { inclusive = true }
+                    }
+                }
+
+                AuthEffect.NavigateToAuth -> {
+                    navController.navigate(Routes.AUTHENTICATION) {
+                        popUpTo(Routes.MAIN) { inclusive = true }
+                    }
+                }
+
+                is AuthEffect.ShowMessage -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    val isSignedIn = authState.isAuthenticated
+
+    val computedStart = run {
+        val ctx = context
+        when {
+            OnboardingManager.isFirstLaunch(ctx) -> Routes.WELCOME
+            !OnboardingManager.isOnboardingDone(ctx) -> Routes.CAROUSEL
+            else -> Routes.MAIN
+        }
+    }
+
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(navController) {
+        navController.addOnDestinationChangedListener { _, destination, arguments ->
+            val route = destination.route ?: Routes.MAIN
+            val last = if (route.contains("${Routes.MAIN}?tab")) {
+                val tabVal = arguments?.getString("tab") ?: "0"
+                "${Routes.MAIN}?tab=$tabVal"
+            } else if (route == Routes.MAIN) {
+                val tabVal = arguments?.getString("tab") ?: "0"
+                "${Routes.MAIN}?tab=$tabVal"
+            } else route
+            scope.launch { OnboardingManager.setLastRoute(context, last) }
+            if (route.contains("${Routes.MAIN}")) {
+                val tabInt = arguments?.getString("tab")?.toIntOrNull() ?: 0
+                scope.launch { OnboardingManager.setLastTab(context, tabInt) }
+            }
+        }
+    }
+
+    LaunchedEffect(computedStart) {
+        if (computedStart == Routes.MAIN) {
+            val last = OnboardingManager.getLastRoute(context)
+            if (last != null && last.startsWith("${Routes.MAIN}?tab=")) {
+                navController.navigate(last) {
+                    popUpTo(Routes.MAIN) { inclusive = true }
+                }
+            }
+        }
+    }
+
+    NavHost(navController = navController, startDestination = computedStart) {
         composable(Routes.WELCOME) {
             val coroutineScope = rememberCoroutineScope()
             WelcomeScreen(
@@ -93,149 +164,20 @@ fun AppNavHost(
         }
         composable(Routes.SIGN_IN) {
             SignInScreen(
+                state = authState,
+                onEvent = authViewModel::onEvent,
                 onBackClick = { navController.popBackStack() },
-                onSignInClick = { email, password ->
-                    if (email.isNotBlank() && password.isNotBlank()) {
-                        val auth = FirebaseAuth.getInstance()
-                        auth.signInWithEmailAndPassword(email, password)
-                            .addOnSuccessListener {
-                                navController.navigate(Routes.MAIN) {
-                                    popUpTo(Routes.AUTHENTICATION) { inclusive = true }
-                                }
-                            }
-                            .addOnFailureListener { e ->
-                                navController.navigate("${Routes.SIGN_IN}?message=${java.net.URLEncoder.encode(e.message ?: "Sign in failed", "UTF-8")}")
-                            }
-                    }
-                },
                 onSignUpClick = { navController.navigate(Routes.SIGN_UP) },
                 onForgotPasswordClick = { /* TODO: Implement forgot password */ },
                 onGoogleClick = { /* TODO: Implement Google auth */ },
-                onFacebookClick = { /* TODO: Implement Facebook auth */ },
-                errorMessage = null
-            )
-        }
-        composable("${Routes.SIGN_IN}?message={message}") { backStackEntry ->
-            val message = backStackEntry.arguments?.getString("message")
-            SignInScreen(
-                onBackClick = { navController.popBackStack() },
-                onSignInClick = { email, password ->
-                    if (email.isNotBlank() && password.isNotBlank()) {
-                        val auth = FirebaseAuth.getInstance()
-                        auth.signInWithEmailAndPassword(email, password)
-                            .addOnSuccessListener {
-                                navController.navigate(Routes.MAIN) {
-                                    popUpTo(Routes.AUTHENTICATION) { inclusive = true }
-                                }
-                            }
-                            .addOnFailureListener { e ->
-                                navController.navigate("${Routes.SIGN_IN}?message=${java.net.URLEncoder.encode(e.message ?: "Sign in failed", "UTF-8")}")
-                            }
-                    }
-                },
-                onSignUpClick = { navController.navigate(Routes.SIGN_UP) },
-                onForgotPasswordClick = { /* TODO: Implement forgot password */ },
-                onGoogleClick = { /* TODO: Implement Google auth */ },
-                onFacebookClick = { /* TODO: Implement Facebook auth */ },
-                successMessage = null,
-                errorMessage = message
+                onFacebookClick = { /* TODO: Implement Facebook auth */ }
             )
         }
         composable(Routes.SIGN_UP) {
             SignUpScreen(
+                state = authState,
+                onEvent = authViewModel::onEvent,
                 onBackClick = { navController.popBackStack() },
-                onSignUpClick = { email, password, confirmPassword -> 
-                    Log.d(TAG, "=== SIGN UP CLICKED ===")
-                    Log.d(TAG, "Email: $email, Password length: ${password.length}, Confirm length: ${confirmPassword.length}")
-                    
-                    try {
-                        if (email.isNotBlank() && password.isNotBlank() && password == confirmPassword) {
-                            Log.d(TAG, "Validation passed. Initializing Firebase...")
-                            
-                            val auth = FirebaseAuth.getInstance()
-                            val db = FirebaseFirestore.getInstance()
-
-                            Log.d(TAG, "FirebaseAuth instance: ${if (auth != null) "OK" else "NULL"}")
-                            Log.d(TAG, "FirebaseFirestore instance: ${if (db != null) "OK" else "NULL"}")
-                            Log.d(TAG, "Current user before signup: ${auth.currentUser?.uid ?: "null"}")
-                            
-                            Log.d(TAG, "Calling FirebaseAuth.createUserWithEmailAndPassword...")
-                            val task = auth.createUserWithEmailAndPassword(email, password)
-                            
-                            Log.d(TAG, "Task created, adding listeners...")
-                            
-                            task.addOnCompleteListener { completedTask ->
-                                Log.d(TAG, "=== addOnCompleteListener CALLED ===")
-                                Log.d(TAG, "Task isComplete: ${completedTask.isComplete}, isSuccessful: ${completedTask.isSuccessful}, isCanceled: ${completedTask.isCanceled}")
-                                
-                                if (completedTask.isSuccessful) {
-                                    Log.d(TAG, "✅ FirebaseAuth.createUserWithEmailAndPassword SUCCEEDED")
-                                    val uid = auth.currentUser?.uid
-                                    Log.d(TAG, "User UID: ${uid ?: "NULL"}")
-                                    
-                                    if (uid == null) {
-                                        Log.e(TAG, "❌ UID is null after successful signup!")
-                                        return@addOnCompleteListener
-                                    }
-                                    
-                                    val userDoc = mapOf(
-                                        "e-mail" to email,  // Note: using "e-mail" to match FirestoreUserRepository
-                                        "email" to email,
-                                        "password" to password,
-                                        "fullName" to "",
-                                        "gender" to "",
-                                        "photoUrl" to "",
-                                        "dateOfBirth" to LocalDate.now().toString()
-                                    )
-                                    
-                                    Log.d(TAG, "Creating Firestore document for uid=$uid...")
-                                    db.collection("users").document(uid).set(userDoc)
-                                        .addOnSuccessListener {
-                                            Log.d(TAG, "✅ Firestore profile created successfully for uid=$uid")
-                                            try {
-                                                navController.navigate("${Routes.SIGN_IN}?message=Account created successfully!") {
-                                                    popUpTo(Routes.SIGN_UP) { inclusive = true }
-                                                }
-                                                Log.d(TAG, "✅ Navigation to SIGN_IN completed")
-                                            } catch (e: Exception) {
-                                                Log.e(TAG, "❌ Navigation error: ${e.message}", e)
-                                            }
-                                        }
-                                        .addOnFailureListener { e ->
-                                            Log.e(TAG, "❌ Failed to create Firestore profile for uid=$uid: ${e.message}", e)
-                                        }
-                                } else {
-                                    val exception = completedTask.exception
-                                    val err = exception?.message ?: "Sign up failed"
-                                    Log.e(TAG, "❌ FirebaseAuth.createUserWithEmailAndPassword FAILED: $err", exception)
-                                    Log.e(TAG, "Exception type: ${exception?.javaClass?.simpleName ?: "null"}")
-                                    
-                                    try {
-                                        navController.navigate("${Routes.SIGN_UP}?error=${java.net.URLEncoder.encode(err, "UTF-8")}")
-                                    } catch (e: Exception) {
-                                        Log.e(TAG, "Navigation error after signup failure", e)
-                                    }
-                                }
-                            }
-                            
-                            task.addOnFailureListener { e ->
-                                Log.e(TAG, "❌ addOnFailureListener CALLED: ${e.message}", e)
-                                Log.e(TAG, "Exception type: ${e.javaClass.simpleName}")
-                            }
-                            
-                            task.addOnSuccessListener {
-                                Log.d(TAG, "✅ addOnSuccessListener CALLED")
-                            }
-                            
-                            Log.d(TAG, "All listeners added, waiting for Firebase response...")
-                        } else {
-                            Log.w(TAG, "❌ Validation failed. emailBlank=${email.isBlank()}, passwordBlank=${password.isBlank()}, passwordsMatch=${password == confirmPassword}")
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "❌ EXCEPTION in onSignUpClick: ${e.message}", e)
-                        e.printStackTrace()
-                    }
-                },
                 onSignInClick = { navController.navigate(Routes.SIGN_IN) },
                 onGoogleClick = { /* TODO: Implement Google auth */ },
                 onFacebookClick = { /* TODO: Implement Facebook auth */ }
@@ -244,27 +186,22 @@ fun AppNavHost(
         composable(Routes.MAIN) {
             MainScreen(
                 homeViewModel = homeViewModel,
+                authState = authState,
+                onAuthEvent = authViewModel::onEvent,
                 initialTab = 0,
                 onBackClick = { navController.popBackStack() },
-                onHotelClick = { hotelId, fromMyTrip -> 
-                    Log.d("AppNavHost", "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip")
+                onHotelClick = { hotelId, fromMyTrip ->
+                    android.util.Log.d("AppNavHost", "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip")
                     navController.navigateToHotelDetail(hotelId, fromMyTrip)
                 },
                 onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
-                onLogout = { 
-                    navController.navigate(Routes.AUTHENTICATION) {
-                        popUpTo(Routes.MAIN) { inclusive = true }
-                    }
-                },
                 onVipClick = {
-                    val isSignedIn = FirebaseAuth.getInstance().currentUser != null
                     if (isSignedIn) navController.navigate(Routes.VIP_STATUS) else navController.navigate(Routes.AUTHENTICATION)
                 },
                 onSearchClick = {
                     navController.navigate(Routes.SEARCH)
                 },
                 onContinueItemClick = { hotelId, roomId, dateFrom, dateTo ->
-                    val isSignedIn = FirebaseAuth.getInstance().currentUser != null
                     if (isSignedIn) {
                         navController.navigateToNewBooking(hotelId, roomId, dateFrom, dateTo)
                     } else {
@@ -272,9 +209,7 @@ fun AppNavHost(
                     }
                 },
                 onVoucherClick = { voucherId ->
-                    // Navigate directly to VOUCHER_DETAIL with proper back stack
                     navController.navigateToVoucherDetail(voucherId) {
-                        // Ensure we can go back to MAIN and avoid duplicate stack
                         popUpTo(Routes.MAIN) { inclusive = false }
                         launchSingleTop = true
                     }
@@ -295,25 +230,25 @@ fun AppNavHost(
             android.util.Log.d("AppNavHost", "MainScreen with tab parameter: $tabParam")
             MainScreen(
                 homeViewModel = homeViewModel,
+                authState = authState,
+                onAuthEvent = authViewModel::onEvent,
                 initialTab = tabParam,
                 onBackClick = { navController.popBackStack() },
-                onHotelClick = { hotelId, fromMyTrip -> 
+                onHotelClick = { hotelId, fromMyTrip ->
                     android.util.Log.d("AppNavHost", "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip")
                     navController.navigateToHotelDetail(hotelId, fromMyTrip)
                 },
                 onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
-                onLogout = { 
-                    navController.navigate(Routes.AUTHENTICATION) {
-                        popUpTo(Routes.MAIN) { inclusive = true }
-                    }
-                },
                 onVipClick = {
-                    val isSignedIn = FirebaseAuth.getInstance().currentUser != null
                     if (isSignedIn) navController.navigate(Routes.VIP_STATUS) else navController.navigate(Routes.AUTHENTICATION)
                 },
                 onSearchClick = { navController.navigate(Routes.SEARCH) },
                 onContinueItemClick = { hotelId, roomId, dateFrom, dateTo ->
-                    navController.navigateToNewBooking(hotelId, roomId, dateFrom, dateTo)
+                    if (isSignedIn) {
+                        navController.navigateToNewBooking(hotelId, roomId, dateFrom, dateTo)
+                    } else {
+                        navController.navigate(Routes.AUTHENTICATION)
+                    }
                 },
                 onVoucherClick = { voucherId ->
                     navController.navigateToVoucherDetail(voucherId) {
@@ -355,7 +290,6 @@ fun AppNavHost(
         roomRoute(
             onBackClick = { navController.popBackStack() },
             onBookNowClick = { hotelId, roomId, dateFrom, dateTo ->
-                val isSignedIn = FirebaseAuth.getInstance().currentUser != null
                 if (isSignedIn) {
                     navController.navigateToNewBooking(hotelId, roomId, dateFrom, dateTo)
                 } else {
@@ -365,18 +299,21 @@ fun AppNavHost(
         )
         // Booking Routes
         bookingRoutes(
-            onBackClick = { navController.popBackStack() }
+            onBackClick = {
+                homeViewModel.onEvent(HomeIntent.RefreshUserSections)
+                homeViewModel.onEvent(HomeIntent.RefreshBookmarks)
+                navController.popBackStack()
+            }
         )
         composable(Routes.VIP_STATUS) {
             VipStatusScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }
-        composable(Routes.SEARCH) {
-            SearchScreen(
-                onBackClick = { navController.popBackStack() }
-            )
-        }
+        searchRoute(
+            onBackClick = { navController.popBackStack() },
+            onHotelClick = { hotelId -> navController.navigateToHotelDetail(hotelId, false) }
+        )
         // Bookmark Route
         bookmarkRoute(
             onBackClick = {},
@@ -401,9 +338,9 @@ fun AppNavHost(
                 // TODO: Handle booking cancellation
             }
         )
-        composable(Routes.PROFILE) {
-            ProfileScreen()
-        }
+        profileRoute(
+            onLogoutClick = { authViewModel.onEvent(com.example.chillstay.ui.auth.AuthIntent.SignOut) }
+        )
         // Voucher Routes
         voucherRoutes(
             onBackClick = { navController.popBackStack() },

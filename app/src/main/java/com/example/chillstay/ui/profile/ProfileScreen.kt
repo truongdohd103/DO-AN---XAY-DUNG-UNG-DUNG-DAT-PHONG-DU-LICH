@@ -1,6 +1,7 @@
 package com.example.chillstay.ui.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -8,8 +9,29 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.painter.Painter
 import com.example.chillstay.R
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,17 +40,32 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.material3.CircularProgressIndicator
+import com.example.chillstay.ui.profile.ProfileIntent
+import com.example.chillstay.ui.profile.ProfileUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onLogout: () -> Unit = {}
+    state: ProfileUiState,
+    onEvent: (ProfileIntent) -> Unit,
+    onLogoutClick: () -> Unit
 ) {
     var isDarkTheme by remember { mutableStateOf(false) }
-    val currentUser = FirebaseAuth.getInstance().currentUser
+    var showEditDialog by remember { mutableStateOf(false) }
+    val currentUser = state.currentUser
     val userEmail = currentUser?.email ?: "demo@chillstay.com"
-    val userName = currentUser?.displayName ?: "User"
+    val userName = currentUser?.fullName?.takeIf { it.isNotBlank() } ?: "User"
+
+    LaunchedEffect(Unit) {
+        onEvent(ProfileIntent.LoadProfile)
+    }
+    LaunchedEffect(state.profileMessage) {
+        val msg = state.profileMessage
+        if (msg != null && msg.contains("success", ignoreCase = true)) {
+            showEditDialog = false
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -123,13 +160,14 @@ fun ProfileScreen(
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
         }
-        
+        // Removed inline Profile details; it will be shown in a dialog when editing
+
         // Menu items
         item {
             ProfileMenuItem(
                 icon = painterResource(id = R.drawable.ic_person),
                 title = "Edit Profile",
-                onClick = { /* TODO: Navigate to edit profile */ }
+                onClick = { showEditDialog = true }
             )
         }
         
@@ -137,7 +175,7 @@ fun ProfileScreen(
             ProfileMenuItem(
                 icon = painterResource(id = R.drawable.ic_payment),
                 title = "Payment method",
-                onClick = { /* TODO: Navigate to payment */ }
+                onClick = { onEvent(ProfileIntent.OpenPaymentMethod) }
             )
         }
         
@@ -145,7 +183,7 @@ fun ProfileScreen(
             ProfileMenuItem(
                 icon = painterResource(id = R.drawable.ic_notifications),
                 title = "Notifications",
-                onClick = { /* TODO: Navigate to notifications */ }
+                onClick = { onEvent(ProfileIntent.OpenNotifications) }
             )
         }
         
@@ -153,7 +191,7 @@ fun ProfileScreen(
             ProfileMenuItem(
                 icon = painterResource(id = R.drawable.ic_star),
                 title = "My Reviews",
-                onClick = { /* TODO: Navigate to reviews */ }
+                onClick = { onEvent(ProfileIntent.OpenMyReviews) }
             )
         }
         
@@ -161,7 +199,7 @@ fun ProfileScreen(
             ProfileMenuItem(
                 icon = painterResource(id = R.drawable.ic_language),
                 title = "Language",
-                onClick = { /* TODO: Navigate to language settings */ }
+                onClick = { onEvent(ProfileIntent.OpenLanguage) }
             )
         }
         
@@ -169,7 +207,7 @@ fun ProfileScreen(
             ProfileMenuItem(
                 icon = painterResource(id = R.drawable.ic_lock),
                 title = "Change password",
-                onClick = { /* TODO: Navigate to change password */ }
+                onClick = { onEvent(ProfileIntent.OpenChangePassword) }
             )
         }
         
@@ -177,7 +215,7 @@ fun ProfileScreen(
             ProfileMenuItem(
                 icon = painterResource(id = R.drawable.ic_help),
                 title = "Help",
-                onClick = { /* TODO: Navigate to help */ }
+                onClick = { onEvent(ProfileIntent.OpenHelp) }
             )
         }
         
@@ -237,9 +275,7 @@ fun ProfileScreen(
                 
                 Spacer(Modifier.width(24.dp))
                 
-                TextButton(onClick = { 
-                    onLogout()
-                }) {
+                TextButton(onClick = onLogoutClick) {
                     Text(
                         text = "Logout",
                         color = Color(0xFFF75555),
@@ -249,6 +285,14 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (showEditDialog) {
+        ProfileEditDialog(
+            state = state,
+            onEvent = onEvent,
+            onDismiss = { showEditDialog = false }
+        )
     }
     }
 }
@@ -262,7 +306,9 @@ fun ProfileMenuItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 12.dp),
+            .padding(horizontal = 24.dp, vertical = 12.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -288,5 +334,139 @@ fun ProfileMenuItem(
             tint = Color(0xFF9E9E9E),
             modifier = Modifier.size(20.dp)
         )
+    }
+}
+
+@Composable
+fun ProfileEditDialog(
+    state: ProfileUiState,
+    onEvent: (ProfileIntent) -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Edit Profile",
+                    color = Color(0xFF212121),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                OutlinedTextField(
+                    value = state.profileFullName,
+                    onValueChange = { onEvent(ProfileIntent.ProfileFullNameChanged(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Full name") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF1AB6B6),
+                        unfocusedBorderColor = Color(0xFFE0E0E0)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                OutlinedTextField(
+                    value = state.profileGender,
+                    onValueChange = { onEvent(ProfileIntent.ProfileGenderChanged(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Gender (Male / Female / Other)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF1AB6B6),
+                        unfocusedBorderColor = Color(0xFFE0E0E0)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                OutlinedTextField(
+                    value = state.profileDateOfBirth,
+                    onValueChange = { onEvent(ProfileIntent.ProfileDateOfBirthChanged(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Date of birth (yyyy-MM-dd)") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF1AB6B6),
+                        unfocusedBorderColor = Color(0xFFE0E0E0)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                OutlinedTextField(
+                    value = state.profilePhotoUrl,
+                    onValueChange = { onEvent(ProfileIntent.ProfilePhotoUrlChanged(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Photo URL") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF1AB6B6),
+                        unfocusedBorderColor = Color(0xFFE0E0E0)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                if (state.profileMessage != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (state.profileMessage.contains("success", ignoreCase = true)) {
+                                Color(0xFFE8F5E8)
+                            } else {
+                                Color(0xFFFFEBEE)
+                            }
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = state.profileMessage,
+                            modifier = Modifier.padding(16.dp),
+                            color = if (state.profileMessage.contains("success", ignoreCase = true)) {
+                                Color(0xFF2E7D32)
+                            } else {
+                                Color(0xFFC62828)
+                            },
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                    ) {
+                        Text(text = "Cancel", color = Color(0xFF424242))
+                    }
+
+                    Button(
+                        onClick = { onEvent(ProfileIntent.SaveProfile) },
+                        modifier = Modifier.weight(1f),
+                        enabled = state.currentUser != null && !state.isProfileLoading,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1AB6B6)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (state.isProfileLoading) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = "Save changes",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -10,11 +10,34 @@ import com.example.chillstay.ui.voucher.VoucherViewModel
 import com.example.chillstay.ui.voucher.VoucherDetailViewModel
 import com.example.chillstay.ui.review.ReviewViewModel
 import com.example.chillstay.ui.bill.BillViewModel
+import com.example.chillstay.ui.vip.VipStatusViewModel
+import com.example.chillstay.ui.auth.AuthViewModel
+import com.example.chillstay.ui.profile.ProfileViewModel
+import com.example.chillstay.ui.search.SearchViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
 val viewModelModule = module {
-    viewModel { HomeViewModel(get(), get(), get(), get()) }
+    viewModel {
+        AuthViewModel(
+            get(), // SignInUseCase
+            get(), // SignUpUseCase
+            get(), // SignOutUseCase
+            get()  // GetCurrentUserIdUseCase
+        )
+    }
+    viewModel {
+        HomeViewModel(
+            get(), // GetHotelsUseCase
+            get(), // AddBookmarkUseCase
+            get(), // RemoveBookmarkUseCase
+            get(), // GetUserBookmarksUseCase
+            get(), // GetUserBookingsUseCase
+            get(), // GetHotelByIdUseCase
+            get()  // GetCurrentUserIdUseCase
+        )
+    }
+    viewModel { SearchViewModel(get()) }
     viewModel { 
         HotelDetailViewModel(
             get(),  // GetHotelByIdUseCase
@@ -33,6 +56,12 @@ val viewModelModule = module {
     viewModel { VoucherDetailViewModel(get(), get(), get()) }
     viewModel { ReviewViewModel(get(), get()) }
     viewModel { BillViewModel(get(), get()) }
+    viewModel { VipStatusViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel {
+        ProfileViewModel(
+            get(), // GetCurrentUserIdUseCase
+            get(), // GetUserProfileUseCase
+            get()  // UpdateUserProfileUseCase
+        )
+    }
 }
-
-

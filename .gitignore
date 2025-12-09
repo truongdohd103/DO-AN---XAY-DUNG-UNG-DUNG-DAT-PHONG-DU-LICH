@@ -18,6 +18,7 @@ local.properties
 serviceAccountKey.json
 google-services.json
 firebase-complete-import.js
+firestore-export.json
 firestore.indexes.json
 firestore.rules
 firebase-*.js
