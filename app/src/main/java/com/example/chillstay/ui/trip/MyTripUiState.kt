@@ -35,6 +35,7 @@ data class MyTripUiState(
     fun updateShowCancelDialog(show: Boolean) = copy(showCancelDialog = show)
     
     fun updateBookingToCancel(booking: Booking?) = copy(bookingToCancel = booking)
+
     
     fun updateHotelMapEntry(hotelId: String, hotel: Hotel) = copy(
         hotelMap = hotelMap + (hotelId to hotel)

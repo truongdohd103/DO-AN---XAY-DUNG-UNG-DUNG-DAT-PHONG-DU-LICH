@@ -27,7 +27,8 @@ data class Booking(
     val updatedAt: Timestamp = Timestamp.now(),
     val appliedVouchers: List<String> = emptyList(),
     val hotel: Hotel? = null,
-    val room: Room? = null
+    val room: Room? = null,
+    val inventoryReserved: Boolean = false
 )
 
 enum class BookingStatus {

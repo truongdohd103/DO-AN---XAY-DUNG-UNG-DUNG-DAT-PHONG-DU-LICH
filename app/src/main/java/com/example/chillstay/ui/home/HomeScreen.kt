@@ -73,6 +73,7 @@ fun HomeScreen(
     onVipClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onSeeAllRecentClick: () -> Unit = {},
+    onSeeAllContinueClick: () -> Unit = {},
     onContinueItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> },
     onRequireAuth: () -> Unit = {}
 ) {
@@ -240,7 +241,8 @@ fun HomeScreen(
             item {
                 ContinuePlanningSection(
                     items = uiState.pendingBookings,
-                    onItemClick = onContinueItemClick
+                    onItemClick = onContinueItemClick,
+                    onViewAllClick = onSeeAllContinueClick
                 )
             }
             
@@ -701,23 +703,45 @@ fun VipStatusSection(onClick: () -> Unit = {}) {
 }
 
 @Composable
-fun ContinuePlanningSection(items: List<PendingDisplayItem> = emptyList(), onItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> }) {
+fun ContinuePlanningSection(
+    items: List<PendingDisplayItem> = emptyList(),
+    onItemClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit = { _, _, _, _ -> },
+    onViewAllClick: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
     ) {
-        Text(
-            text = "Continue planning your trip",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF212121)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Continue planning your trip",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121)
+            )
+            if (items.size > 3) {
+                Text(
+                    text = "View All",
+                    fontSize = 15.62.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1AB6B6),
+                    modifier = Modifier
+                        .background(color = Color.Transparent, shape = RoundedCornerShape(8.dp))
+                        .clickable { onViewAllClick() }
+                        .padding(8.dp)
+                )
+            }
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items.forEach { it ->
+            items.take(3).forEach { it ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -815,7 +839,7 @@ fun RecentlyBookedSection(
         Column(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            hotels.forEach { hotel ->
+            hotels.take(3).forEach { hotel ->
                 val imageUrl = hotel.imageUrl.firstOrNull() ?: ""
                 RecentlyBookedCard(
                     title = hotel.name,

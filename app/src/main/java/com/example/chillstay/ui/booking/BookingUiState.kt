@@ -28,7 +28,9 @@ data class BookingUiState(
     val appliedVouchers: List<Voucher> = emptyList(),
     val priceBreakdown: PriceBreakdown = PriceBreakdown(),
     val isCreatingBooking: Boolean = false,
-    val bookingCreated: Boolean = false
+    val bookingCreated: Boolean = false,
+    val hasInitialDates: Boolean = false,
+    val datesUserSelected: Boolean = false
 ) : UiState
 
 data class PriceBreakdown(

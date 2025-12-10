@@ -56,6 +56,7 @@ fun MainScreen(
         android.util.Log.d("MainScreen", "Initializing with initialTab: $initialTab")
         mutableStateOf(initialTab) 
     }
+    var myTripsInitialTab by rememberSaveable { mutableStateOf(1) }
 
     val onboardingContext = LocalContext.current
     // Update selectedTab when initialTab changes
@@ -153,7 +154,11 @@ fun MainScreen(
                     onSearchClick = onSearchClick,
                     onSeeAllRecentClick = { 
                         selectedTab = 3 // My Trip tab
-                        // Note: MyTripScreen will show COMPLETED tab by default
+                        myTripsInitialTab = 1
+                    },
+                    onSeeAllContinueClick = {
+                        selectedTab = 3
+                        myTripsInitialTab = 0
                     },
                     onContinueItemClick = onContinueItemClick,
                     onRequireAuth = onRequireAuth
@@ -215,7 +220,7 @@ fun MainScreen(
                                    homeViewModel.onEvent(com.example.chillstay.ui.home.HomeIntent.RefreshBookmarks)
                                }
                            },
-                           initialTab = 1 // Show COMPLETED tab by default
+                           initialTab = myTripsInitialTab
                        )
                 4 -> ProfileScreen(
                     state = profileState,

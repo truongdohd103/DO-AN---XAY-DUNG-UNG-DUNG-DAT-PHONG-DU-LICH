@@ -120,4 +120,16 @@ class FirestoreBookingRepository @Inject constructor(
             false
         }
     }
+
+    override suspend fun deleteBooking(bookingId: String): Boolean {
+        return try {
+            firestore.collection("bookings")
+                .document(bookingId)
+                .delete()
+                .await()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
 }
