@@ -748,7 +748,7 @@ fun ContinuePlanningSection(items: List<PendingDisplayItem> = emptyList(), onIte
                         }
                         Column {
                             Text(
-                                text = it.hotelName ?: "Pending booking",
+                                text = listOfNotNull(it.hotelName, it.roomType).joinToString(" - ").ifEmpty { "Pending booking" },
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF212121)

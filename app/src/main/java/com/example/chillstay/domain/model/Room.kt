@@ -11,7 +11,10 @@ data class Room(
     val detail: RoomDetail? = null,
     @get:PropertyName("isAvailable")
     val isAvailable: Boolean = true,
-    val capacity: Int = 0
+    val capacity: Int = 0,
+    val availableCount: Int = 0,
+    val facilities: List<String> = emptyList(),
+    val gallery: RoomGallery? = null
 ) {
     // Firestore mapping helper
     constructor() : this(
@@ -22,7 +25,10 @@ data class Room(
         imageUrl = "",
         detail = null,
         isAvailable = true,
-        capacity = 0
+        capacity = 0,
+        availableCount = 0,
+        facilities = emptyList(),
+        gallery = null
     )
 }
 

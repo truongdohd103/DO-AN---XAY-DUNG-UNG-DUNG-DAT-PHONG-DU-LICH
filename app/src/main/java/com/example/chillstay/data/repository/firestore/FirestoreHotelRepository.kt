@@ -53,29 +53,7 @@ class FirestoreHotelRepository @Inject constructor(
                     .await()
                 
                 val rooms = roomsSnapshot.documents.mapNotNull { roomDoc ->
-                    val roomData = roomDoc.data
-                    Room(
-                        id = roomDoc.id,
-                        hotelId = roomData?.get("hotelId") as? String ?: "",
-                        type = roomData?.get("type") as? String ?: "",
-                        price = (roomData?.get("price") as? Number)?.toDouble()
-                            ?: (roomData?.get("price") as? String)?.toDoubleOrNull()
-                            ?: 0.0,
-                        imageUrl = roomData?.get("imageUrl") as? String ?: "",
-                        isAvailable = roomData?.get("isAvailable") as? Boolean ?: true,
-                        capacity = (roomData?.get("capacity") as? Long)?.toInt() ?: 0,
-                        detail = roomData?.get("detail")?.let { detailData ->
-                            if (detailData is Map<*, *>) {
-                                @Suppress("UNCHECKED_CAST")
-                                val detailMap = detailData as Map<String, Any>
-                                RoomDetail(
-                                    name = detailMap["name"] as? String ?: "",
-                                    size = (detailMap["size"] as? Double) ?: 0.0,
-                                    view = detailMap["view"] as? String ?: ""
-                                )
-                            } else null
-                        }
-                    )
+                    roomDoc.toObject(Room::class.java)?.copy(id = roomDoc.id)
                 }
 
                 hotel?.copy(rooms = rooms)
@@ -194,29 +172,7 @@ class FirestoreHotelRepository @Inject constructor(
                     .await()
                 
                 val rooms = roomsSnapshot.documents.mapNotNull { roomDoc ->
-                    val roomData = roomDoc.data
-                    Room(
-                        id = roomDoc.id,
-                        hotelId = roomData?.get("hotelId") as? String ?: "",
-                        type = roomData?.get("type") as? String ?: "",
-                        price = (roomData?.get("price") as? Number)?.toDouble()
-                            ?: (roomData?.get("price") as? String)?.toDoubleOrNull()
-                            ?: 0.0,
-                        imageUrl = roomData?.get("imageUrl") as? String ?: "",
-                        isAvailable = roomData?.get("isAvailable") as? Boolean ?: true,
-                        capacity = (roomData?.get("capacity") as? Long)?.toInt() ?: 0,
-                        detail = roomData?.get("detail")?.let { detailData ->
-                            if (detailData is Map<*, *>) {
-                                @Suppress("UNCHECKED_CAST")
-                                val detailMap = detailData as Map<String, Any>
-                                RoomDetail(
-                                    name = detailMap["name"] as? String ?: "",
-                                    size = (detailMap["size"] as? Double) ?: 0.0,
-                                    view = detailMap["view"] as? String ?: ""
-                                )
-                            } else null
-                        }
-                    )
+                    roomDoc.toObject(Room::class.java)?.copy(id = roomDoc.id)
                 }
                 val hotelWithRooms = hotel?.copy(rooms = rooms)
                 if (hotelWithRooms != null) {
@@ -429,6 +385,77 @@ class FirestoreHotelRepository @Inject constructor(
                 updates["detail"] = normalized
             }
 
+            when (val img = data["imageUrl"]) {
+                is List<*> -> {
+                    val first = img.mapNotNull { it as? String }.firstOrNull() ?: ""
+                    updates["imageUrl"] = first
+                }
+                is String -> {}
+                null -> updates["imageUrl"] = ""
+                else -> {}
+            }
+
+            val typeVal = data["type"]
+            if (typeVal !is String || typeVal.isBlank()) {
+                updates["type"] = "Standard"
+            }
+
+            when (val facilitiesVal = data["facilities"]) {
+                is List<*> -> {
+                    val normalized = facilitiesVal.mapNotNull { it as? String }
+                    updates["facilities"] = normalized
+                }
+                is String -> {
+                    val normalized = facilitiesVal.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                    updates["facilities"] = normalized
+                }
+                null -> updates["facilities"] = emptyList<String>()
+                else -> {}
+            }
+
+            val isAvailFlag = when (val av = data["isAvailable"]) {
+                is Boolean -> av
+                is String -> av.equals("true", true)
+                else -> true
+            }
+
+            when (val ac = data["availableCount"]) {
+                is Number -> updates["availableCount"] = ac.toInt()
+                is String -> ac.toIntOrNull()?.let { updates["availableCount"] = it } ?: run {
+                    updates["availableCount"] = if (isAvailFlag) 1 else 0
+                }
+                null -> updates["availableCount"] = if (isAvailFlag) 1 else 0
+                else -> {}
+            }
+
+            when (val galleryVal = data["gallery"]) {
+                is Map<*, *> -> {
+                    fun normalizeList(key: String): List<String> {
+                        val v = galleryVal[key]
+                        return when (v) {
+                            is List<*> -> v.mapNotNull { it as? String }
+                            is String -> listOf(v)
+                            else -> emptyList()
+                        }
+                    }
+                    updates["gallery"] = mapOf(
+                        "exteriorView" to normalizeList("exteriorView"),
+                        "facilities" to normalizeList("facilities"),
+                        "dining" to normalizeList("dining"),
+                        "thisRoom" to normalizeList("thisRoom")
+                    )
+                }
+                else -> {
+                    val imgUrl = (updates["imageUrl"] as? String) ?: (data["imageUrl"] as? String) ?: ""
+                    updates["gallery"] = mapOf(
+                        "exteriorView" to emptyList<String>(),
+                        "facilities" to emptyList<String>(),
+                        "dining" to emptyList<String>(),
+                        "thisRoom" to (if (imgUrl.isNotBlank()) listOf(imgUrl) else emptyList())
+                    )
+                }
+            }
+
             if (updates.isNotEmpty()) {
                 room.reference.set(updates, SetOptions.merge()).await()
                 roomsFixed++
@@ -520,5 +547,64 @@ class FirestoreHotelRepository @Inject constructor(
             },
             rating = (data["rating"] as? Number)?.toDouble() ?: 0.0
         )
+    }
+
+    data class RoomGalleryImport(
+        val exteriorView: List<String> = emptyList(),
+        val facilities: List<String> = emptyList(),
+        val dining: List<String> = emptyList(),
+        val thisRoom: List<String> = emptyList()
+    )
+
+    data class RoomImport(
+        val id: String? = null,
+        val type: String = "",
+        val price: Double = 0.0,
+        val imageUrl: String? = null,
+        val isAvailable: Boolean = true,
+        val capacity: Int = 0,
+        val availableCount: Int = 0,
+        val facilities: List<String> = emptyList(),
+        val detail: RoomDetail? = null,
+        val gallery: RoomGalleryImport = RoomGalleryImport()
+    )
+
+    suspend fun importRooms(hotelId: String, rooms: List<RoomImport>, merge: Boolean = true): Int {
+        var written = 0
+        for (r in rooms) {
+            val docData = mutableMapOf<String, Any?>()
+            docData["hotelId"] = hotelId
+            docData["type"] = r.type
+            docData["price"] = r.price
+            docData["imageUrl"] = r.imageUrl ?: ""
+            docData["isAvailable"] = r.isAvailable
+            docData["capacity"] = r.capacity
+            docData["availableCount"] = r.availableCount
+            docData["facilities"] = r.facilities
+            r.detail?.let { d ->
+                val dd = mutableMapOf<String, Any>()
+                d.name?.let { dd["name"] = it }
+                d.size?.let { dd["size"] = it }
+                d.view?.let { dd["view"] = it }
+                docData["detail"] = dd
+            }
+            docData["gallery"] = mapOf(
+                "exteriorView" to r.gallery.exteriorView,
+                "facilities" to r.gallery.facilities,
+                "dining" to r.gallery.dining,
+                "thisRoom" to r.gallery.thisRoom
+            )
+
+            val collection = firestore.collection("rooms")
+            if (r.id.isNullOrBlank()) {
+                val ref = collection.add(docData).await()
+                if (merge) ref.set(docData, SetOptions.merge()).await() else ref.set(docData).await()
+            } else {
+                val ref = collection.document(r.id)
+                if (merge) ref.set(docData, SetOptions.merge()).await() else ref.set(docData).await()
+            }
+            written++
+        }
+        return written
     }
 }

@@ -14,6 +14,7 @@ import com.example.chillstay.ui.vip.VipStatusViewModel
 import com.example.chillstay.ui.auth.AuthViewModel
 import com.example.chillstay.ui.profile.ProfileViewModel
 import com.example.chillstay.ui.search.SearchViewModel
+import com.example.chillstay.ui.roomgallery.RoomGalleryViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
@@ -26,14 +27,14 @@ val viewModelModule = module {
             get()  // GetCurrentUserIdUseCase
         )
     }
-    viewModel {
-        HomeViewModel(
+    viewModel { HomeViewModel(
             get(), // GetHotelsUseCase
             get(), // AddBookmarkUseCase
             get(), // RemoveBookmarkUseCase
             get(), // GetUserBookmarksUseCase
             get(), // GetUserBookingsUseCase
             get(), // GetHotelByIdUseCase
+            get(), // GetRoomByIdUseCase
             get()  // GetCurrentUserIdUseCase
         )
     }
@@ -51,6 +52,7 @@ val viewModelModule = module {
     viewModel { MyBookmarkViewModel(get(), get(), get()) }
     viewModel { MyTripViewModel(get(), get(), get(), get()) }
     viewModel { RoomViewModel(get(), get()) }
+    viewModel { RoomGalleryViewModel(get(), get()) }
     viewModel { BookingViewModel(get(), get(), get(), get(), get()) }
     viewModel { VoucherViewModel(get(), get(), get(), get()) }
     viewModel { VoucherDetailViewModel(get(), get(), get()) }

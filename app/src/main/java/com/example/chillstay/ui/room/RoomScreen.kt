@@ -28,7 +28,8 @@ import org.koin.compose.koinInject
 fun RoomScreen(
     hotelId: String = "",
     onBackClick: () -> Unit = {},
-    onBookNowClick: (String, String, String, String) -> Unit = { _, _, _, _ -> }
+    onBookNowClick: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    onOpenGalleryClick: (roomId: String) -> Unit = {}
 ) {
     val viewModel: RoomViewModel = koinInject()
     val uiState by viewModel.state.collectAsStateWithLifecycle()
@@ -107,23 +108,20 @@ fun RoomScreen(
                     size = room.detail?.size?.let { "${it.toInt()} m²" } ?: "",
                     maxAdults = "Max ${room.capacity} adults",
                     beds = room.type,
-                    amenities = listOf(
-                        "📶 Internet access – wireless",
-                        "🚭 Non-smoking",
-                        "📺 TV",
-                        "❄️ Air conditioning"
-                    ),
+                    amenities = room.facilities,
                     breakfastInfo = "",
                     refundable = "",
-                    paymentType = "Pay at hotel",
+                    paymentType = "",
                     originalPrice = 0,
                     discount = 0,
                     finalPrice = room.price.toInt(),
-                    roomsLeft = if (room.isAvailable) 5 else 0,
+                    roomsLeft = room.availableCount,
                     isSoldOut = !room.isAvailable,
+                    imagesCount = (room.gallery?.totalCount ?: (if (room.imageUrl.isNotBlank()) 1 else 0)),
                     onBookNowClick = { roomId, dateFrom, dateTo, _ ->
                         onBookNowClick(hotelId, roomId, dateFrom, dateTo)
-                    }
+                    },
+                    onOpenGalleryClick = { onOpenGalleryClick(room.id) }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -237,7 +235,9 @@ fun RoomCard(
     finalPrice: Int,
     roomsLeft: Int,
     isSoldOut: Boolean = false,
-    onBookNowClick: (String, String, String, String) -> Unit
+    imagesCount: Int = 0,
+    onBookNowClick: (String, String, String, String) -> Unit,
+    onOpenGalleryClick: (roomId: String) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -275,6 +275,7 @@ fun RoomCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
+                    .clickable { onOpenGalleryClick(roomId) }
             ) {
                 AsyncImage(
                     model = imageUrl,
@@ -303,7 +304,7 @@ fun RoomCard(
                             fontWeight = FontWeight.Medium
                         )
                     }
-                } else if (roomsLeft > 0) {
+                } else if (roomsLeft == 1) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -315,7 +316,7 @@ fun RoomCard(
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "Our last $roomsLeft!",
+                            text = "Our last 1!",
                             color = Color.White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
@@ -333,6 +334,7 @@ fun RoomCard(
                             RoundedCornerShape(6.dp)
                         )
                         .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .clickable { onOpenGalleryClick(roomId) }
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -345,7 +347,7 @@ fun RoomCard(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = "67",
+                            text = imagesCount.toString(),
                             color = Color.White,
                             fontSize = 14.sp
                         )
@@ -383,6 +385,13 @@ fun RoomCard(
             
             // Amenities
             Column {
+                Text(
+                    text = "Facilities",
+                    color = Color(0xFF212121),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 amenities.forEach { amenity ->
                     Text(
                         text = amenity,
@@ -430,31 +439,6 @@ fun RoomCard(
                         Spacer(modifier = Modifier.height(4.dp))
                     }
                     
-                    if (paymentType.isNotEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_check),
-                                contentDescription = "Payment",
-                                tint = Color(0xFF1AB65C),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = paymentType,
-                                color = Color(0xFF1AB65C),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-                    
-                    Text(
-                        text = "See details",
-                        color = Color(0xFF1AB6B6),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { /* TODO: Show details */ }
-                    )
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
@@ -502,28 +486,20 @@ fun RoomCard(
                         ) {
                             Column {
                                 Text(
-                                    text = "1 Rooms",
+                                    text = "Rooms left: $roomsLeft",
                                     color = Color(0xFF212121),
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
                                 )
-                                
-                                if (roomsLeft > 0) {
+                                if (roomsLeft == 1) {
                                     Text(
-                                        text = "Our last $roomsLeft!",
+                                        text = "Our last 1!",
                                         color = Color(0xFFFF5722),
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
                             }
-                            
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_keyboard_arrow_down),
-                                contentDescription = "Dropdown",
-                                tint = Color(0xFF212121),
-                                modifier = Modifier.size(14.dp)
-                            )
                             
                             Button(
                                 onClick = { 

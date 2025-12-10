@@ -43,6 +43,8 @@ import com.example.chillstay.ui.review.reviewRoute
 import com.example.chillstay.ui.review.navigateToReview
 import com.example.chillstay.ui.bill.billRoute
 import com.example.chillstay.ui.bill.navigateToBill
+import com.example.chillstay.ui.roomgallery.roomGalleryRoute
+import com.example.chillstay.ui.roomgallery.navigateToRoomGallery
 
 @Composable
 fun AppNavHost(
@@ -295,7 +297,13 @@ fun AppNavHost(
                 } else {
                     navController.navigate(Routes.AUTHENTICATION)
                 }
+            },
+            onOpenGalleryClick = { hotelId, roomId ->
+                navController.navigateToRoomGallery(hotelId, roomId)
             }
+        )
+        roomGalleryRoute(
+            onBackClick = { navController.popBackStack() }
         )
         // Booking Routes
         bookingRoutes(
