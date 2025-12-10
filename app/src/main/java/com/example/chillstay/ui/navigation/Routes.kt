@@ -22,4 +22,6 @@ object Routes {
     const val VOUCHER_DETAIL = "voucher_detail"
     const val REVIEW = "review"
     const val BILL = "bill"
+    const val MY_REVIEWS = "my_reviews"
+    const val ALL_REVIEWS = "all_reviews"
 }

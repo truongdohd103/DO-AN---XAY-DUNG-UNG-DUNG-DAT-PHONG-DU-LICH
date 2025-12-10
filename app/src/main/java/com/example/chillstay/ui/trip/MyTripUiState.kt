@@ -15,7 +15,8 @@ data class MyTripUiState(
     val hotelMap: Map<String, Hotel> = emptyMap(),
     val roomMap: Map<String, Room> = emptyMap(),
     val showCancelDialog: Boolean = false,
-    val bookingToCancel: Booking? = null
+    val bookingToCancel: Booking? = null,
+    val userReviewedHotels: Set<String> = emptySet()
 ) : UiState {
     fun updateBookings(bookings: List<Booking>) = copy(bookings = bookings)
     
@@ -42,4 +43,6 @@ data class MyTripUiState(
     fun updateRoomMapEntry(roomId: String, room: Room) = copy(
         roomMap = roomMap + (roomId to room)
     )
+
+    fun updateUserReviewedHotels(hotelIds: Set<String>) = copy(userReviewedHotels = hotelIds)
 }

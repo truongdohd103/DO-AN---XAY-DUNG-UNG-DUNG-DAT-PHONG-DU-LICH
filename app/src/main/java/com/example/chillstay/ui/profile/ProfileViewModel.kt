@@ -45,7 +45,7 @@ class ProfileViewModel(
             ProfileIntent.ClearMessage -> clearMessages()
             ProfileIntent.OpenPaymentMethod -> sendEffect(ProfileUiEffect.ShowMessage("Payment method sẽ sớm có"))
             ProfileIntent.OpenNotifications -> sendEffect(ProfileUiEffect.ShowMessage("Notifications sẽ sớm có"))
-            ProfileIntent.OpenMyReviews -> sendEffect(ProfileUiEffect.ShowMessage("My Reviews sẽ sớm có"))
+            ProfileIntent.OpenMyReviews -> sendEffect(ProfileUiEffect.NavigateToMyReviews)
             ProfileIntent.OpenLanguage -> sendEffect(ProfileUiEffect.ShowMessage("Language sẽ sớm có"))
             ProfileIntent.OpenHelp -> sendEffect(ProfileUiEffect.ShowMessage("Help sẽ sớm có"))
             ProfileIntent.OpenChangePassword -> sendEffect(ProfileUiEffect.ShowMessage("Change password sẽ sớm có"))

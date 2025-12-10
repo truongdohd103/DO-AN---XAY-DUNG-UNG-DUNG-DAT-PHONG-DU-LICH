@@ -15,7 +15,10 @@ data class ReviewUiState(
     val isLoading: Boolean = false,
     val isSubmitting: Boolean = false,
     val error: String? = null,
-    val isSubmitted: Boolean = false
+    val isSubmitted: Boolean = false,
+    val isEligible: Boolean = false,
+    val existingReview: com.example.chillstay.domain.model.Review? = null,
+    val isEditing: Boolean = false
 ) : UiState {
     fun updateBookingId(bookingId: String) = copy(bookingId = bookingId)
     
@@ -36,4 +39,8 @@ data class ReviewUiState(
     fun clearError() = copy(error = null)
     
     fun updateIsSubmitted(isSubmitted: Boolean) = copy(isSubmitted = isSubmitted)
+    fun updateIsEligible(isEligible: Boolean) = copy(isEligible = isEligible)
+
+    fun updateExistingReview(review: com.example.chillstay.domain.model.Review?) = copy(existingReview = review)
+    fun updateIsEditing(value: Boolean) = copy(isEditing = value)
 }

@@ -34,6 +34,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -149,51 +150,53 @@ fun HomeScreen(
                         (slideOutHorizontally(animationSpec = tween(250)) + fadeOut(tween(250)))
                     },
                     label = "CategoryTransition"
-                ) { _ ->
-                    if (uiState.isLoading && uiState.hotels.isEmpty()) {
-                        LazyRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(24.dp)
-                        ) {
-                            items(3) {
-                                Card(
-                                    modifier = Modifier
-                                        .width(240.dp)
-                                        .height(280.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(Color(0xFFF5F5F5)),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-                                ) {}
-                            }
-                        }
-                    } else {
-                        LazyRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(24.dp)
-                        ) {
-                            items(
-                                items = uiState.hotels,
-                                key = { hotel -> hotel.id }
-                            ) { hotel ->
-                                val minPrice = remember(hotel.rooms, hotel.minPrice) {
-                                    hotel.rooms.minByOrNull { it.price }?.price ?: hotel.minPrice
+                ) { selectedCategory ->
+                    key(selectedCategory) {
+                        if (uiState.isLoading && uiState.hotels.isEmpty()) {
+                            LazyRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(24.dp)
+                            ) {
+                                items(3) {
+                                    Card(
+                                        modifier = Modifier
+                                            .width(240.dp)
+                                            .height(280.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(Color(0xFFF5F5F5)),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                                    ) {}
                                 }
-                                val imageUrl = if (hotel.imageUrl.isNotEmpty()) hotel.imageUrl[0] else ""
-                                HotelCard(
-                                    title = hotel.name,
-                                    location = "${hotel.city}, ${hotel.country}",
-                                    price = minPrice?.let { "$${it.toInt()}" },
-                                    rating = hotel.rating.toFloat(),
-                                    reviews = hotel.numberOfReviews,
-                                    imageUrl = imageUrl,
-                                    isBookmarked = uiState.bookmarkedHotels.contains(hotel.id),
-                                    onBookmarkClick = { viewModel.onEvent(HomeIntent.ToggleBookmark(hotel.id)) },
-                                    onClick = { onHotelClick(hotel.id) }
-                                )
+                            }
+                        } else {
+                            LazyRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(24.dp)
+                            ) {
+                                items(
+                                    items = uiState.hotels,
+                                    key = { hotel -> hotel.id }
+                                ) { hotel ->
+                                    val minPrice = remember(hotel.rooms, hotel.minPrice) {
+                                        hotel.rooms.minByOrNull { it.price }?.price ?: hotel.minPrice
+                                    }
+                                    val imageUrl = if (hotel.imageUrl.isNotEmpty()) hotel.imageUrl[0] else ""
+                                    HotelCard(
+                                        title = hotel.name,
+                                        location = "${hotel.city}, ${hotel.country}",
+                                        price = minPrice?.let { "$${it.toInt()}" },
+                                        rating = hotel.rating.toFloat(),
+                                        reviews = hotel.numberOfReviews,
+                                        imageUrl = imageUrl,
+                                        isBookmarked = uiState.bookmarkedHotels.contains(hotel.id),
+                                        onBookmarkClick = { viewModel.onEvent(HomeIntent.ToggleBookmark(hotel.id)) },
+                                        onClick = { onHotelClick(hotel.id) }
+                                    )
+                                }
                             }
                         }
                     }
@@ -818,6 +821,7 @@ fun RecentlyBookedSection(
                     title = hotel.name,
                     location = "${hotel.city}, ${hotel.country}",
                     rating = hotel.rating.toFloat(),
+                    reviewsCount = hotel.numberOfReviews ?: 0,
                     originalPrice = if (hotel.minPrice != null) "$${hotel.minPrice.toInt()}/night" else "",
                     discount = if ((hotel.minPrice ?: 0.0) > 0.0) "- 5%" else "",
                     finalPrice = if (hotel.minPrice != null) "$${(hotel.minPrice * 0.95).toInt()}" else "",
@@ -837,6 +841,7 @@ fun RecentlyBookedCard(
     title: String,
     location: String,
     rating: Float,
+    reviewsCount: Int,
     originalPrice: String,
     discount: String,
     finalPrice: String,
@@ -947,7 +952,7 @@ fun RecentlyBookedCard(
                             )
                             
                             Text(
-                                text = "(45 reviews)",
+                                text = "(${reviewsCount} reviews)",
                                 fontSize = 12.sp,
                                 color = Color(0xFF757575)
                             )
@@ -1020,101 +1025,3 @@ fun RecentlyBookedCard(
     }
 }
 
-@Composable
-fun BottomNavigation(
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(80.dp)
-            .background(
-                color = Color.White,
-                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
-            )
-            .padding(horizontal = 33.dp, vertical = 12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BottomNavItem(
-                icon = Icons.Default.Home,
-                label = "Home",
-                isSelected = true
-            )
-            
-            BottomNavItem(
-                icon = Icons.Default.LocationOn,
-                label = "Deal",
-                isSelected = false
-            )
-            
-            BottomNavItem(
-                icon = Icons.Default.FavoriteBorder,
-                label = "Saved",
-                isSelected = false
-            )
-            
-            BottomNavItem(
-                icon = Icons.Default.Star,
-                label = "My trips",
-                isSelected = false
-            )
-            
-            BottomNavItem(
-                icon = Icons.Default.Favorite,
-                label = "Profile",
-                isSelected = false
-            )
-        }
-    }
-}
-
-@Composable
-fun BottomNavItem(
-    icon: ImageVector,
-    label: String,
-    isSelected: Boolean
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(
-                    color = if (isSelected) {
-                        Color(0xFF1AB6B6)
-                    } else {
-                        Color.Transparent
-                    },
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .border(
-                    width = if (isSelected) 0.dp else 1.dp,
-                    color = if (isSelected) Color.Transparent else Color(0xFF757575),
-                    shape = RoundedCornerShape(8.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = if (isSelected) Color.White else Color(0xFF757575),
-                modifier = Modifier.size(18.dp)
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            color = if (isSelected) Color(0xFF212121) else Color(0x66000000)
-        )
-    }
-}

@@ -48,7 +48,8 @@ fun MainScreen(
     onVoucherClick: (String) -> Unit = {},  // Giữ nhưng không dùng trực tiếp
     onNavigateToReview: (String) -> Unit = {},
     onNavigateToBill: (String) -> Unit = {},
-    onNavigateToBooking: (String) -> Unit = {}
+    onNavigateToBooking: (String) -> Unit = {},
+    onNavigateToMyReviews: () -> Unit = {}
 ) {
     // Use rememberSaveable to persist tab selection across navigation
     var selectedTab by rememberSaveable { 
@@ -79,6 +80,7 @@ fun MainScreen(
         profileViewModel.uiEffect.collect { effect ->
             when (effect) {
                 is ProfileUiEffect.ShowMessage -> Toast.makeText(profileContext, effect.message, Toast.LENGTH_LONG).show()
+                ProfileUiEffect.NavigateToMyReviews -> onNavigateToMyReviews()
             }
         }
     }
@@ -133,12 +135,14 @@ fun MainScreen(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp)
         
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(paddingValues)
         ) {
             // Use when expression with memoized selectedTab to optimize recomposition
             when (selectedTab) {

@@ -607,4 +607,21 @@ class FirestoreHotelRepository @Inject constructor(
         }
         return written
     }
+
+    override suspend fun updateHotelAggregation(hotelId: String, rating: Double, numberOfReviews: Int): Boolean {
+        return try {
+            val updates = mapOf(
+                "rating" to rating,
+                "numberOfReviews" to numberOfReviews
+            )
+            firestore.collection("hotels")
+                .document(hotelId)
+                .set(updates, SetOptions.merge())
+                .await()
+            true
+        } catch (e: Exception) {
+            Log.e("FirestoreHotelRepository", "Failed to update hotel aggregation for $hotelId: ${e.message}", e)
+            false
+        }
+    }
 }

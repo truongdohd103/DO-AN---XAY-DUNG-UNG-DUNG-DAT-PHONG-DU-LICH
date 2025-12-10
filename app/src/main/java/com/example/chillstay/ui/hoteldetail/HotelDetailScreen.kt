@@ -69,7 +69,8 @@ import java.time.format.TextStyle
 fun HotelDetailScreen(
     hotelId: String,
     onBackClick: () -> Unit = {},
-    onChooseRoomClick: () -> Unit = {}
+    onChooseRoomClick: () -> Unit = {},
+    onSeeAllReviewsClick: (String) -> Unit = {}
 ) {
     val viewModel: HotelDetailViewModel = koinInject()
     val uiState by viewModel.state.collectAsStateWithLifecycle()
@@ -179,7 +180,8 @@ fun HotelDetailScreen(
                 ReviewsSection(
                     rating = uiState.hotel?.rating ?: 0.0,
                     reviewCount = uiState.hotel?.numberOfReviews ?: 0,
-                    reviewsWithUser = uiState.reviewsWithUser
+                    reviewsWithUser = uiState.reviewsWithUser,
+                    onSeeAllClick = { onSeeAllReviewsClick(hotelId) }
                 )
             }
 
@@ -495,7 +497,8 @@ fun MoreAndHideButton(expanded: Boolean, onClick: () -> Unit) {
 fun ReviewsSection(
     rating: Double,
     reviewCount: Int,
-    reviewsWithUser: List<ReviewWithUser> = emptyList()
+    reviewsWithUser: List<ReviewWithUser> = emptyList(),
+    onSeeAllClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -519,7 +522,7 @@ fun ReviewsSection(
                 color = Color(0xFF1AB6B6),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable { /* TODO: Navigate to all reviews */ }
+                modifier = Modifier.clickable { onSeeAllClick() }
             )
         }
 
@@ -549,9 +552,10 @@ fun ReviewsSection(
         if (reviewsWithUser.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 items(reviewsWithUser) { reviewWithUser ->
+                    val timeLabel = formatReviewDateTime(reviewWithUser.review.createdAt)
                     ReviewCard(
                         name = reviewWithUser.userName,
-                        location = "Recently",
+                        location = timeLabel,
                         rating = reviewWithUser.review.rating,
                         comment = reviewWithUser.review.comment,
                         photoUrl = reviewWithUser.userPhotoUrl
@@ -568,6 +572,18 @@ fun ReviewsSection(
             )
         }
     }
+}
+
+private fun formatReviewDateTime(createdAt: com.google.firebase.Timestamp?): String {
+    if (createdAt == null) return ""
+    val date = createdAt.toDate()
+    val cal = java.util.Calendar.getInstance().apply { time = date }
+    val dd = String.format("%02d", cal.get(java.util.Calendar.DAY_OF_MONTH))
+    val mm = String.format("%02d", cal.get(java.util.Calendar.MONTH) + 1)
+    val yyyy = cal.get(java.util.Calendar.YEAR)
+    val hh = String.format("%02d", cal.get(java.util.Calendar.HOUR_OF_DAY))
+    val min = String.format("%02d", cal.get(java.util.Calendar.MINUTE))
+    return "$dd-$mm-$yyyy $hh:$min"
 }
 
 @Composable
