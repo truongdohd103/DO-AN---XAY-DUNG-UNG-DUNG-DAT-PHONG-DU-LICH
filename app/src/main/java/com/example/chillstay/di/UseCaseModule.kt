@@ -31,6 +31,9 @@ import com.example.chillstay.domain.usecase.bookmark.GetUserBookmarksUseCase
 // Review use cases
 import com.example.chillstay.domain.usecase.review.CreateReviewUseCase
 import com.example.chillstay.domain.usecase.review.GetHotelReviewsUseCase
+import com.example.chillstay.domain.usecase.review.AggregateHotelRatingForHotelUseCase
+import com.example.chillstay.domain.usecase.review.UpdateReviewUseCase
+import com.example.chillstay.domain.usecase.review.DeleteReviewUseCase
 
 // Voucher use cases
 import com.example.chillstay.domain.usecase.voucher.GetAvailableVouchersUseCase
@@ -87,8 +90,11 @@ val useCaseModule = module {
     factory { GetUserBookmarksUseCase(get()) }
     
     // Review use cases
-    factory { CreateReviewUseCase(get()) }
+    factory { AggregateHotelRatingForHotelUseCase(get(), get()) }
+    factory { CreateReviewUseCase(get(), get(), get()) }
     factory { GetHotelReviewsUseCase(get()) }
+    factory { UpdateReviewUseCase(get(), get()) }
+    factory { DeleteReviewUseCase(get(), get()) }
     
     // Voucher use cases
     factory { GetAvailableVouchersUseCase(get<VoucherRepository>()) }

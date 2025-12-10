@@ -9,6 +9,7 @@ import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
 import com.example.chillstay.domain.usecase.booking.CancelBookingUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
+import com.example.chillstay.domain.repository.ReviewRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -20,7 +21,8 @@ class MyTripViewModel(
     private val getUserBookings: GetUserBookingsUseCase,
     private val cancelBooking: CancelBookingUseCase,
     private val getHotelById: GetHotelByIdUseCase,
-    private val getRoomById: GetRoomByIdUseCase
+    private val getRoomById: GetRoomByIdUseCase,
+    private val reviewRepository: ReviewRepository
 ) : BaseViewModel<MyTripUiState, MyTripIntent, MyTripEffect>(MyTripUiState()) {
 
     override fun onEvent(event: MyTripIntent) {
@@ -65,6 +67,23 @@ _state.update { it.updateIsLoading(true).clearError() }
                             handleLoadRoomDetails(roomIds)
                         }
                         
+                        if (status == "COMPLETED") {
+                            try {
+                                val reviewTasks = hotelIds.map { hid ->
+                                    async {
+                                        val r = reviewRepository.getUserReviewForHotel(userId, hid)
+                                        if (r != null) hid else null
+                                    }
+                                }
+                                val reviewedSet = reviewTasks.awaitAll().filterNotNull().toSet()
+                                _state.update { it.updateUserReviewedHotels(reviewedSet) }
+                            } catch (e: Exception) {
+                                _state.update { it.updateUserReviewedHotels(emptySet()) }
+                            }
+                        } else {
+                            _state.update { it.updateUserReviewedHotels(emptySet()) }
+                        }
+
                         // Wait for both to complete before setting loading to false
                         hotelJob.join()
                         roomJob.join()
@@ -124,7 +143,7 @@ _state.update { it.updateIsLoading(true).clearError() }
                         val status = when (currentState.selectedTab) {
                             0 -> "PENDING"
                             1 -> "COMPLETED"
-                            2 -> "CANCELED"
+                            2 -> "CANCELLED"
                             else -> null
                         }
                         

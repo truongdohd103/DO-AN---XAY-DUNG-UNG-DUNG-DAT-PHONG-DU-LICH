@@ -14,6 +14,9 @@ import com.example.chillstay.ui.vip.VipStatusViewModel
 import com.example.chillstay.ui.auth.AuthViewModel
 import com.example.chillstay.ui.profile.ProfileViewModel
 import com.example.chillstay.ui.search.SearchViewModel
+import com.example.chillstay.ui.roomgallery.RoomGalleryViewModel
+import com.example.chillstay.ui.myreviews.MyReviewsViewModel
+import com.example.chillstay.ui.allreviews.AllReviewsViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
@@ -26,14 +29,14 @@ val viewModelModule = module {
             get()  // GetCurrentUserIdUseCase
         )
     }
-    viewModel {
-        HomeViewModel(
+    viewModel { HomeViewModel(
             get(), // GetHotelsUseCase
             get(), // AddBookmarkUseCase
             get(), // RemoveBookmarkUseCase
             get(), // GetUserBookmarksUseCase
             get(), // GetUserBookingsUseCase
             get(), // GetHotelByIdUseCase
+            get(), // GetRoomByIdUseCase
             get()  // GetCurrentUserIdUseCase
         )
     }
@@ -49,12 +52,21 @@ val viewModelModule = module {
         )
     }
     viewModel { MyBookmarkViewModel(get(), get(), get()) }
-    viewModel { MyTripViewModel(get(), get(), get(), get()) }
+    viewModel { MyTripViewModel(get(), get(), get(), get(), get()) }
     viewModel { RoomViewModel(get(), get()) }
+    viewModel { RoomGalleryViewModel(get(), get()) }
     viewModel { BookingViewModel(get(), get(), get(), get(), get()) }
     viewModel { VoucherViewModel(get(), get(), get(), get()) }
     viewModel { VoucherDetailViewModel(get(), get(), get()) }
-    viewModel { ReviewViewModel(get(), get()) }
+    viewModel { ReviewViewModel(
+        get(), // GetUserBookingsUseCase
+        get(), // GetHotelByIdUseCase
+        get(), // GetBookingByIdUseCase
+        get(), // CreateReviewUseCase
+        get(), // UpdateReviewUseCase
+        get(), // GetCurrentUserIdUseCase
+        get()  // ReviewRepository
+    ) }
     viewModel { BillViewModel(get(), get()) }
     viewModel { VipStatusViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel {
@@ -64,4 +76,6 @@ val viewModelModule = module {
             get()  // UpdateUserProfileUseCase
         )
     }
+    viewModel { MyReviewsViewModel(get(), get(), get()) }
+    viewModel { AllReviewsViewModel(get(), get()) }
 }

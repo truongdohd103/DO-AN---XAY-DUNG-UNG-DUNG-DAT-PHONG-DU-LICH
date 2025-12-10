@@ -12,6 +12,7 @@ import com.example.chillstay.domain.usecase.bookmark.RemoveBookmarkUseCase
 import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelsUseCase
+import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
 import com.example.chillstay.domain.model.HotelCategory
 import com.example.chillstay.domain.model.HotelListFilter
 import com.example.chillstay.ui.home.HomeIntent.ChangeHotelCategory
@@ -28,6 +29,7 @@ class HomeViewModel(
     private val getUserBookmarksUseCase: GetUserBookmarksUseCase,
     private val getUserBookingsUseCase: GetUserBookingsUseCase,
     private val getHotelByIdUseCase: GetHotelByIdUseCase,
+    private val getRoomByIdUseCase: GetRoomByIdUseCase,
     private val getCurrentUserIdUseCase: GetCurrentUserIdUseCase
 ) : BaseViewModel<HomeUiState, HomeIntent, HomeEffect>(HomeUiState()) {
 
@@ -201,19 +203,21 @@ class HomeViewModel(
             _state.update { it.updatePendingBookings(it.pendingBookings, isLoading = true) }
             when (val result = getUserBookingsUseCase(userId, BookingStatus.PENDING.name)) {
                 is Result.Success -> {
-                    val pendingItems = result.data
-                        .sortedByDescending { it.createdAt.toDate() }
-                        .map { booking ->
-                            PendingDisplayItem(
-                                hotelName = booking.hotel?.name,
-                                dateFrom = booking.dateFrom,
-                                dateTo = booking.dateTo,
-                                guests = booking.guests,
-                                createdAt = booking.createdAt.toDate(),
-                                hotelId = booking.hotelId,
-                                roomId = booking.roomId
-                            )
-                        }
+                    val pendingItems = mutableListOf<PendingDisplayItem>()
+                    for (booking in result.data.sortedByDescending { it.createdAt.toDate() }) {
+                        val hotel = booking.hotel ?: resolveHotel(booking.hotelId)
+                        val room = booking.room ?: resolveRoom(booking.roomId)
+                        pendingItems += PendingDisplayItem(
+                            hotelName = hotel?.name,
+                            roomType = room?.detail?.name ?: room?.type,
+                            dateFrom = booking.dateFrom,
+                            dateTo = booking.dateTo,
+                            guests = booking.guests,
+                            createdAt = booking.createdAt.toDate(),
+                            hotelId = booking.hotelId,
+                            roomId = booking.roomId
+                        )
+                    }
                     _state.update { it.updatePendingBookings(pendingItems, isLoading = false) }
                 }
                 is Result.Error -> {
@@ -250,6 +254,19 @@ class HomeViewModel(
     private suspend fun resolveHotel(hotelId: String): Hotel? {
         return try {
             getHotelByIdUseCase(hotelId).first().let { result ->
+                when (result) {
+                    is Result.Success -> result.data
+                    is Result.Error -> null
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun resolveRoom(roomId: String): com.example.chillstay.domain.model.Room? {
+        return try {
+            getRoomByIdUseCase(roomId).first().let { result ->
                 when (result) {
                     is Result.Success -> result.data
                     is Result.Error -> null

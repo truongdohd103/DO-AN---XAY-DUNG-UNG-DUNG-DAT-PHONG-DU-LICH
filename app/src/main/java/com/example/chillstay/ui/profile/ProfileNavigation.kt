@@ -27,6 +27,7 @@ fun NavGraphBuilder.profileRoute(
             vm.uiEffect.collect { effect ->
                 when (effect) {
                     is ProfileUiEffect.ShowMessage -> Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
+                    ProfileUiEffect.NavigateToMyReviews -> {}
                 }
             }
         }

@@ -21,6 +21,7 @@ interface HotelRepository {
         guests: Int? = null
     ): List<Room>
     suspend fun getRoomById(roomId: String): Room?
+    suspend fun updateHotelAggregation(hotelId: String, rating: Double, numberOfReviews: Int): Boolean
 }
 
 

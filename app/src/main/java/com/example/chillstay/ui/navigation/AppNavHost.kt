@@ -43,6 +43,12 @@ import com.example.chillstay.ui.review.reviewRoute
 import com.example.chillstay.ui.review.navigateToReview
 import com.example.chillstay.ui.bill.billRoute
 import com.example.chillstay.ui.bill.navigateToBill
+import com.example.chillstay.ui.roomgallery.roomGalleryRoute
+import com.example.chillstay.ui.roomgallery.navigateToRoomGallery
+import com.example.chillstay.ui.myreviews.myReviewsRoute
+import com.example.chillstay.ui.myreviews.navigateToMyReviews
+import com.example.chillstay.ui.allreviews.allReviewsRoute
+import com.example.chillstay.ui.allreviews.navigateToAllReviews
 
 @Composable
 fun AppNavHost(
@@ -192,7 +198,7 @@ fun AppNavHost(
                 onBackClick = { navController.popBackStack() },
                 onHotelClick = { hotelId, fromMyTrip ->
                     android.util.Log.d("AppNavHost", "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip")
-                    navController.navigateToHotelDetail(hotelId, fromMyTrip)
+                    navController.navigateToHotelDetail(hotelId, fromMyTrip, OnboardingManager.getLastTab(context))
                 },
                 onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
                 onVipClick = {
@@ -222,6 +228,9 @@ fun AppNavHost(
                 },
                 onNavigateToBooking = { bookingId ->
                     navController.navigateToBookingDetail(bookingId)
+                },
+                onNavigateToMyReviews = {
+                    navController.navigateToMyReviews()
                 }
             )
         }
@@ -236,7 +245,7 @@ fun AppNavHost(
                 onBackClick = { navController.popBackStack() },
                 onHotelClick = { hotelId, fromMyTrip ->
                     android.util.Log.d("AppNavHost", "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip")
-                    navController.navigateToHotelDetail(hotelId, fromMyTrip)
+                    navController.navigateToHotelDetail(hotelId, fromMyTrip, OnboardingManager.getLastTab(context))
                 },
                 onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
                 onVipClick = {
@@ -264,26 +273,33 @@ fun AppNavHost(
                 },
                 onNavigateToBooking = { bookingId ->
                     navController.navigateToBookingDetail(bookingId)
+                },
+                onNavigateToMyReviews = {
+                    navController.navigateToMyReviews()
                 }
             )
         }
         // Hotel Detail Routes
         hotelDetailRoutes(
-            onBackClick = { fromMyTrip ->
+            onBackClick = { fromMyTrip, sourceTab ->
                 if (fromMyTrip) {
-                    // Navigate to MAIN with tab=3 (My Trip tab) to restore the correct tab
-                    android.util.Log.d("AppNavHost", "Back from HotelDetail with fromMyTrip=true, navigating to MAIN with tab=3")
                     navController.navigate("${Routes.MAIN}?tab=3") {
-                        // Pop everything up to and including MAIN to replace it with MAIN?tab=3
                         popUpTo(Routes.MAIN) { inclusive = true }
                     }
+                } else if (sourceTab in 0..4) {
+                    navController.navigate("${Routes.MAIN}?tab=$sourceTab") {
+                        popUpTo(Routes.MAIN) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 } else {
-                    android.util.Log.d("AppNavHost", "Back from HotelDetail with fromMyTrip=false, using popBackStack")
                     navController.popBackStack()
                 }
             },
             onChooseRoomClick = { hotelId ->
                 navController.navigateToRoom(hotelId)
+            },
+            onSeeAllReviewsClick = { hotelId ->
+                navController.navigateToAllReviews(hotelId)
             }
         )
         // Room Route
@@ -295,7 +311,13 @@ fun AppNavHost(
                 } else {
                     navController.navigate(Routes.AUTHENTICATION)
                 }
+            },
+            onOpenGalleryClick = { hotelId, roomId ->
+                navController.navigateToRoomGallery(hotelId, roomId)
             }
+        )
+        roomGalleryRoute(
+            onBackClick = { navController.popBackStack() }
         )
         // Booking Routes
         bookingRoutes(
@@ -311,13 +333,23 @@ fun AppNavHost(
             )
         }
         searchRoute(
-            onBackClick = { navController.popBackStack() },
-            onHotelClick = { hotelId -> navController.navigateToHotelDetail(hotelId, false) }
+            onBackClick = {
+                navController.navigate("${Routes.MAIN}?tab=0") {
+                    popUpTo(Routes.MAIN) { inclusive = true }
+                    launchSingleTop = true
+                }
+            },
+            onHotelClick = { hotelId -> navController.navigateToHotelDetail(hotelId, false, 0) }
         )
         // Bookmark Route
         bookmarkRoute(
-            onBackClick = {},
-            onHotelClick = { hotelId -> navController.navigateToHotelDetail(hotelId, false) }
+            onBackClick = {
+                navController.navigate("${Routes.MAIN}?tab=2") {
+                    popUpTo(Routes.MAIN) { inclusive = true }
+                    launchSingleTop = true
+                }
+            },
+            onHotelClick = { hotelId -> navController.navigateToHotelDetail(hotelId, false, 2) }
         )
         // Trip Route
         tripRoute(
@@ -341,20 +373,49 @@ fun AppNavHost(
         profileRoute(
             onLogoutClick = { authViewModel.onEvent(com.example.chillstay.ui.auth.AuthIntent.SignOut) }
         )
+        // My Reviews Route
+        myReviewsRoute(
+            onBackClick = {
+                navController.navigate("${Routes.MAIN}?tab=4") {
+                    popUpTo(Routes.MAIN) { inclusive = true }
+                    launchSingleTop = true
+                }
+            },
+            onHotelClick = { hotelId -> navController.navigateToHotelDetail(hotelId, false) }
+        )
         // Voucher Routes
         voucherRoutes(
-            onBackClick = { navController.popBackStack() },
+            onBackClick = {
+                navController.navigate("${Routes.MAIN}?tab=1") {
+                    popUpTo(Routes.MAIN) { inclusive = true }
+                    launchSingleTop = true
+                }
+            },
             onVoucherClick = { voucherId -> 
                 navController.navigateToVoucherDetail(voucherId)
             }
         )
         // Review Route
         reviewRoute(
+            onBackClick = {
+                navController.navigate("${Routes.MAIN}?tab=3") {
+                    popUpTo(Routes.MAIN) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        )
+        // All Reviews Route
+        allReviewsRoute(
             onBackClick = { navController.popBackStack() }
         )
         // Bill Route
         billRoute(
-            onBackClick = { navController.popBackStack() }
+            onBackClick = {
+                navController.navigate("${Routes.MAIN}?tab=3") {
+                    popUpTo(Routes.MAIN) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
         )
     }
 }

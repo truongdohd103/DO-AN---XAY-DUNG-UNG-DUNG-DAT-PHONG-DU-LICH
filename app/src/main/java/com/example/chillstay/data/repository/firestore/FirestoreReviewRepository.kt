@@ -69,6 +69,27 @@ class FirestoreReviewRepository @Inject constructor(
         }
     }
 
+    override suspend fun getUserReviews(userId: String): List<Review> {
+        return try {
+            val snapshot = firestore.collection("reviews")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            snapshot.documents.mapNotNull { document ->
+                try {
+                    document.toObject(Review::class.java)?.copy(id = document.id)
+                } catch (e: Exception) {
+                    Log.e("FirestoreReviewRepository", "Error parsing user review ${document.id}: ${e.message}", e)
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("FirestoreReviewRepository", "Error getting user reviews: ${e.message}", e)
+            emptyList()
+        }
+    }
+
     override suspend fun updateReview(review: Review): Review {
         return try {
             firestore.collection("reviews")
