@@ -18,6 +18,7 @@ import com.example.chillstay.domain.usecase.booking.CreateBookingUseCase
 import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
 import com.example.chillstay.domain.usecase.booking.CancelBookingUseCase
 import com.example.chillstay.domain.usecase.booking.GetBookingByIdUseCase
+import com.example.chillstay.domain.usecase.booking.DeleteBookingUseCase
 
 // User use cases
 import com.example.chillstay.domain.usecase.user.GetUserProfileUseCase
@@ -75,10 +76,11 @@ val useCaseModule = module {
     factory { GetRoomByIdUseCase(get()) }
     
     // Booking use cases
-    factory { CreateBookingUseCase(get()) }
+    factory { CreateBookingUseCase(get(), get()) }
     factory { GetUserBookingsUseCase(get()) }
-    factory { CancelBookingUseCase(get()) }
+    factory { CancelBookingUseCase(get(), get()) }
     factory { GetBookingByIdUseCase(get()) }
+    factory { DeleteBookingUseCase(get(), get()) }
     
     // User use cases
     factory { GetUserProfileUseCase(get()) }

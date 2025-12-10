@@ -37,6 +37,7 @@ import com.example.chillstay.ui.booking.navigateToNewBooking
 import com.example.chillstay.ui.booking.navigateToBookingDetail
 import com.example.chillstay.ui.bookmark.bookmarkRoute
 import com.example.chillstay.ui.trip.tripRoute
+import com.example.chillstay.ui.trip.navigateToTrip
 import com.example.chillstay.ui.voucher.voucherRoutes
 import com.example.chillstay.ui.voucher.navigateToVoucherDetail
 import com.example.chillstay.ui.review.reviewRoute
@@ -325,6 +326,13 @@ fun AppNavHost(
                 homeViewModel.onEvent(HomeIntent.RefreshUserSections)
                 homeViewModel.onEvent(HomeIntent.RefreshBookmarks)
                 navController.popBackStack()
+            },
+            onNavigateToMyTrips = {
+                homeViewModel.onEvent(HomeIntent.RefreshUserSections)
+                navController.navigate("${Routes.MAIN}?tab=3") {
+                    popUpTo(Routes.MAIN) { inclusive = true }
+                    launchSingleTop = true
+                }
             }
         )
         composable(Routes.VIP_STATUS) {

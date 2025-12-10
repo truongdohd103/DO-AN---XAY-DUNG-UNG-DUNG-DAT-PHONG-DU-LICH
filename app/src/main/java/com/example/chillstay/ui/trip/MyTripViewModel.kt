@@ -200,6 +200,7 @@ _state.update { it.updateIsLoading(true).clearError() }
         }
     }
 
+
     private suspend fun handleLoadHotelDetails(hotelIds: List<String>) {
         if (hotelIds.isEmpty()) return
         

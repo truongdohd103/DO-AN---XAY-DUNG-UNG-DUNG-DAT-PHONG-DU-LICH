@@ -46,4 +46,9 @@ sealed class BookingIntent : UiEvent {
     
     object CreateBooking : BookingIntent()
     object ClearBooking : BookingIntent()
+
+    data class UpdateDates(
+        val dateFrom: LocalDate,
+        val dateTo: LocalDate
+    ) : BookingIntent()
 }

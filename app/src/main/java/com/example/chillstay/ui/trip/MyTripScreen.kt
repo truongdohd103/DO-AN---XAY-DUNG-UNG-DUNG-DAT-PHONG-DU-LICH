@@ -370,6 +370,8 @@ fun MyTripScreen(
             }
         )
     }
+
+    
 }
 
 @Composable
@@ -593,6 +595,8 @@ fun NewTripCard(
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
+
+                        
                     }
                     "PENDING" -> {
                         // Cancel Booking button

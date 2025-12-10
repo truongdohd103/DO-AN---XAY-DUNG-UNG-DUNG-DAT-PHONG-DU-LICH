@@ -220,7 +220,6 @@ class FirestoreHotelRepository @Inject constructor(
         return try {
             var query = firestore.collection("rooms")
                 .whereEqualTo("hotelId", hotelId)
-                .whereEqualTo("isAvailable", true)
             
             guests?.let { query = query.whereGreaterThanOrEqualTo("capacity", it) }
             
@@ -247,6 +246,45 @@ class FirestoreHotelRepository @Inject constructor(
             }
         } catch (e: Exception) {
             null
+        }
+    }
+
+    override suspend fun reserveRoomUnits(roomId: String, count: Int): Boolean {
+        return try {
+            firestore.runTransaction { txn ->
+                val roomRef = firestore.collection("rooms").document(roomId)
+                val snapshot = txn.get(roomRef)
+                if (!snapshot.exists()) throw IllegalStateException("Room not found")
+                val current = (snapshot.getLong("availableCount") ?: 0L).toInt()
+                if (count <= 0) throw IllegalArgumentException("Reserve count must be > 0")
+                if (current < count) throw IllegalStateException("Not enough availability")
+                val newCount = current - count
+                val updates = mutableMapOf<String, Any>("availableCount" to newCount)
+                if (newCount == 0) updates["isAvailable"] = false
+                txn.update(roomRef, updates)
+                true
+            }.await()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override suspend fun releaseRoomUnits(roomId: String, count: Int): Boolean {
+        return try {
+            firestore.runTransaction { txn ->
+                val roomRef = firestore.collection("rooms").document(roomId)
+                val snapshot = txn.get(roomRef)
+                if (!snapshot.exists()) throw IllegalStateException("Room not found")
+                val current = (snapshot.getLong("availableCount") ?: 0L).toInt()
+                if (count <= 0) throw IllegalArgumentException("Release count must be > 0")
+                val newCount = current + count
+                val updates = mutableMapOf<String, Any>("availableCount" to newCount)
+                if (newCount > 0) updates["isAvailable"] = true
+                txn.update(roomRef, updates)
+                true
+            }.await()
+        } catch (e: Exception) {
+            false
         }
     }
 
