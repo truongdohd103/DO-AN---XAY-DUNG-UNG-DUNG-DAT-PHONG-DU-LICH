@@ -18,6 +18,7 @@ import com.example.chillstay.domain.usecase.voucher.GetAvailableVouchersUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.google.firebase.Timestamp
 import java.time.LocalDate
@@ -62,6 +63,9 @@ class BookingViewModel(
             is BookingIntent.ClearBooking -> {
                 clearBooking()
             }
+            is BookingIntent.UpdateDates -> {
+                updateDates(event.dateFrom, event.dateTo)
+            }
         }
     }
 
@@ -71,14 +75,14 @@ class BookingViewModel(
             
             try {
                 // Load hotel data
-                val hotelResult = getHotelByIdUseCase(hotelId)
+                val hotelResult = getHotelByIdUseCase(hotelId).first()
                 val hotel = when (hotelResult) {
                     is com.example.chillstay.core.common.Result.Success -> hotelResult.data
                     is com.example.chillstay.core.common.Result.Error -> null
                 }
                 
                 // Load room data
-                val roomResult = getRoomByIdUseCase(roomId)
+                val roomResult = getRoomByIdUseCase(roomId).first()
                 val room = when (roomResult) {
                     is com.example.chillstay.core.common.Result.Success -> roomResult.data
                     is com.example.chillstay.core.common.Result.Error -> null
@@ -101,7 +105,8 @@ class BookingViewModel(
                     dateFrom = dateFrom,
                     dateTo = dateTo,
                     availableVouchers = vouchers,
-                    priceBreakdown = priceBreakdown
+                    priceBreakdown = priceBreakdown,
+                    hasInitialDates = true
                 )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
@@ -124,8 +129,8 @@ class BookingViewModel(
                         val booking = bookingResult.data
                         if (booking != null) {
                             // Load hotel and room data
-                            val hotelResult = getHotelByIdUseCase(booking.hotelId)
-                            val roomResult = getRoomByIdUseCase(booking.roomId)
+                            val hotelResult = getHotelByIdUseCase(booking.hotelId).first()
+                            val roomResult = getRoomByIdUseCase(booking.roomId).first()
                             
                             val hotel = when (hotelResult) {
                                 is com.example.chillstay.core.common.Result.Success -> hotelResult.data
@@ -156,7 +161,8 @@ class BookingViewModel(
                                 dateFrom = dateFrom,
                                 dateTo = dateTo,
                                 availableVouchers = vouchers,
-                                priceBreakdown = priceBreakdown
+                                priceBreakdown = priceBreakdown,
+                                hasInitialDates = true
                             )
                         } else {
                             _state.value = _state.value.copy(
@@ -207,6 +213,22 @@ class BookingViewModel(
 
     private fun updatePaymentMethod(paymentMethod: PaymentMethod) {
         _state.value = _state.value.copy(paymentMethod = paymentMethod)
+    }
+
+    private fun updateDates(dateFrom: LocalDate, dateTo: LocalDate) {
+        val safeTo = if (dateTo.isAfter(dateFrom)) dateTo else dateFrom.plusDays(1)
+        val currentState = _state.value
+        _state.value = currentState.copy(
+            dateFrom = dateFrom,
+            dateTo = safeTo,
+            priceBreakdown = calculatePriceBreakdown(
+                currentState.room,
+                dateFrom,
+                safeTo,
+                currentState.rooms
+            ),
+            datesUserSelected = true
+        )
     }
 
     private fun applyVoucher(voucherCode: String) {
@@ -272,7 +294,7 @@ class BookingViewModel(
                     serviceFee = currentState.priceBreakdown.serviceFee,
                     taxes = currentState.priceBreakdown.taxes,
                     totalPrice = currentState.priceBreakdown.finalTotal,
-                    status = BookingStatus.PENDING,
+                    status = BookingStatus.COMPLETED,
                     paymentMethod = currentState.paymentMethod,
                     specialRequests = currentState.specialRequests,
                     preferences = currentState.preferences,

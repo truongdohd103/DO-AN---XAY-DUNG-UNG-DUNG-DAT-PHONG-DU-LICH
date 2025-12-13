@@ -5,10 +5,11 @@
   "main": "firebase-complete-import.js",
   "scripts": {
     "import": "node firebase-complete-import.js",
+    "import-vip": "node firebase-complete-import.js --vip-only",
     "install-deps": "npm install"
   },
   "dependencies": {
-    "firebase-admin": "^12.7.0"
+    "firebase-admin": "^13.6.0"
   },
   "keywords": [
     "firebase",
@@ -17,5 +18,13 @@
     "chillstay"
   ],
   "author": "ChillStay Team",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/truongdohd103/ChillStay.git"
+  },
+  "bugs": {
+    "url": "https://github.com/truongdohd103/ChillStay/issues"
+  },
+  "homepage": "https://github.com/truongdohd103/ChillStay#readme"
 }

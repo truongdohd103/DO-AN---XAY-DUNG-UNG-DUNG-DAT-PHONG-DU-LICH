@@ -9,4 +9,5 @@ interface BookingRepository {
     suspend fun updateBooking(booking: Booking): Booking
     suspend fun cancelBooking(bookingId: String): Boolean
     suspend fun getBookingHotelId(bookingId: String): String?
+    suspend fun deleteBooking(bookingId: String): Boolean
 }

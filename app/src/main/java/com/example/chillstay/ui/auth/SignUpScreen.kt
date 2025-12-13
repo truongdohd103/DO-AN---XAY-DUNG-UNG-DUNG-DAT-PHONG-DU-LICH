@@ -8,8 +8,29 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,17 +44,19 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(
+    state: AuthState,
+    onEvent: (AuthIntent) -> Unit,
     onBackClick: () -> Unit,
-    onSignUpClick: (email: String, password: String, confirmPassword: String) -> Unit,
     onSignInClick: () -> Unit,
     onGoogleClick: () -> Unit,
     onFacebookClick: () -> Unit
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        onEvent(AuthIntent.ClearMessage)
+    }
 
     Scaffold(
         topBar = {
@@ -79,6 +102,22 @@ fun SignUpScreen(
             lineHeight = 35.sp
         )
         
+        if (state.errorMessage != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = state.errorMessage,
+                    modifier = Modifier.padding(16.dp),
+                    color = Color(0xFFC62828),
+                    fontSize = 14.sp
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
         
         // Form
@@ -95,8 +134,8 @@ fun SignUpScreen(
                     fontSize = 14.sp
                 )
                 OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
+                    value = state.email,
+                    onValueChange = { onEvent(AuthIntent.EmailChanged(it)) },
                     placeholder = { Text("Email", color = Color(0xFF757575)) },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -118,8 +157,8 @@ fun SignUpScreen(
                     fontSize = 14.sp
                 )
                 OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
+                    value = state.password,
+                    onValueChange = { onEvent(AuthIntent.PasswordChanged(it)) },
                     placeholder = { Text("Password", color = Color(0xFF757575)) },
                     modifier = Modifier.fillMaxWidth(),
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -150,15 +189,15 @@ fun SignUpScreen(
                      fontSize = 14.sp
                  )
                  OutlinedTextField(
-                     value = confirmPassword,
-                     onValueChange = { confirmPassword = it },
+                     value = state.confirmPassword,
+                     onValueChange = { onEvent(AuthIntent.ConfirmPasswordChanged(it)) },
                      placeholder = { Text("Password", color = Color(0xFF757575)) },
                      modifier = Modifier.fillMaxWidth(),
                      visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                      colors = OutlinedTextFieldDefaults.colors(
-                         focusedBorderColor = if (confirmPassword.isNotBlank() && password != confirmPassword) Color.Red else Color(0xFFE0E0E0),
-                         unfocusedBorderColor = if (confirmPassword.isNotBlank() && password != confirmPassword) Color.Red else Color(0xFFE0E0E0)
+                         focusedBorderColor = if (state.confirmPassword.isNotBlank() && state.password != state.confirmPassword) Color.Red else Color(0xFFE0E0E0),
+                         unfocusedBorderColor = if (state.confirmPassword.isNotBlank() && state.password != state.confirmPassword) Color.Red else Color(0xFFE0E0E0)
                      ),
                      shape = RoundedCornerShape(12.dp),
                      trailingIcon = {
@@ -171,7 +210,7 @@ fun SignUpScreen(
                      }
                  )
                  // Password mismatch error
-                 if (confirmPassword.isNotBlank() && password != confirmPassword) {
+                 if (state.confirmPassword.isNotBlank() && state.password != state.confirmPassword) {
                      Text(
                          text = "Passwords do not match",
                          color = Color.Red,
@@ -180,27 +219,27 @@ fun SignUpScreen(
                  }
              }
             
-             // Password Requirements
-             PasswordRequirementsCard(password = password)
+            // Password Requirements
+            PasswordRequirementsCard(password = state.password)
             
             // Security Info Card
             SecurityInfoCard()
             
              // Sign up button
-             val isFormValid = remember(email, password, confirmPassword) {
-                 email.isNotBlank() && 
-                 password.length >= 8 &&
-                 password.any { it.isUpperCase() } &&
-                 password.any { it.isLowerCase() } &&
-                 password.any { it.isDigit() } &&
-                 password.any { "!@#$%^&*()_+-=[]{}|;:,.<>?".contains(it) } &&
-                 password == confirmPassword &&
-                 confirmPassword.isNotBlank()
+             val isFormValid = remember(state.email, state.password, state.confirmPassword) {
+                 state.email.isNotBlank() &&
+                 state.password.length >= 8 &&
+                 state.password.any { it.isUpperCase() } &&
+                 state.password.any { it.isLowerCase() } &&
+                 state.password.any { it.isDigit() } &&
+                 state.password.any { "!@#$%^&*()_+-=[]{}|;:,.<>?".contains(it) } &&
+                 state.password == state.confirmPassword &&
+                 state.confirmPassword.isNotBlank()
              }
              
              Button(
-                 onClick = { onSignUpClick(email, password, confirmPassword) },
-                 enabled = isFormValid,
+                 onClick = { onEvent(AuthIntent.SignUp) },
+                 enabled = isFormValid && !state.isLoading,
                  modifier = Modifier
                      .fillMaxWidth()
                      .height(62.dp),
@@ -219,6 +258,17 @@ fun SignUpScreen(
         }
         
         Spacer(modifier = Modifier.height(24.dp))
+
+        if (state.isLoading) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(color = Color(0xFF1AB6B6))
+            }
+        }
         
         // Divider
         Row(

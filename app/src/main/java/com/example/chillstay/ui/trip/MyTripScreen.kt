@@ -107,10 +107,10 @@ fun MyTripScreen(
         val status = when (uiState.selectedTab) {
             0 -> "PENDING"
             1 -> "COMPLETED"
-            2 -> "CANCELED"
+            2 -> "CANCELLED"
             else -> null
         }
-        
+
         if (currentUserId != null && status != null) {
             viewModel.onEvent(MyTripIntent.LoadBookings(currentUserId, status))
         }
@@ -212,7 +212,7 @@ fun MyTripScreen(
                                         val status = when (uiState.selectedTab) {
                                             0 -> "PENDING"
                                             1 -> "COMPLETED"
-                                            2 -> "CANCELED"
+                                            2 -> "CANCELLED"
                                             else -> null
                                         }
                                         if (status != null) {
@@ -281,7 +281,7 @@ fun MyTripScreen(
                         val status = when (uiState.selectedTab) {
                             0 -> "PENDING"
                             1 -> "COMPLETED"
-                            2 -> "CANCELED"
+                            2 -> "CANCELLED"
                             else -> booking.status.name
                         }
                         NewTripCard(
@@ -292,6 +292,7 @@ fun MyTripScreen(
                             totalPrice = booking.price.toInt(),
                             status = status,
                             hotelImageUrl = hotelImageUrl,
+                            hasReview = uiState.userReviewedHotels.contains(booking.hotelId),
                             onHotelClick = { 
                                 android.util.Log.d("MyTripScreen", "Trip card clicked - status: $status, bookingId: ${booking.id}")
                                 when (status) {
@@ -299,7 +300,7 @@ fun MyTripScreen(
                                         android.util.Log.d("MyTripScreen", "Navigating to booking detail for booking: ${booking.id}")
                                         onBookingClick(booking.id)
                                     }
-                                    "COMPLETED", "CANCELED" -> {
+                                    "COMPLETED", "CANCELLED" -> {
                                         android.util.Log.d("MyTripScreen", "Navigating to hotel detail for hotel: ${booking.hotelId}")
                                         onHotelClick(booking.hotelId, true) // fromMyTrip = true
                                     }
@@ -369,6 +370,8 @@ fun MyTripScreen(
             }
         )
     }
+
+    
 }
 
 @Composable
@@ -380,6 +383,7 @@ fun NewTripCard(
     totalPrice: Int,
     status: String,
     hotelImageUrl: String? = null,
+    hasReview: Boolean = false,
     onHotelClick: () -> Unit = {},
     onWriteReview: () -> Unit = {},
     onViewBill: () -> Unit = {},
@@ -504,7 +508,9 @@ fun NewTripCard(
                     text = dates,
                     color = Color(0xFF999999),
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -514,7 +520,9 @@ fun NewTripCard(
                     text = "$${totalPrice} total",
                     color = Color.White,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -545,7 +553,7 @@ fun NewTripCard(
                 // Action buttons based on status
                 when (status) {
                     "COMPLETED" -> {
-                        // Write Review button
+                        // Write/Edit Review button
                         Button(
                             onClick = onWriteReview,
                             modifier = Modifier
@@ -558,7 +566,7 @@ fun NewTripCard(
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                text = "Write Review",
+                                text = if (hasReview) "Edit Review" else "Write Review",
                                 color = Color.Black,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -587,6 +595,8 @@ fun NewTripCard(
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
+
+                        
                     }
                     "PENDING" -> {
                         // Cancel Booking button
@@ -610,7 +620,7 @@ fun NewTripCard(
                             )
                         }
                     }
-                    "CANCELED" -> {
+                    "CANCELLED" -> {
                         // Rebook button
                         Button(
                             onClick = onHotelClick,

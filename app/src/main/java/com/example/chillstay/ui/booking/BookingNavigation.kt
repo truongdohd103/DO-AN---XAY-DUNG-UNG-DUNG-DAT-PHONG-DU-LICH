@@ -23,7 +23,8 @@ object BookingNavigation {
 }
 
 fun NavGraphBuilder.bookingRoutes(
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onNavigateToMyTrips: () -> Unit
 ) {
     // New booking route
     composable(
@@ -45,7 +46,8 @@ fun NavGraphBuilder.bookingRoutes(
             roomId = roomId,
             dateFrom = dateFrom,
             dateTo = dateTo,
-            onBackClick = onBackClick
+            onBackClick = onBackClick,
+            onNavigateToMyTrips = onNavigateToMyTrips
         )
     }
     
@@ -60,7 +62,8 @@ fun NavGraphBuilder.bookingRoutes(
         
         BookingScreen(
             bookingId = bookingId,
-            onBackClick = onBackClick
+            onBackClick = onBackClick,
+            onNavigateToMyTrips = onNavigateToMyTrips
         )
     }
 }

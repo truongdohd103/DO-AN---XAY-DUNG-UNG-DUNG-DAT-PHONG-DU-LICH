@@ -1,76 +1,79 @@
-    package com.example.chillstay.ui.auth
-    
-    import androidx.compose.foundation.Image
-    import androidx.compose.foundation.background
-    import androidx.compose.foundation.layout.Arrangement
-    import androidx.compose.foundation.layout.Column
-    import androidx.compose.foundation.layout.Row
-    import androidx.compose.foundation.layout.Spacer
-    import androidx.compose.foundation.layout.fillMaxSize
-    import androidx.compose.foundation.layout.fillMaxWidth
-    import androidx.compose.foundation.layout.height
-    import androidx.compose.foundation.layout.padding
-    import androidx.compose.foundation.layout.size
-    import androidx.compose.foundation.layout.width
-    import androidx.compose.foundation.shape.RoundedCornerShape
-    import androidx.compose.foundation.text.KeyboardOptions
-    import androidx.compose.material.icons.Icons
-    import androidx.compose.material.icons.automirrored.filled.ArrowBack
-    import androidx.compose.material3.Button
-    import androidx.compose.material3.ButtonDefaults
-    import androidx.compose.material3.Card
-    import androidx.compose.material3.CardDefaults
-    import androidx.compose.material3.Checkbox
-    import androidx.compose.material3.CheckboxDefaults
-    import androidx.compose.material3.ExperimentalMaterial3Api
-    import androidx.compose.material3.HorizontalDivider
-    import androidx.compose.material3.Icon
-    import androidx.compose.material3.IconButton
-    import androidx.compose.material3.OutlinedButton
-    import androidx.compose.material3.OutlinedTextField
-    import androidx.compose.material3.OutlinedTextFieldDefaults
-    import androidx.compose.material3.Scaffold
-    import androidx.compose.material3.Text
-    import androidx.compose.material3.TextButton
-    import androidx.compose.material3.TopAppBar
-    import androidx.compose.material3.TopAppBarDefaults
-    import androidx.compose.runtime.Composable
-    import androidx.compose.runtime.getValue
-    import androidx.compose.runtime.mutableStateOf
-    import androidx.compose.runtime.remember
-    import androidx.compose.runtime.setValue
-    import androidx.compose.ui.Alignment
-    import androidx.compose.ui.Modifier
-    import androidx.compose.ui.graphics.Color
-    import androidx.compose.ui.graphics.painter.Painter
-    import androidx.compose.ui.layout.ContentScale
-    import androidx.compose.ui.res.painterResource
-    import androidx.compose.ui.text.font.FontWeight
-    import androidx.compose.ui.text.input.KeyboardType
-    import androidx.compose.ui.text.input.PasswordVisualTransformation
-    import androidx.compose.ui.text.input.VisualTransformation
-    import androidx.compose.ui.unit.dp
-    import androidx.compose.ui.unit.sp
-    import com.example.chillstay.R
+package com.example.chillstay.ui.auth
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun SignInScreen(
-        onBackClick: () -> Unit,
-        onSignInClick: (email: String, password: String) -> Unit,
-        onSignUpClick: () -> Unit,
-        onForgotPasswordClick: () -> Unit,
-        onGoogleClick: () -> Unit,
-        onFacebookClick: () -> Unit,
-        successMessage: String? = null,
-        errorMessage: String? = null
-    ) {
-        var email by remember { mutableStateOf("") }
-        var password by remember { mutableStateOf("") }
-        var rememberMe by remember { mutableStateOf(false) }
-        var passwordVisible by remember { mutableStateOf(false) }
-    
-        Scaffold(
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.chillstay.R
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SignInScreen(
+    state: AuthState,
+    onEvent: (AuthIntent) -> Unit,
+    onBackClick: () -> Unit,
+    onSignUpClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit,
+    onGoogleClick: () -> Unit,
+    onFacebookClick: () -> Unit
+) {
+    var rememberMe by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        onEvent(AuthIntent.ClearMessage)
+    }
+
+    Scaffold(
             topBar = {
                 TopAppBar(
                     title = {
@@ -113,8 +116,7 @@
                 lineHeight = 35.sp
             )
             
-            // Success message
-            if (successMessage != null) {
+            if (state.successMessage != null) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -124,7 +126,7 @@
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = successMessage,
+                        text = state.successMessage,
                         modifier = Modifier.padding(16.dp),
                         color = Color(0xFF2E7D32),
                         fontSize = 14.sp
@@ -132,8 +134,7 @@
                 }
             }
     
-            // Error message
-            if (errorMessage != null) {
+            if (state.errorMessage != null) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -143,7 +144,7 @@
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = errorMessage,
+                        text = state.errorMessage,
                         modifier = Modifier.padding(16.dp),
                         color = Color(0xFFC62828),
                         fontSize = 14.sp
@@ -167,8 +168,8 @@
                         fontSize = 14.sp
                     )
                     OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
+                        value = state.email,
+                        onValueChange = { onEvent(AuthIntent.EmailChanged(it)) },
                         placeholder = { Text("Email", color = Color(0xFF757575)) },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -190,8 +191,8 @@
                         fontSize = 14.sp
                     )
                     OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
+                        value = state.password,
+                        onValueChange = { onEvent(AuthIntent.PasswordChanged(it)) },
                         placeholder = { Text("Password", color = Color(0xFF757575)) },
                         modifier = Modifier.fillMaxWidth(),
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -232,10 +233,11 @@
                 
                 // Sign in button
                 Button(
-                    onClick = { onSignInClick(email, password) },
+                    onClick = { onEvent(AuthIntent.SignIn) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(62.dp),
+                    enabled = !state.isLoading,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF1AB6B6)
                     ),
@@ -259,6 +261,16 @@
                         color = Color.Black,
                         fontSize = 12.sp
                     )
+                }
+            }
+
+            if (state.isLoading) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(color = Color(0xFF1AB6B6))
                 }
             }
             

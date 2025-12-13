@@ -16,7 +16,8 @@ object RoomNavigation {
 
 fun NavGraphBuilder.roomRoute(
     onBackClick: () -> Unit,
-    onBookNowClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit
+    onBookNowClick: (hotelId: String, roomId: String, dateFrom: String, dateTo: String) -> Unit,
+    onOpenGalleryClick: (hotelId: String, roomId: String) -> Unit
 ) {
     composable(
         route = "${Routes.ROOM}/{${RoomNavigation.HOTEL_ID_ARG}}",
@@ -29,7 +30,8 @@ fun NavGraphBuilder.roomRoute(
         RoomScreen(
             hotelId = hotelId,
             onBackClick = onBackClick,
-            onBookNowClick = onBookNowClick
+            onBookNowClick = onBookNowClick,
+            onOpenGalleryClick = { roomId -> onOpenGalleryClick(hotelId, roomId) }
         )
     }
 }

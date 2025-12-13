@@ -4,6 +4,7 @@ import com.example.chillstay.domain.model.User
 import com.example.chillstay.domain.repository.UserRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -14,53 +15,35 @@ class FirestoreUserRepository @Inject constructor(
 
     override suspend fun getUser(id: String): User? {
         return try {
-            android.util.Log.d("FirestoreUserRepository", "Getting user: $id")
-            
             val document = firestore.collection("users")
                 .document(id)
                 .get()
                 .await()
-            
+
             if (document.exists()) {
-                val data = document.data
-                android.util.Log.d("FirestoreUserRepository", "User document data: $data")
-                
-                // Map thủ công để đảm bảo đúng field names (đặc biệt là "e-mail" → email)
-                val user = User(
-                    id = document.id,
-                    email = data?.get("e-mail") as? String ?: "",  // ✅ Map "e-mail" → email
-                    password = data?.get("password") as? String ?: "",
-                    fullName = data?.get("fullName") as? String ?: "",
-                    gender = data?.get("gender") as? String ?: "",
-                    photoUrl = data?.get("photoUrl") as? String ?: "",
-                    dateOfBirth = (data?.get("dateOfBirth") as? String)?.let { dateStr ->
-                        try {
-                            java.time.LocalDate.parse(dateStr)
-                        } catch (e: Exception) {
-                            android.util.Log.w("FirestoreUserRepository", "Failed to parse dateOfBirth: $dateStr, using default")
-                            java.time.LocalDate.of(2000, 1, 1)
-                        }
-                    } ?: java.time.LocalDate.of(2000, 1, 1)
-                )
-                
-                android.util.Log.d("FirestoreUserRepository", "Parsed user: id=${user.id}, fullName=${user.fullName}, email=${user.email}")
-                user
+                mapUser(document.data, document.id)
             } else {
-                android.util.Log.w("FirestoreUserRepository", "User document not found: $id")
                 null
             }
-        } catch (e: Exception) {
-            android.util.Log.e("FirestoreUserRepository", "Error getting user $id: ${e.message}", e)
+        } catch (_: Exception) {
             null
         }
     }
 
     override suspend fun createUser(user: User): User {
         return try {
-            val documentRef = firestore.collection("users").add(user).await()
-            user.copy(id = documentRef.id)
+            if (user.id.isBlank()) {
+                val documentRef = firestore.collection("users").add(user).await()
+                user.copy(id = documentRef.id)
+            } else {
+                firestore.collection("users")
+                    .document(user.id)
+                    .set(user)
+                    .await()
+                user
+            }
         } catch (e: Exception) {
-            user
+            throw e
         }
     }
 
@@ -72,7 +55,7 @@ class FirestoreUserRepository @Inject constructor(
                 .await()
             user
         } catch (e: Exception) {
-            user
+            throw e
         }
     }
 
@@ -93,15 +76,44 @@ class FirestoreUserRepository @Inject constructor(
                 .whereEqualTo("email", email)
                 .get()
                 .await()
-            
+
             if (!snapshot.isEmpty) {
                 val document = snapshot.documents.first()
-                document.toObject(User::class.java)?.copy(id = document.id)
+                mapUser(document.data, document.id)
             } else {
                 null
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
+    }
+
+    private fun mapUser(data: Map<String, Any>?, documentId: String): User? {
+        if (data == null) return null
+        val email = (data["email"] as? String)
+            ?: (data["e-mail"] as? String)
+            ?: return null
+
+        val dob = (data["dateOfBirth"] as? String)?.let { dateString ->
+            try {
+                LocalDate.parse(dateString)
+            } catch (_: Exception) {
+                DEFAULT_DOB
+            }
+        } ?: DEFAULT_DOB
+
+        return User(
+            id = documentId,
+            email = email,
+            password = data["password"] as? String ?: "",
+            fullName = data["fullName"] as? String ?: "",
+            gender = data["gender"] as? String ?: "",
+            photoUrl = data["photoUrl"] as? String ?: "",
+            dateOfBirth = dob
+        )
+    }
+
+    companion object {
+        private val DEFAULT_DOB: LocalDate = LocalDate.of(2000, 1, 1)
     }
 }

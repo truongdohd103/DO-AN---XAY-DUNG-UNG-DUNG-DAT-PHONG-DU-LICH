@@ -36,7 +36,7 @@ fun ReviewScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Write Review",
+                        text = if (uiState.isEditing) "Edit Review" else "Write Review",
                         color = Color.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
@@ -169,9 +169,15 @@ fun ReviewScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Hotel details will be loaded here",
+                                text = uiState.hotel?.name ?: "",
                                 fontSize = 14.sp,
                                 color = Color(0xFF666666)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (uiState.isEligible) "Eligible to review" else "Not eligible: Complete a stay to review",
+                                fontSize = 12.sp,
+                                color = if (uiState.isEligible) Color(0xFF1AB6B6) else Color(0xFFFF4444)
                             )
                         }
                     }
@@ -247,7 +253,7 @@ fun ReviewScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
-                        enabled = uiState.rating > 0 && !uiState.isSubmitting,
+                        enabled = uiState.rating > 0 && !uiState.isSubmitting && uiState.isEligible,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF1AB6B6)
                         )
@@ -259,7 +265,7 @@ fun ReviewScreen(
                             )
                         } else {
                             Text(
-                                text = "Submit Review",
+                                text = if (uiState.isEditing) "Update Review" else "Submit Review",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White

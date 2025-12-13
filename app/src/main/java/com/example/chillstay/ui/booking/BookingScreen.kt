@@ -39,11 +39,13 @@ fun BookingScreen(
     dateFrom: String = "",
     dateTo: String = "",
     bookingId: String = "",
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onNavigateToMyTrips: () -> Unit = {}
 ) {
     val viewModel: BookingViewModel = koinInject()
     val uiState by viewModel.state.collectAsStateWithLifecycle()
     var showCancelDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
     
     // Load booking data when screen opens
     LaunchedEffect(hotelId, roomId, dateFrom, dateTo, bookingId) {
@@ -110,6 +112,29 @@ fun BookingScreen(
         showCancelDialog = true
     }
 
+    LaunchedEffect(viewModel) {
+        viewModel.effect.collect { eff ->
+            when (eff) {
+                is BookingEffect.ShowBookingCreated -> {
+                    snackbarHostState.showSnackbar("Booking completed")
+                    onNavigateToMyTrips()
+                }
+                is BookingEffect.ShowError -> {
+                    snackbarHostState.showSnackbar(eff.message)
+                }
+                is BookingEffect.NavigateToBookingDetail -> {}
+                is BookingEffect.RequireAuthentication -> {}
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.error) {
+        val msg = uiState.error
+        if (msg != null && msg.isNotBlank()) {
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -142,7 +167,8 @@ fun BookingScreen(
                     containerColor = Color(0xFF1AB6B6)
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
@@ -164,9 +190,13 @@ fun BookingScreen(
                     rooms = uiState.rooms,
                     adults = uiState.adults,
                     children = uiState.children,
+                    dateFromDisplay = if (uiState.hasInitialDates || uiState.datesUserSelected) uiState.dateFrom.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) else "",
+                    dateToDisplay = if (uiState.hasInitialDates || uiState.datesUserSelected) uiState.dateTo.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) else "",
                     onRoomsChange = { viewModel.onEvent(BookingIntent.UpdateGuests(uiState.adults, uiState.children, it)) },
                     onAdultsChange = { viewModel.onEvent(BookingIntent.UpdateGuests(it, uiState.children, uiState.rooms)) },
-                    onChildrenChange = { viewModel.onEvent(BookingIntent.UpdateGuests(uiState.adults, it, uiState.rooms)) }
+                    onChildrenChange = { viewModel.onEvent(BookingIntent.UpdateGuests(uiState.adults, it, uiState.rooms)) },
+                    onDateFromChange = { newFrom -> viewModel.onEvent(BookingIntent.UpdateDates(newFrom, uiState.dateTo)) },
+                    onDateToChange = { newTo -> viewModel.onEvent(BookingIntent.UpdateDates(uiState.dateFrom, newTo)) }
                 )
             }
             
@@ -217,11 +247,13 @@ fun BookingScreen(
             }
             
             item {
-                // Price Summary
-                PriceSummarySection(
-                    priceBreakdown = uiState.priceBreakdown,
-                    appliedVouchers = uiState.appliedVouchers
-                )
+            // Price Summary
+            PriceSummarySection(
+                priceBreakdown = uiState.priceBreakdown,
+                appliedVouchers = uiState.appliedVouchers,
+                nights = java.time.temporal.ChronoUnit.DAYS.between(uiState.dateFrom, uiState.dateTo).toInt(),
+                nightlyPrice = ((uiState.room?.price ?: 0.0) * uiState.rooms)
+            )
             }
             
             item {
@@ -326,9 +358,13 @@ fun StayDetailsSection(
     rooms: Int,
     adults: Int,
     children: Int,
+    dateFromDisplay: String,
+    dateToDisplay: String,
     onRoomsChange: (Int) -> Unit,
     onAdultsChange: (Int) -> Unit,
-    onChildrenChange: (Int) -> Unit
+    onChildrenChange: (Int) -> Unit,
+    onDateFromChange: (java.time.LocalDate) -> Unit,
+    onDateToChange: (java.time.LocalDate) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -367,17 +403,38 @@ fun StayDetailsSection(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    OutlinedTextField(
-                        value = dateFrom.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
-                        onValueChange = { },
-                        modifier = Modifier.fillMaxWidth(),
-                        readOnly = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFFE0E0E0),
-                            unfocusedBorderColor = Color(0xFFE0E0E0)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    )
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = dateFromDisplay,
+                            onValueChange = { },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFFE0E0E0),
+                                unfocusedBorderColor = Color(0xFFE0E0E0)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            placeholder = { Text("Select date") }
+                        )
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable {
+                                    val initial = dateFrom
+                                    android.app.DatePickerDialog(
+                                        context,
+                                        { _, year, month, dayOfMonth ->
+                                            val newDate = java.time.LocalDate.of(year, month + 1, dayOfMonth)
+                                            onDateFromChange(newDate)
+                                        },
+                                        initial.year,
+                                        initial.monthValue - 1,
+                                        initial.dayOfMonth
+                                    ).show()
+                                }
+                        )
+                    }
                 }
                 
                 Column(
@@ -392,17 +449,38 @@ fun StayDetailsSection(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    OutlinedTextField(
-                        value = dateTo.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
-                        onValueChange = { },
-                        modifier = Modifier.fillMaxWidth(),
-                        readOnly = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFFE0E0E0),
-                            unfocusedBorderColor = Color(0xFFE0E0E0)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    )
+                    val context2 = androidx.compose.ui.platform.LocalContext.current
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = dateToDisplay,
+                            onValueChange = { },
+                            modifier = Modifier.fillMaxWidth(),
+                            readOnly = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFFE0E0E0),
+                                unfocusedBorderColor = Color(0xFFE0E0E0)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            placeholder = { Text("Select date") }
+                        )
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable {
+                                    val initial = dateTo
+                                    android.app.DatePickerDialog(
+                                        context2,
+                                        { _, year, month, dayOfMonth ->
+                                            val newDate = java.time.LocalDate.of(year, month + 1, dayOfMonth)
+                                            onDateToChange(newDate)
+                                        },
+                                        initial.year,
+                                        initial.monthValue - 1,
+                                        initial.dayOfMonth
+                                    ).show()
+                                }
+                        )
+                    }
                 }
             }
             
@@ -428,14 +506,7 @@ fun StayDetailsSection(
                         focusedBorderColor = Color(0xFFE0E0E0),
                         unfocusedBorderColor = Color(0xFFE0E0E0)
                     ),
-                    shape = RoundedCornerShape(8.dp),
-                    trailingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_keyboard_arrow_down),
-                            contentDescription = "Dropdown",
-                            tint = Color(0xFF6B7280)
-                        )
-                    }
+                    shape = RoundedCornerShape(8.dp)
                 )
             }
             
@@ -910,7 +981,9 @@ fun PaymentMethodOption(
 @Composable
 fun PriceSummarySection(
     priceBreakdown: PriceBreakdown,
-    appliedVouchers: List<com.example.chillstay.domain.model.Voucher> = emptyList()
+    appliedVouchers: List<com.example.chillstay.domain.model.Voucher> = emptyList(),
+    nights: Int,
+    nightlyPrice: Double
 ) {
     Card(
         modifier = Modifier
@@ -933,8 +1006,7 @@ fun PriceSummarySection(
             Spacer(modifier = Modifier.height(16.dp))
             
             // Price breakdown
-            val nights = 3 // Default to 3 nights for display
-            PriceRow("$${priceBreakdown.roomPrice.toInt()} × $nights nights", "$${priceBreakdown.roomPrice.toInt()}")
+            PriceRow("$${nightlyPrice.toInt()} × $nights nights", "$${priceBreakdown.roomPrice.toInt()}")
             PriceRow("Service fee", "$${priceBreakdown.serviceFee.toInt()}")
             PriceRow("Taxes", "$${priceBreakdown.taxes.toInt()}")
             

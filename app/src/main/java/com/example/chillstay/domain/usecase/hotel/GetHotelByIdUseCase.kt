@@ -1,24 +1,19 @@
 package com.example.chillstay.domain.usecase.hotel
 
+import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.repository.HotelRepository
-import com.example.chillstay.core.common.Result
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flow
 
 class GetHotelByIdUseCase constructor(
     private val hotelRepository: HotelRepository
 ) {
-    suspend operator fun invoke(hotelId: String): Result<Hotel> {
-        return try {
-            val hotel = hotelRepository.getHotelById(hotelId)
-            if (hotel != null) {
-                Result.success(hotel)
-            } else {
-                Result.failure(Exception("Hotel not found"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    operator fun invoke(hotelId: String): Flow<Result<Hotel>> = flow {
+        val hotel = hotelRepository.getHotelById(hotelId) ?: throw IllegalStateException("Hotel not found")
+        emit(Result.success(hotel))
+    }.catch { throwable ->
+        emit(Result.failure(throwable))
     }
 }
-
-
