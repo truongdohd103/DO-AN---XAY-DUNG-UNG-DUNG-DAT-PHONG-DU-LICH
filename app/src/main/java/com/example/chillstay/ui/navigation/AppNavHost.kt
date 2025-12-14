@@ -50,6 +50,7 @@ import com.example.chillstay.ui.myreviews.myReviewsRoute
 import com.example.chillstay.ui.myreviews.navigateToMyReviews
 import com.example.chillstay.ui.allreviews.allReviewsRoute
 import com.example.chillstay.ui.allreviews.navigateToAllReviews
+import com.example.chillstay.ui.admin.home.AdminHomeScreen
 
 @Composable
 fun AppNavHost(
@@ -66,6 +67,12 @@ fun AppNavHost(
             when (effect) {
                 AuthEffect.NavigateToMain -> {
                     navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.AUTHENTICATION) { inclusive = true }
+                    }
+                }
+
+                AuthEffect.NavigateToAdminHome -> {
+                    navController.navigate(Routes.ADMIN_HOME) {
                         popUpTo(Routes.AUTHENTICATION) { inclusive = true }
                     }
                 }
@@ -338,6 +345,19 @@ fun AppNavHost(
         composable(Routes.VIP_STATUS) {
             VipStatusScreen(
                 onBackClick = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.ADMIN_HOME) {
+            AdminHomeScreen(
+                onNavigateToAccommodation = { /* TODO: Implement navigation */ },
+                onNavigateToVoucher = { navController.navigate(Routes.VOUCHER) },
+                onNavigateToCustomer = { /* TODO: Implement navigation */ },
+                onNavigateToNotification = { /* TODO: Implement navigation */ },
+                onNavigateToBooking = { /* TODO: Implement navigation */ },
+                onNavigateToStatistics = { /* TODO: Implement navigation */ },
+                onNavigateToPrice = { /* TODO: Implement navigation */ },
+                onNavigateToCalendar = { /* TODO: Implement navigation */ },
+                onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
             )
         }
         searchRoute(

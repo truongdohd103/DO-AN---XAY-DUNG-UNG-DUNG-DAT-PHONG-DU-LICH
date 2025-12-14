@@ -24,4 +24,5 @@ object Routes {
     const val BILL = "bill"
     const val MY_REVIEWS = "my_reviews"
     const val ALL_REVIEWS = "all_reviews"
+    const val ADMIN_HOME = "admin_home"
 }
