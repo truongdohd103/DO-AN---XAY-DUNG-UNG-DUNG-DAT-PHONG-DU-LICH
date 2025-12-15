@@ -26,4 +26,9 @@ enum class PropertyType {
     RESORT
 }
 
+enum class Status {
+    ACTIVE,
+    INACTIVE
+}
+
 

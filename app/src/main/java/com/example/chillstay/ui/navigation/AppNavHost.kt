@@ -51,6 +51,7 @@ import com.example.chillstay.ui.myreviews.navigateToMyReviews
 import com.example.chillstay.ui.allreviews.allReviewsRoute
 import com.example.chillstay.ui.allreviews.navigateToAllReviews
 import com.example.chillstay.ui.admin.home.AdminHomeScreen
+import com.example.chillstay.ui.admin.accommodation.AccommodationManageScreen
 
 @Composable
 fun AppNavHost(
@@ -349,7 +350,7 @@ fun AppNavHost(
         }
         composable(Routes.ADMIN_HOME) {
             AdminHomeScreen(
-                onNavigateToAccommodation = { /* TODO: Implement navigation */ },
+                onNavigateToAccommodation = { navController.navigate(Routes.ADMIN_ACCOMMODATION) },
                 onNavigateToVoucher = { navController.navigate(Routes.VOUCHER) },
                 onNavigateToCustomer = { /* TODO: Implement navigation */ },
                 onNavigateToNotification = { /* TODO: Implement navigation */ },
@@ -358,6 +359,16 @@ fun AppNavHost(
                 onNavigateToPrice = { /* TODO: Implement navigation */ },
                 onNavigateToCalendar = { /* TODO: Implement navigation */ },
                 onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
+            )
+        }
+        composable(Routes.ADMIN_ACCOMMODATION) {
+            AccommodationManageScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onCreateNew = { /* TODO: Implement navigation */ },
+                onEdit = { /* TODO: Implement navigation */ },
+                onInvalidate = { /* TODO: Implement navigation */ },
+                onDelete = { /* TODO: Implement navigation */ },
+                onViewAll = { /* TODO: Implement navigation */ }
             )
         }
         searchRoute(

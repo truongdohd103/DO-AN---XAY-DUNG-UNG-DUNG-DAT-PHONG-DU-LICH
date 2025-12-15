@@ -81,7 +81,7 @@ class AuthViewModel(
                         if (user.role == UserRole.ADMIN) {
                             sendEffect(AuthEffect.NavigateToAdminHome)
                         } else {
-                            sendEffect(AuthEffect.NavigateToMain)
+                        sendEffect(AuthEffect.NavigateToMain)
                         }
                     }
 
