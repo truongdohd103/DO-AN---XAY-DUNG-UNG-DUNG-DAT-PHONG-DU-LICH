@@ -1,4 +1,4 @@
-package com.example.chillstay.ui.admin.accommodation
+package com.example.chillstay.ui.admin.accommodation.accommodation_manage
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.background
@@ -47,10 +47,6 @@ fun AccommodationManageScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val tealColor = Color(0xFF1AB5B5)
     val lightGray = Color(0xFFF5F5F5)
-
-    LaunchedEffect(Unit) {
-        viewModel.onEvent(AccommodationManageIntent.LoadHotels)
-    }
 
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
@@ -439,7 +435,7 @@ fun HotelCard(
 ) {
     val originalPrice = hotel.minPrice ?: 0.0
     val discountPercent = 25
-    val discountedPrice = BigDecimal.valueOf( originalPrice * (100 - discountPercent / 100.0))
+    val discountedPrice = BigDecimal.valueOf( originalPrice * (1 - discountPercent / 100.0))
         .setScale(2, RoundingMode.HALF_UP)
         .toDouble()
 

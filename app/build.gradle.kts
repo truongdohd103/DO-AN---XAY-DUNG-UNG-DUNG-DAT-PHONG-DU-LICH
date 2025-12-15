@@ -62,7 +62,8 @@ dependencies {
     implementation("io.insert-koin:koin-android:3.5.0")
     implementation("io.insert-koin:koin-androidx-compose:3.5.0")
     implementation("io.coil-kt:coil-compose:2.5.0")
-    
+    implementation("com.google.code.gson:gson:2.13.2")
+
     // Paging 3 for better list performance
     implementation("androidx.paging:paging-runtime-ktx:3.2.1")
     implementation("androidx.paging:paging-compose:3.2.1")

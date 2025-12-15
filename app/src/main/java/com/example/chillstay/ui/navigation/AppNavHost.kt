@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import com.google.gson.Gson
 
 // Navigation imports
 import com.example.chillstay.ui.hoteldetail.hotelDetailRoutes
@@ -37,7 +38,6 @@ import com.example.chillstay.ui.booking.navigateToNewBooking
 import com.example.chillstay.ui.booking.navigateToBookingDetail
 import com.example.chillstay.ui.bookmark.bookmarkRoute
 import com.example.chillstay.ui.trip.tripRoute
-import com.example.chillstay.ui.trip.navigateToTrip
 import com.example.chillstay.ui.voucher.voucherRoutes
 import com.example.chillstay.ui.voucher.navigateToVoucherDetail
 import com.example.chillstay.ui.review.reviewRoute
@@ -51,7 +51,9 @@ import com.example.chillstay.ui.myreviews.navigateToMyReviews
 import com.example.chillstay.ui.allreviews.allReviewsRoute
 import com.example.chillstay.ui.allreviews.navigateToAllReviews
 import com.example.chillstay.ui.admin.home.AdminHomeScreen
-import com.example.chillstay.ui.admin.accommodation.AccommodationManageScreen
+import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageScreen
+import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditScreen
+import com.example.chillstay.domain.model.Hotel
 
 @Composable
 fun AppNavHost(
@@ -101,9 +103,13 @@ fun AppNavHost(
 
     val computedStart = run {
         val ctx = context
+        val last = OnboardingManager.getLastRoute(ctx)
         when {
             OnboardingManager.isFirstLaunch(ctx) -> Routes.WELCOME
             !OnboardingManager.isOnboardingDone(ctx) -> Routes.CAROUSEL
+            // Nếu route cuối cùng là admin_* thì luôn đưa về AdminHome để tránh deep-link lạ / màn trắng
+            last == Routes.ADMIN_HOME || last?.startsWith("admin_") == true -> Routes.ADMIN_HOME
+            !last.isNullOrEmpty() -> last
             else -> Routes.MAIN
         }
     }
@@ -121,20 +127,9 @@ fun AppNavHost(
                 "${Routes.MAIN}?tab=$tabVal"
             } else route
             scope.launch { OnboardingManager.setLastRoute(context, last) }
-            if (route.contains("${Routes.MAIN}")) {
+            if (route.contains(Routes.MAIN)) {
                 val tabInt = arguments?.getString("tab")?.toIntOrNull() ?: 0
                 scope.launch { OnboardingManager.setLastTab(context, tabInt) }
-            }
-        }
-    }
-
-    LaunchedEffect(computedStart) {
-        if (computedStart == Routes.MAIN) {
-            val last = OnboardingManager.getLastRoute(context)
-            if (last != null && last.startsWith("${Routes.MAIN}?tab=")) {
-                navController.navigate(last) {
-                    popUpTo(Routes.MAIN) { inclusive = true }
-                }
             }
         }
     }
@@ -364,11 +359,24 @@ fun AppNavHost(
         composable(Routes.ADMIN_ACCOMMODATION) {
             AccommodationManageScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onCreateNew = { /* TODO: Implement navigation */ },
-                onEdit = { /* TODO: Implement navigation */ },
+                onCreateNew = {
+                    navController.navigate(Routes.ADMIN_ACCOMMODATION_EDIT)
+                },
+                onEdit = { hotel ->
+                    navController.navigate("${Routes.ADMIN_ACCOMMODATION_EDIT}?hotelId=${hotel.id}")
+                },
                 onInvalidate = { /* TODO: Implement navigation */ },
-                onDelete = { /* TODO: Implement navigation */ },
-                onViewAll = { /* TODO: Implement navigation */ }
+                onDelete = { /* TODO: Implement navigation */ }
+            )
+        }
+        composable("${Routes.ADMIN_ACCOMMODATION_EDIT}?hotelId={hotelId}") { backStackEntry ->
+            val hotelId = backStackEntry.arguments?.getString("hotelId")
+            AccommodationEditScreen(
+                hotelId = hotelId,
+                onBack = { navController.popBackStack() },
+                onSaved = { _ -> navController.popBackStack() },
+                onCreated = { _ -> navController.popBackStack() },
+                onOpenRooms = { /* TODO: navigate to rooms */ }
             )
         }
         searchRoute(

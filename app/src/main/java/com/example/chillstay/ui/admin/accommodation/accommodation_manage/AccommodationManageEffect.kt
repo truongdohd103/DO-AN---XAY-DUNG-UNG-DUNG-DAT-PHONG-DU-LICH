@@ -1,4 +1,4 @@
-package com.example.chillstay.ui.admin.accommodation
+package com.example.chillstay.ui.admin.accommodation.accommodation_manage
 
 import com.example.chillstay.core.base.UiEffect
 import com.example.chillstay.domain.model.Hotel

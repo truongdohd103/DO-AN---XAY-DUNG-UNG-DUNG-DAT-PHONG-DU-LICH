@@ -26,4 +26,5 @@ object Routes {
     const val ALL_REVIEWS = "all_reviews"
     const val ADMIN_HOME = "admin_home"
     const val ADMIN_ACCOMMODATION = "admin_accommodation"
+    const val ADMIN_ACCOMMODATION_EDIT = "admin_accommodation_edit"
 }

@@ -1,4 +1,4 @@
-package com.example.chillstay.ui.admin.accommodation
+package com.example.chillstay.ui.admin.accommodation.accommodation_manage
 
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
@@ -24,6 +24,11 @@ class AccommodationManageViewModel(
     private var filterJob: Job? = null
     private var lastLoadedOffset = 0
     private val loadBatchSize = 20 // Giảm batch size để load nhanh hơn
+
+    init {
+        // Chỉ load 1 lần khi ViewModel được tạo, không reload mỗi lần quay lại màn
+        loadHotelsOptimized()
+    }
 
     override fun onEvent(event: AccommodationManageIntent) {
         when (event) {
