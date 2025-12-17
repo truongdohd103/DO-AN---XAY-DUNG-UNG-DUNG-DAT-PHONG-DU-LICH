@@ -3,6 +3,7 @@ package com.example.chillstay
 import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import com.example.chillstay.di.chatModule
 import com.example.chillstay.di.repositoryModule
 import com.example.chillstay.di.useCaseModule
 import com.example.chillstay.di.viewModelModule
@@ -32,7 +33,7 @@ class ChillStayApplication : Application(), ImageLoaderFactory {
         // Initialize Koin
         startKoin {
             androidContext(this@ChillStayApplication)
-            modules(repositoryModule, useCaseModule, viewModelModule)
+            modules(repositoryModule, useCaseModule, viewModelModule, chatModule)
         }
     }
     

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 
+    Cấu hình này cho phép HTTP (cleartext) traffic.
+    LƯU Ý: Chỉ nên dùng trong development. 
+    Trong production, nên sử dụng HTTPS hoặc cấu hình domain cụ thể.
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Cho phép cleartext cho localhost và emulator -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain> <!-- Android Emulator -->
+    </domain-config>
+</network-security-config>
