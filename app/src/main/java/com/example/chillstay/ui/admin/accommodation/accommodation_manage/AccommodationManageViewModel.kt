@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.Hotel
+import com.example.chillstay.domain.model.HotelCategory
 import com.example.chillstay.domain.model.HotelListFilter
 import com.example.chillstay.domain.usecase.hotel.GetHotelsUseCase
 import kotlinx.coroutines.flow.collectLatest
@@ -22,8 +23,6 @@ class AccommodationManageViewModel(
     val uiState = state
     private var allHotelsCache: List<Hotel> = emptyList()
     private var filterJob: Job? = null
-    private var lastLoadedOffset = 0
-    private val loadBatchSize = 20 // Giảm batch size để load nhanh hơn
 
     init {
         // Chỉ load 1 lần khi ViewModel được tạo, không reload mỗi lần quay lại màn
@@ -108,18 +107,17 @@ class AccommodationManageViewModel(
     private fun loadHotelsOptimized() {
         viewModelScope.launch {
             _state.value = _state.value.updateIsLoading(true).clearError()
-            lastLoadedOffset = 0
             allHotelsCache = emptyList()
 
             try {
                 getHotelsUseCase(
-                    HotelListFilter(limit = loadBatchSize)
+                    // Lấy toàn bộ hotels cho màn admin (không giới hạn 20)
+                    HotelListFilter(category = HotelCategory.ALL, limit = null)
                 ).collectLatest { result ->
                     when (result) {
                         is Result.Success -> {
                             val newHotels = result.data
                             allHotelsCache = newHotels
-                            lastLoadedOffset = newHotels.size
 
                             // Process data in background thread
                             withContext(Dispatchers.Default) {
@@ -138,7 +136,8 @@ class AccommodationManageViewModel(
                                         .updateAllHotels(newHotels)
                                         .copy(
                                             isLoading = false,
-                                            hasMoreHotels = newHotels.size >= loadBatchSize,
+                                            // Không dùng cơ chế loadMore nữa vì đã lấy full danh sách
+                                            hasMoreHotels = false,
                                             availableCountries = countries,
                                             availableCities = cities
                                         )
@@ -178,18 +177,14 @@ class AccommodationManageViewModel(
 
             try {
                 getHotelsUseCase(
-                    HotelListFilter(limit = loadBatchSize)
+                    HotelListFilter(category = HotelCategory.ALL, limit = null)
                 ).collectLatest { result ->
                     when (result) {
                         is Result.Success -> {
                             val newHotels = result.data
-
-                            // Merge with existing cache, avoid duplicates
-                            allHotelsCache = allHotelsCache + newHotels.filter { newHotel ->
-                                !allHotelsCache.any { it.id == newHotel.id }
-                            }
-
-                            lastLoadedOffset = allHotelsCache.size
+                            // Với ALL + limit=null thực tế loadMore không còn cần thiết,
+                            // giữ logic merge nhưng sẽ không thay đổi danh sách
+                            allHotelsCache = newHotels
 
                             withContext(Dispatchers.Default) {
                                 val countries = allHotelsCache
@@ -207,7 +202,7 @@ class AccommodationManageViewModel(
                                         .updateAllHotels(allHotelsCache)
                                         .copy(
                                             isLoadingMore = false,
-                                            hasMoreHotels = newHotels.size >= loadBatchSize,
+                                            hasMoreHotels = false,
                                             availableCountries = countries,
                                             availableCities = cities
                                         )
