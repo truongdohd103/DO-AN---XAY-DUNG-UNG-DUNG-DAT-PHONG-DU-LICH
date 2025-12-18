@@ -53,6 +53,8 @@ import com.example.chillstay.ui.allreviews.navigateToAllReviews
 import com.example.chillstay.ui.admin.home.AdminHomeScreen
 import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageScreen
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditScreen
+import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageScreen
+import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditScreen
 import com.example.chillstay.domain.model.Hotel
 
 @Composable
@@ -374,9 +376,64 @@ fun AppNavHost(
             AccommodationEditScreen(
                 hotelId = hotelId,
                 onBack = { navController.popBackStack() },
-                onSaved = { _ -> navController.popBackStack() },
-                onCreated = { _ -> navController.popBackStack() },
-                onOpenRooms = { /* TODO: navigate to rooms */ }
+                onSaved = { hotel ->
+                    navController.popBackStack()
+                    // Navigate to room manage after save
+                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=${hotel.id}")
+                },
+                onCreated = { hotel ->
+                    navController.popBackStack()
+                    // Navigate to room manage after create
+                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=${hotel.id}")
+                },
+                onOpenRooms = { hotelId ->
+                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=$hotelId")
+                }
+            )
+        }
+        composable("${Routes.ADMIN_ROOM_MANAGE}?hotelId={hotelId}") { backStackEntry ->
+            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
+            RoomManageScreen(
+                hotelId = hotelId,
+                onBackClick = { navController.popBackStack() },
+                onCreateRoomClick = {
+                    navController.navigate("${Routes.ADMIN_ROOM_EDIT}?hotelId=$hotelId")
+                },
+                onDeleteRoomClick = { /* TODO: Handle delete */ },
+                onEditRoomClick = { room ->
+                    navController.navigate("${Routes.ADMIN_ROOM_EDIT}?roomId=${room.id}&hotelId=$hotelId")
+                }
+            )
+        }
+        composable("${Routes.ADMIN_ROOM_EDIT}?roomId={roomId}&hotelId={hotelId}") { backStackEntry ->
+            val roomId = backStackEntry.arguments?.getString("roomId")
+            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
+            RoomEditScreen(
+                hotelId = hotelId,
+                roomId = roomId,
+                onBackClick = { navController.popBackStack() },
+                onCreateClick = { room ->
+                    navController.popBackStack()
+                    // Reload room list
+                },
+                onSaveClick = { room ->
+                    navController.popBackStack()
+                    // Reload room list
+                }
+            )
+        }
+        composable("${Routes.ADMIN_ROOM_EDIT}?hotelId={hotelId}") { backStackEntry ->
+            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
+            RoomEditScreen(
+                hotelId = hotelId,
+                roomId = null,
+                onBackClick = { navController.popBackStack() },
+                onCreateClick = { room ->
+                    navController.popBackStack()
+                },
+                onSaveClick = { room ->
+                    navController.popBackStack()
+                }
             )
         }
         searchRoute(

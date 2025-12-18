@@ -20,6 +20,8 @@ import com.example.chillstay.ui.allreviews.AllReviewsViewModel
 import com.example.chillstay.ui.admin.home.AdminHomeViewModel
 import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageViewModel
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditViewModel
+import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageViewModel
+import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
@@ -84,4 +86,6 @@ val viewModelModule = module {
     viewModel { AdminHomeViewModel() }
     viewModel { AccommodationManageViewModel(get()) }
     viewModel { AccommodationEditViewModel(get()) }
+    viewModel { RoomManageViewModel(get()) }
+    viewModel { RoomEditViewModel(get()) }
 }
