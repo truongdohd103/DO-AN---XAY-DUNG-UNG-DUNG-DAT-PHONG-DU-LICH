@@ -28,6 +28,11 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"dobkrs98w\"")
+            buildConfigField("String", "CLOUDINARY_API_KEY", "\"549599385771782\"")
+            buildConfigField("String", "CLOUDINARY_API_SECRET", "\"41hZEBgxwCgsQoB_VbniVQpDx2E\"")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -38,6 +43,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

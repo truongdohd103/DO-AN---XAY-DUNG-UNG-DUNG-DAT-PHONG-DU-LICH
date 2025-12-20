@@ -1,5 +1,8 @@
 package com.example.chillstay.ui.admin.accommodation.accommodation_edit
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -50,6 +53,15 @@ fun AccommodationEditScreen(
     viewModel: AccommodationEditViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Launcher chọn nhiều ảnh từ thiết bị
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            viewModel.onEvent(AccommodationEditIntent.SetLocalImages(uris))
+        }
+    }
 
     LaunchedEffect(hotelId) {
         viewModel.onEvent(
@@ -154,8 +166,11 @@ fun AccommodationEditScreen(
             // Images Section
             ImagesSection(
                 images = uiState.images,
-                onAdd = { viewModel.onEvent(AccommodationEditIntent.AddImage("https://example.com/image")) },
-                onRemove = { viewModel.onEvent(AccommodationEditIntent.RemoveImage(it)) }
+                localImages = uiState.localImageUris,
+                onPickImages = { imagePickerLauncher.launch("image/*") },
+                onRemoveLocal = { index ->
+                    viewModel.onEvent(AccommodationEditIntent.RemoveLocalImage(index))
+                }
             )
 
             // Policies Section
@@ -353,19 +368,33 @@ private fun LocationSection(
 @Composable
 private fun ImagesSection(
     images: List<String>,
-    onAdd: () -> Unit,
-    onRemove: (Int) -> Unit
+    localImages: List<Uri>,
+    onPickImages: () -> Unit,
+    onRemoveLocal: (Int) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(title = "Images")
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            images.forEachIndexed { index, url ->
-                ImageItem(url = url, onRemove = { onRemove(index) })
+        // Ảnh URL đã lưu (từ Firestore / Cloudinary)
+        if (images.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                images.forEach { url ->
+                    ImageItem(url = url, onRemove = { /* Nếu cần cho phép xóa URL cũ, bạn có thể thêm intent riêng */ })
+                }
             }
         }
 
-        AddButton(text = "Add Image URL", onClick = onAdd)
+        // Ảnh người dùng vừa chọn từ máy (URI)
+        if (localImages.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                localImages.forEachIndexed { index, uri ->
+                    ImageItem(url = uri.toString(), onRemove = { onRemoveLocal(index) })
+                }
+            }
+        }
+
+        // Nút chọn ảnh mới từ thiết bị
+        AddButton(text = "Pick images from device", onClick = onPickImages)
     }
 }
 

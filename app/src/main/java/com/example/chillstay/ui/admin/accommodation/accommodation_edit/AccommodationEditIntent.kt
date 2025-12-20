@@ -1,5 +1,6 @@
 package com.example.chillstay.ui.admin.accommodation.accommodation_edit
 
+import android.net.Uri
 import com.example.chillstay.core.base.UiEvent
 import com.example.chillstay.domain.model.PropertyType
 
@@ -15,8 +16,13 @@ sealed class AccommodationEditIntent : UiEvent {
     data class UpdateCity(val value: String) : AccommodationEditIntent()
     data class UpdateCoordinate(val value: String) : AccommodationEditIntent()
 
+    // Ảnh đã có sẵn (URL)
     data class AddImage(val url: String) : AccommodationEditIntent()
     data class RemoveImage(val index: Int) : AccommodationEditIntent()
+
+    // Ảnh mới chọn từ thiết bị (URI tạm thời)
+    data class SetLocalImages(val uris: List<Uri>) : AccommodationEditIntent()
+    data class RemoveLocalImage(val index: Int) : AccommodationEditIntent()
 
     data object AddPolicy : AccommodationEditIntent()
     data class UpdatePolicyTitle(val index: Int, val value: String) : AccommodationEditIntent()

@@ -1,5 +1,6 @@
 package com.example.chillstay.ui.admin.accommodation.accommodation_edit
 
+import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.domain.model.Coordinate
@@ -7,18 +8,25 @@ import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.Policy
 import com.example.chillstay.domain.model.PropertyType
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
+import com.example.chillstay.domain.usecase.image.UploadAccommodationImagesUseCase
 import com.example.chillstay.core.common.Result
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
 
 class AccommodationEditViewModel(
-    private val getHotelByIdUseCase: GetHotelByIdUseCase
+    private val getHotelByIdUseCase: GetHotelByIdUseCase,
+    private val uploadAccommodationImagesUseCase: UploadAccommodationImagesUseCase
 ) :
     BaseViewModel<AccommodationEditUiState, AccommodationEditIntent, AccommodationEditEffect>(
         AccommodationEditUiState()
     ) {
+
+    companion object {
+        private const val LOG_TAG = "ChillStayImageUpload"
+    }
 
     val uiState = state
 
@@ -37,6 +45,16 @@ class AccommodationEditViewModel(
 
             is AccommodationEditIntent.AddImage -> addImage(event.url)
             is AccommodationEditIntent.RemoveImage -> removeImage(event.index)
+            is AccommodationEditIntent.SetLocalImages -> {
+                _state.value = _state.value.copy(localImageUris = event.uris)
+            }
+            is AccommodationEditIntent.RemoveLocalImage -> {
+                val current = _state.value.localImageUris.toMutableList()
+                if (event.index in current.indices) {
+                    current.removeAt(event.index)
+                    _state.value = _state.value.copy(localImageUris = current)
+                }
+            }
 
             AccommodationEditIntent.AddPolicy -> addPolicy()
             is AccommodationEditIntent.UpdatePolicyTitle -> updatePolicyTitle(event.index, event.value)
@@ -156,8 +174,9 @@ class AccommodationEditViewModel(
 
     private fun saveHotel() {
         viewModelScope.launch {
-            val hotel = buildHotelFromState()
             _state.value = _state.value.copy(isSaving = true)
+            prepareImagesForSave()
+            val hotel = buildHotelFromState()
             sendEffect { AccommodationEditEffect.ShowSaveSuccess(hotel) }
             _state.value = _state.value.copy(isSaving = false)
         }
@@ -165,8 +184,9 @@ class AccommodationEditViewModel(
 
     private fun createHotel() {
         viewModelScope.launch {
-            val hotel = buildHotelFromState().copy(id = _state.value.hotelId.orEmpty())
             _state.value = _state.value.copy(isSaving = true)
+            prepareImagesForSave()
+            val hotel = buildHotelFromState().copy(id = _state.value.hotelId.orEmpty())
             sendEffect { AccommodationEditEffect.ShowCreateSuccess(hotel) }
             _state.value = _state.value.copy(isSaving = false)
         }
@@ -175,6 +195,62 @@ class AccommodationEditViewModel(
     private fun openRooms() {
         viewModelScope.launch {
             sendEffect { AccommodationEditEffect.NavigateToRooms(_state.value.hotelId) }
+        }
+    }
+
+    private suspend fun prepareImagesForSave(): List<String> {
+        val existing = _state.value.images
+        val locals = _state.value.localImageUris
+        val hotelId = _state.value.hotelId.orEmpty()
+        val name = _state.value.name
+        Log.d(LOG_TAG, "prepareImagesForSave() start, existing=${existing.size}, locals=${locals.size}, hotelId=$hotelId, name='$name'")
+
+        if (locals.isEmpty()) {
+            Log.d(LOG_TAG, "No local images to upload, skip upload")
+            return existing
+        }
+
+        // Nếu chưa có hotelId (trường hợp create mới hoàn toàn), tạm thời không upload
+        if (hotelId.isBlank()) {
+            Log.d(LOG_TAG, "Skip upload because hotelId is blank (create mode, chưa có ID)")
+            return existing
+        }
+
+        return try {
+            Log.d(LOG_TAG, "Calling UploadAccommodationImagesUseCase with ${locals.size} images")
+            val uploadedUrls = uploadAccommodationImagesUseCase(
+                hotelId = hotelId,
+                accommodationName = name.ifBlank { hotelId },
+                imageUris = locals
+            )
+            Log.d(LOG_TAG, "Upload success, received ${uploadedUrls.size} URLs: $uploadedUrls")
+
+            val merged = existing + uploadedUrls
+
+            _state.value = _state.value.copy(
+                images = merged,
+                localImageUris = emptyList()
+            )
+            merged
+        } catch (e: CancellationException) {
+            // Nếu upload bị cancel (ViewModel bị clear), chỉ log warning và return existing images
+            // Không throw lại để tránh crash app
+            Log.w(LOG_TAG, "Upload cancelled (ViewModel may have been cleared): ${e.message}")
+            existing
+        } catch (e: Exception) {
+            Log.e(LOG_TAG, "Error while uploading images: ${e.message}", e)
+            // Gửi error effect để UI có thể hiển thị message
+            val errorMessage = when {
+                e.message?.contains("timeout", ignoreCase = true) == true -> 
+                    "Cannot connect to image service. Please ensure the Spring Boot backend is running on port 8080."
+                e.message?.contains("Connection refused", ignoreCase = true) == true -> 
+                    "Connection refused. Is the Spring Boot backend running?"
+                e.message?.contains("Cannot connect", ignoreCase = true) == true -> 
+                    "Cannot connect to image service. Please start the backend server."
+                else -> "Failed to upload images: ${e.message}"
+            }
+            sendEffect { AccommodationEditEffect.ShowError(errorMessage) }
+            existing
         }
     }
 

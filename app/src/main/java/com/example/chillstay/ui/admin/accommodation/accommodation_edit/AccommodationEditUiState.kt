@@ -1,5 +1,6 @@
 package com.example.chillstay.ui.admin.accommodation.accommodation_edit
 
+import android.net.Uri
 import androidx.compose.runtime.Immutable
 import com.example.chillstay.core.base.UiState
 import com.example.chillstay.domain.model.PropertyType
@@ -22,6 +23,10 @@ data class AccommodationEditUiState(
     val city: String = "",
     val coordinate: String = "",
     val images: List<String> = emptyList(),
+
+    // Ảnh người dùng vừa chọn từ thiết bị (chưa upload)
+    val localImageUris: List<Uri> = emptyList(),
+
     val policies: List<PolicyUi> = emptyList(),
 
     val availableLanguages: List<String> = listOf(

@@ -85,7 +85,7 @@ val viewModelModule = module {
     viewModel { AllReviewsViewModel(get(), get()) }
     viewModel { AdminHomeViewModel() }
     viewModel { AccommodationManageViewModel(get()) }
-    viewModel { AccommodationEditViewModel(get()) }
+    viewModel { AccommodationEditViewModel(get(), get()) }
     viewModel { RoomManageViewModel(get()) }
     viewModel { RoomEditViewModel(get()) }
 }
