@@ -1,6 +1,7 @@
 package com.example.chillstay.ui.admin.accommodation.accommodation_edit
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -9,12 +10,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -24,6 +30,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,8 +40,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,6 +52,7 @@ import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.PropertyType
 import org.koin.androidx.compose.koinViewModel
 
+@Suppress("DUPLICATE_BRANCH_CONDITION_IN_WHEN")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccommodationEditScreen(
@@ -52,10 +63,9 @@ fun AccommodationEditScreen(
     onOpenRooms: (String) -> Unit = {},
     viewModel: AccommodationEditViewModel = koinViewModel()
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    // Launcher chọn nhiều ảnh từ thiết bị
-    val imagePickerLauncher = rememberLauncherForActivityResult(
+        val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
@@ -75,11 +85,19 @@ fun AccommodationEditScreen(
             when (effect) {
                 is AccommodationEditEffect.NavigateToRooms -> effect.hotelId?.let(onOpenRooms)
                 AccommodationEditEffect.NavigateBack -> onBack()
-                is AccommodationEditEffect.ShowSaveSuccess -> onSaved(effect.hotel)
-                is AccommodationEditEffect.ShowCreateSuccess -> onCreated(effect.hotel)
-                is AccommodationEditEffect.ShowError -> {
-                    // Can surface snackbar/toast here if needed
+                is AccommodationEditEffect.ShowSaveSuccess -> {
+                    Toast.makeText(context, "Accommodation updated successfully", Toast.LENGTH_SHORT).show()
+                    onSaved(effect.hotel)
                 }
+                is AccommodationEditEffect.ShowCreateSuccess -> {
+                    Toast.makeText(context, "Accommodation created successfully", Toast.LENGTH_SHORT).show()
+                    onCreated(effect.hotel)
+                }
+                is AccommodationEditEffect.ShowError -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
+                }
+                AccommodationEditEffect.NavigateBack ->
+                    onBack()
             }
         }
     }
@@ -87,184 +105,221 @@ fun AccommodationEditScreen(
     val headerTitle =
         if (uiState.mode == Mode.Edit) "Edit Accommodation" else "Create Accommodation"
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .shadow(40.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.15f))
-            .clip(RoundedCornerShape(20.dp))
-    ) {
-        // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(72.dp)
-                .background(Color(0xFF1AB5B5))
-                .clip(RoundedCornerShape(20.dp))
-                .border(0.5.dp, Color(0xFFF0F0F0), RoundedCornerShape(20.dp))
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                modifier = Modifier.padding(top = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { viewModel.onEvent(AccommodationEditIntent.NavigateBack) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "←",
-                        fontSize = 18.sp,
-                        color = Color.White
-                    )
-                }
-                Text(
-                    text = headerTitle,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    lineHeight = 30.sp
-                )
-            }
-        }
+    Scaffold(
+        containerColor = Color.Transparent
+    ) { innerPadding ->
+        val contentPadding = PaddingValues(
+            start = innerPadding.calculateStartPadding(LayoutDirection.Ltr),
+            top = 0.dp,
+            end = innerPadding.calculateEndPadding(LayoutDirection.Ltr),
+            bottom = innerPadding.calculateBottomPadding()
+        )
 
-        // Scrollable Content
         Column(
             modifier = Modifier
+                .padding(contentPadding)
                 .fillMaxWidth()
                 .background(Color.White)
-                .verticalScroll(rememberScrollState())
-                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 124.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .shadow(
+                    40.dp,
+                    RoundedCornerShape(20.dp),
+                    spotColor = Color.Black.copy(alpha = 0.15f)
+                )
+                .clip(RoundedCornerShape(20.dp))
         ) {
-            // Basic Information Section
-            BasicInformationSection(
-                state = uiState,
-                onNameChange = { viewModel.onEvent(AccommodationEditIntent.UpdateName(it)) },
-                onTypeToggle = {
-                    val nextType =
-                        if (uiState.propertyType == PropertyType.HOTEL) PropertyType.RESORT else PropertyType.HOTEL
-                    viewModel.onEvent(AccommodationEditIntent.UpdateType(nextType))
-                },
-                onDescriptionChange = { viewModel.onEvent(AccommodationEditIntent.UpdateDescription(it)) }
-            )
-
-            // Location Section
-            LocationSection(
-                state = uiState,
-                onAddressChange = { viewModel.onEvent(AccommodationEditIntent.UpdateFullAddress(it)) },
-                onCountryChange = { viewModel.onEvent(AccommodationEditIntent.UpdateCountry(it)) },
-                onCityChange = { viewModel.onEvent(AccommodationEditIntent.UpdateCity(it)) },
-                onCoordinateChange = { viewModel.onEvent(AccommodationEditIntent.UpdateCoordinate(it)) }
-            )
-
-            // Images Section
-            ImagesSection(
-                images = uiState.images,
-                localImages = uiState.localImageUris,
-                onPickImages = { imagePickerLauncher.launch("image/*") },
-                onRemoveLocal = { index ->
-                    viewModel.onEvent(AccommodationEditIntent.RemoveLocalImage(index))
-                }
-            )
-
-            // Policies Section
-            PoliciesSection(
-                policies = uiState.policies,
-                onAdd = { viewModel.onEvent(AccommodationEditIntent.AddPolicy) },
-                onRemove = { viewModel.onEvent(AccommodationEditIntent.RemovePolicy(it)) },
-                onTitleChange = { index, value ->
-                    viewModel.onEvent(AccommodationEditIntent.UpdatePolicyTitle(index, value))
-                },
-                onContentChange = { index, value ->
-                    viewModel.onEvent(AccommodationEditIntent.UpdatePolicyContent(index, value))
-                }
-            )
-
-            // Languages Section
-            LanguagesSection(
-                languages = uiState.availableLanguages,
-                selected = uiState.selectedLanguages,
-                onToggle = { viewModel.onEvent(AccommodationEditIntent.ToggleLanguage(it)) }
-            )
-
-            // Facilities Section
-            FacilitiesSection(
-                facilities = uiState.availableFacilities,
-                selected = uiState.selectedFacilities,
-                onToggle = { viewModel.onEvent(AccommodationEditIntent.ToggleFacility(it)) }
-            )
-
-            // Features Section
-            FeaturesSection(
-                features = uiState.availableFeatures,
-                selected = uiState.selectedFeatures,
-                onToggle = { viewModel.onEvent(AccommodationEditIntent.ToggleFeature(it)) }
-            )
-
-            if (uiState.mode == Mode.Edit) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+                    .background(Color(0xFF1AB5B5))
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(0.5.dp, Color(0xFFF0F0F0), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = { viewModel.onEvent(AccommodationEditIntent.Save) },
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(51.dp),
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { viewModel.onEvent(AccommodationEditIntent.NavigateBack) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "←",
+                            fontSize = 18.sp,
+                            color = Color.White
+                        )
+                    }
+                    Text(
+                        text = headerTitle,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        lineHeight = 30.sp
+                    )
+                }
+            }
+
+            // Scrollable Content
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 124.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // Header
+                // Basic Information Section
+                BasicInformationSection(
+                    state = uiState,
+                    onNameChange = { viewModel.onEvent(AccommodationEditIntent.UpdateName(it)) },
+                    onTypeToggle = {
+                        val nextType =
+                            if (uiState.propertyType == PropertyType.HOTEL) PropertyType.RESORT else PropertyType.HOTEL
+                        viewModel.onEvent(AccommodationEditIntent.UpdateType(nextType))
+                    },
+                    onDescriptionChange = {
+                        viewModel.onEvent(
+                            AccommodationEditIntent.UpdateDescription(
+                                it
+                            )
+                        )
+                    }
+                )
+
+                // Location Section
+                LocationSection(
+                    state = uiState,
+                    onAddressChange = {
+                        viewModel.onEvent(
+                            AccommodationEditIntent.UpdateFullAddress(
+                                it
+                            )
+                        )
+                    },
+                    onCountryChange = { viewModel.onEvent(AccommodationEditIntent.UpdateCountry(it)) },
+                    onCityChange = { viewModel.onEvent(AccommodationEditIntent.UpdateCity(it)) },
+                    onCoordinateChange = {
+                        viewModel.onEvent(
+                            AccommodationEditIntent.UpdateCoordinate(
+                                it
+                            )
+                        )
+                    }
+                )
+
+                // Images Section
+                ImagesSection(
+                    images = uiState.images,
+                    localImages = uiState.localImageUris,
+                    onPickImages = { imagePickerLauncher.launch("image/*") },
+                    onRemoveLocal = { index ->
+                        viewModel.onEvent(AccommodationEditIntent.RemoveLocalImage(index))
+                    },
+                    onRemoveImage = { index ->
+                        viewModel.onEvent(AccommodationEditIntent.RemoveImage(index))
+                    }
+                )
+
+                // Policies Section
+                PoliciesSection(
+                    policies = uiState.policies,
+                    onAdd = { viewModel.onEvent(AccommodationEditIntent.AddPolicy) },
+                    onRemove = { viewModel.onEvent(AccommodationEditIntent.RemovePolicy(it)) },
+                    onTitleChange = { index, value ->
+                        viewModel.onEvent(AccommodationEditIntent.UpdatePolicyTitle(index, value))
+                    },
+                    onContentChange = { index, value ->
+                        viewModel.onEvent(AccommodationEditIntent.UpdatePolicyContent(index, value))
+                    }
+                )
+
+                // Languages Section
+                LanguagesSection(
+                    languages = uiState.availableLanguages,
+                    selected = uiState.selectedLanguages,
+                    onToggle = { viewModel.onEvent(AccommodationEditIntent.ToggleLanguage(it)) }
+                )
+
+                // Facilities Section
+                FacilitiesSection(
+                    facilities = uiState.availableFacilities,
+                    selected = uiState.selectedFeatures,
+                    onToggle = { viewModel.onEvent(AccommodationEditIntent.ToggleFacility(it)) }
+                )
+
+                // Features Section
+                FeaturesSection(
+                    features = uiState.availableFeatures,
+                    selected = uiState.selectedFeatures,
+                    onToggle = { viewModel.onEvent(AccommodationEditIntent.ToggleFeature(it)) }
+                )
+
+                if (uiState.mode == Mode.Edit) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Button(
+                            onClick = { viewModel.onEvent(AccommodationEditIntent.Save) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(51.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1AB5B5)),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = !uiState.isSaving
+                        ) {
+                            Text(
+                                text = "Save",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        Button(
+                            onClick = { viewModel.onEvent(AccommodationEditIntent.OpenRooms) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(51.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "Room",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = { viewModel.onEvent(AccommodationEditIntent.Create) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(51.dp)
+                            .shadow(
+                                12.dp,
+                                RoundedCornerShape(12.dp),
+                                spotColor = Color(0xFF1AB5B5).copy(alpha = 0.3f)
+                            ),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1AB5B5)),
                         shape = RoundedCornerShape(12.dp),
                         enabled = !uiState.isSaving
                     ) {
                         Text(
-                            text = "Save",
+                            text = "Create",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                     }
-                    Button(
-                        onClick = { viewModel.onEvent(AccommodationEditIntent.OpenRooms) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(51.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = "Room",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                }
-            } else {
-                Button(
-                    onClick = { viewModel.onEvent(AccommodationEditIntent.Create) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(51.dp)
-                        .shadow(
-                            12.dp,
-                            RoundedCornerShape(12.dp),
-                            spotColor = Color(0xFF1AB5B5).copy(alpha = 0.3f)
-                        ),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1AB5B5)),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = !uiState.isSaving
-                ) {
-                    Text(
-                        text = "Create",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
                 }
             }
         }
@@ -370,7 +425,8 @@ private fun ImagesSection(
     images: List<String>,
     localImages: List<Uri>,
     onPickImages: () -> Unit,
-    onRemoveLocal: (Int) -> Unit
+    onRemoveLocal: (Int) -> Unit,
+    onRemoveImage: (Int) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(title = "Images")
@@ -378,8 +434,8 @@ private fun ImagesSection(
         // Ảnh URL đã lưu (từ Firestore / Cloudinary)
         if (images.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                images.forEach { url ->
-                    ImageItem(url = url, onRemove = { /* Nếu cần cho phép xóa URL cũ, bạn có thể thêm intent riêng */ })
+                images.forEachIndexed { index, url ->
+                    ImageItem(url = url, onRemove = { onRemoveImage(index) })
                 }
             }
         }
@@ -535,17 +591,17 @@ private fun LanguagesSection(
     ) {
         SectionHeader(title = "Languages")
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            languages.chunked(4).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { language ->
-                        LanguageChip(
-                            text = language,
-                            isSelected = selected.contains(language),
-                            onClick = { onToggle(language) }
-                        )
-                    }
-                }
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            languages.forEach { language ->
+                FeatureChip(
+                    text = language,
+                    isSelected = selected.contains(language),
+                    onClick = { onToggle(language) }
+                )
             }
         }
     }
@@ -563,17 +619,17 @@ private fun FacilitiesSection(
     ) {
         SectionHeader(title = "Facilities")
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            facilities.chunked(3).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { facility ->
-                        FeatureChip(
-                            text = facility,
-                            isSelected = selected.contains(facility),
-                            onClick = { onToggle(facility) }
-                        )
-                    }
-                }
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            facilities.forEach { f ->
+                FeatureChip(
+                    text = f,
+                    isSelected = selected.contains(f),
+                    onClick = { onToggle(f) }
+                )
             }
         }
     }
@@ -591,19 +647,44 @@ private fun FeaturesSection(
     ) {
         SectionHeader(title = "Features")
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            features.chunked(4).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { feature ->
-                        FeatureChip(
-                            text = feature,
-                            isSelected = selected.contains(feature),
-                            onClick = { onToggle(feature) }
-                        )
-                    }
-                }
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            features.forEach { feature ->
+                FeatureChip(
+                    text = feature,
+                    isSelected = selected.contains(feature),
+                    onClick = { onToggle(feature) }
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun FeatureChip(text: String, isSelected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .height(34.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (isSelected) Color(0xFF1AB5B5) else Color.White)
+            .border(0.5.dp, if (isSelected) Color(0xFF1AB5B5) else Color(0xFFD1D5DB), RoundedCornerShape(20.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .clickable { onClick() }
+            // giới hạn chiều rộng tối đa để không kéo layout (tùy chỉnh theo UI)
+            .widthIn(max = 160.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            color = if (isSelected) Color.White else Color(0xFF383E52),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+
+        )
     }
 }
 
@@ -716,56 +797,3 @@ private fun AddButton(text: String, onClick: () -> Unit) {
         )
     }
 }
-
-@Composable
-private fun LanguageChip(text: String, isSelected: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .height(34.dp)
-            .background(
-                if (isSelected) Color(0xFF1AB5B5) else Color.White,
-                RoundedCornerShape(20.dp)
-            )
-            .border(
-                0.5.dp,
-                if (isSelected) Color(0xFF1AB5B5) else Color(0xFFD1D5DB),
-                RoundedCornerShape(20.dp)
-            )
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            fontSize = 13.sp,
-            color = if (isSelected) Color.White else Color(0xFF383E52)
-        )
-    }
-}
-
-@Composable
-private fun FeatureChip(text: String, isSelected: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .height(33.dp)
-            .background(
-                if (isSelected) Color(0xFF1AB5B5).copy(alpha = 0.1f) else Color.White,
-                RoundedCornerShape(20.dp)
-            )
-            .border(
-                0.5.dp,
-                if (isSelected) Color(0xFF1AB5B5) else Color(0xFFD1D5DB),
-                RoundedCornerShape(20.dp)
-            )
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            fontSize = 13.sp,
-            color = Color(0xFF383E52)
-        )
-    }
-}
-

@@ -59,6 +59,8 @@ import com.example.chillstay.domain.repository.VipStatusRepository
 import org.koin.dsl.module
 import com.example.chillstay.domain.repository.AuthRepository
 import com.example.chillstay.domain.repository.UserRepository
+import com.example.chillstay.domain.usecase.hotel.CreateHotelUseCase
+import com.example.chillstay.domain.usecase.hotel.UpdateHotelUseCase
 
 val useCaseModule = module {
     // Sample use cases removed
@@ -70,6 +72,8 @@ val useCaseModule = module {
     factory { GetCurrentUserIdUseCase(get<AuthRepository>()) }
     
     // Hotel use cases
+    factory { CreateHotelUseCase(get()) }
+    factory { UpdateHotelUseCase(get()) }
     factory { GetHotelsUseCase(get()) }
     factory { SearchHotelsUseCase(get()) }
     factory { GetHotelByIdUseCase(get()) }

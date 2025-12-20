@@ -51,7 +51,6 @@ data class AccommodationEditUiState(
         "Spa",
         "Beachfront"
     ),
-    val selectedFacilities: Set<String> = emptySet(),
 
     val availableFeatures: List<String> = listOf(
         "City Center",

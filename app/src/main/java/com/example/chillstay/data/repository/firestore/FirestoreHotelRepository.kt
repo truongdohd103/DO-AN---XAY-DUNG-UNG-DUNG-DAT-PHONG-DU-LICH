@@ -17,6 +17,7 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.collections.mapOf
 
 @Singleton
 class FirestoreHotelRepository @Inject constructor(
@@ -78,6 +79,67 @@ class FirestoreHotelRepository @Inject constructor(
             Log.e("FirestoreHotelRepository", "Unexpected error fetching hotels: ${e.message}", e)
             emptyList()
         }
+    }
+
+    override suspend fun createHotel(hotel: Hotel): String {
+        try {
+            Log.d("FirestoreHotelRepository", "Creating hotel in Firestore")
+            val data = hotelToMap(hotel)
+            val docRef = firestore.collection("hotels")
+                .add(data)
+                .await()
+            Log.d("FirestoreHotelRepository", "Created hotel with id=${docRef.id}")
+            return docRef.id
+        } catch (e: FirebaseFirestoreException) {
+            Log.e("FirestoreHotelRepository", "Firestore error creating hotel: ${e.message}", e)
+            throw e
+        } catch (e: Exception) {
+            Log.e("FirestoreHotelRepository", "Unexpected error creating hotel: ${e.message}", e)
+            throw e
+        }
+    }
+
+    override suspend fun updateHotel(hotel: Hotel) {
+        try {
+            Log.d("FirestoreHotelRepository", "Updating hotel id=${hotel.id}")
+            val data = hotelToMap(hotel)
+            firestore.collection("hotels")
+                .document(hotel.id)
+                .set(data, SetOptions.merge())
+                .await()
+            Log.d("FirestoreHotelRepository", "Updated hotel id=${hotel.id}")
+        } catch (e: FirebaseFirestoreException) {
+            Log.e("FirestoreHotelRepository", "Firestore error updating hotel id=${hotel.id}: ${e.message}", e)
+            throw e
+        } catch (e: Exception) {
+            Log.e("FirestoreHotelRepository", "Unexpected error updating hotel id=${hotel.id}: ${e.message}", e)
+            throw e
+        }
+    }
+    private fun hotelToMap(hotel: Hotel): Map<String, Any?> {
+        val coordMap = hotel.coordinate.let { mapOf("lat" to it.latitude, "lng" to it.longitude) }
+
+        val policies = hotel.policy.map { mapOf("title" to it.title, "content" to it.content) }
+        val images = hotel.imageUrl
+        val languages = hotel.language
+        val features = hotel.feature
+
+        return mapOf(
+            "name" to hotel.name,
+            "description" to hotel.description,
+            "propertyType" to hotel.propertyType,
+            "formattedAddress" to hotel.formattedAddress,
+            "country" to hotel.country,
+            "city" to hotel.city,
+            "coordinate" to coordMap,
+            "imageUrl" to images,
+            "policy" to policies,
+            "language" to languages,
+            "feature" to features,
+            "minPrice" to hotel.minPrice,
+            "rating" to hotel.rating,
+            "numberOfReviews" to hotel.numberOfReviews
+        )
     }
 
     override suspend fun searchHotels(
@@ -287,252 +349,6 @@ class FirestoreHotelRepository @Inject constructor(
             false
         }
     }
-
-    suspend fun checkAndFixHotelData(): HotelDataConsistencyReport {
-        val issues = mutableListOf<String>()
-
-        val hotelsSnapshot = firestore.collection("hotels").get().await()
-        val hotelDocs = hotelsSnapshot.documents
-        var hotelsFixed = 0
-
-        for (doc in hotelDocs) {
-            val data = doc.data ?: continue
-            val updates = mutableMapOf<String, Any?>()
-
-            val name = data["name"]
-            if (name !is String || name.isBlank()) {
-                issues.add("hotel ${doc.id} thiếu hoặc name không hợp lệ")
-            }
-
-            when (val imageVal = data["imageUrl"]) {
-                is String -> {
-                    updates["imageUrl"] = listOf(imageVal)
-                }
-                is List<*> -> {
-                    val normalized = imageVal.mapNotNull { it as? String }
-                    if (normalized.size != imageVal.size) {
-                        updates["imageUrl"] = normalized
-                    }
-                }
-                null -> updates["imageUrl"] = emptyList<String>()
-            }
-
-            when (val langVal = data["language"]) {
-                is String -> updates["language"] = listOf(langVal)
-                is List<*> -> {
-                    val normalized = langVal.mapNotNull { it as? String }
-                    if (normalized.size != langVal.size) updates["language"] = normalized
-                }
-                null -> updates["language"] = emptyList<String>()
-            }
-
-            when (val minPrice = data["minPrice"]) {
-                is Number -> {}
-                is String -> minPrice.toDoubleOrNull()?.let { updates["minPrice"] = it }
-                else -> {}
-            }
-
-            when (val reviews = data["numberOfReviews"]) {
-                is Number -> {}
-                is String -> reviews.toIntOrNull()?.let { updates["numberOfReviews"] = it }
-                else -> {}
-            }
-
-            val propertyType = (data["propertyType"] as? String)?.uppercase()
-            if (propertyType == null || (propertyType != "HOTEL" && propertyType != "RESORT")) {
-                updates["propertyType"] = "HOTEL"
-            }
-
-            when (val rating = data["rating"]) {
-                is Number -> {}
-                is String -> rating.toDoubleOrNull()?.let { updates["rating"] = it }
-                else -> updates["rating"] = 0.0
-            }
-
-            val policyVal = data["policy"]
-            when (policyVal) {
-                is Map<*, *> -> {
-                    val title = policyVal["title"] as? String ?: ""
-                    val content = policyVal["content"] as? String ?: ""
-                    updates["policy"] = listOf(mapOf("title" to title, "content" to content))
-                }
-                is List<*> -> {
-                    val normalized = policyVal.mapNotNull { entry ->
-                        val m = entry as? Map<*, *>
-                        val t = m?.get("title") as? String
-                        val c = m?.get("content") as? String
-                        if (t != null && c != null) mapOf("title" to t, "content" to c) else null
-                    }
-                    if (normalized.size != policyVal.size) updates["policy"] = normalized
-                }
-                else -> {}
-            }
-
-            if (updates.isNotEmpty()) {
-                doc.reference.set(updates, SetOptions.merge()).await()
-                hotelsFixed++
-            }
-        }
-
-        val roomsSnapshot = firestore.collection("rooms").get().await()
-        val roomDocs = roomsSnapshot.documents
-        var roomsFixed = 0
-        var roomsDeleted = 0
-
-        val hotelIds = hotelDocs.map { it.id }.toSet()
-        for (room in roomDocs) {
-            val data = room.data ?: continue
-            val updates = mutableMapOf<String, Any?>()
-
-            val hid = data["hotelId"] as? String
-            if (hid.isNullOrBlank() || !hotelIds.contains(hid)) {
-                room.reference.delete().await()
-                roomsDeleted++
-                issues.add("room ${room.id} tham chiếu hotelId không tồn tại")
-                continue
-            }
-
-            when (val price = data["price"]) {
-                is Number -> {}
-                is String -> price.toDoubleOrNull()?.let { updates["price"] = it }
-                else -> {}
-            }
-
-            when (val available = data["isAvailable"]) {
-                is Boolean -> {}
-                is String -> updates["isAvailable"] = available.equals("true", true)
-                null -> updates["isAvailable"] = true
-                else -> {}
-            }
-
-            when (val cap = data["capacity"]) {
-                is Number -> updates["capacity"] = cap.toInt()
-                is String -> cap.toIntOrNull()?.let { updates["capacity"] = it }
-                else -> {}
-            }
-
-            val detail = data["detail"]
-            if (detail is Map<*, *>) {
-                val name = detail["name"] as? String
-                val size = (detail["size"] as? Number)?.toDouble() ?: (detail["size"] as? String)?.toDoubleOrNull()
-                val view = detail["view"] as? String
-                val normalized = mutableMapOf<String, Any>()
-                if (name != null) normalized["name"] = name
-                if (size != null) normalized["size"] = size
-                if (view != null) normalized["view"] = view
-                updates["detail"] = normalized
-            }
-
-            when (val img = data["imageUrl"]) {
-                is List<*> -> {
-                    val first = img.mapNotNull { it as? String }.firstOrNull() ?: ""
-                    updates["imageUrl"] = first
-                }
-                is String -> {}
-                null -> updates["imageUrl"] = ""
-                else -> {}
-            }
-
-            val typeVal = data["type"]
-            if (typeVal !is String || typeVal.isBlank()) {
-                updates["type"] = "Standard"
-            }
-
-            when (val facilitiesVal = data["facilities"]) {
-                is List<*> -> {
-                    val normalized = facilitiesVal.mapNotNull { it as? String }
-                    updates["facilities"] = normalized
-                }
-                is String -> {
-                    val normalized = facilitiesVal.split(',').map { it.trim() }.filter { it.isNotEmpty() }
-                    updates["facilities"] = normalized
-                }
-                null -> updates["facilities"] = emptyList<String>()
-                else -> {}
-            }
-
-            val isAvailFlag = when (val av = data["isAvailable"]) {
-                is Boolean -> av
-                is String -> av.equals("true", true)
-                else -> true
-            }
-
-            when (val ac = data["availableCount"]) {
-                is Number -> updates["availableCount"] = ac.toInt()
-                is String -> ac.toIntOrNull()?.let { updates["availableCount"] = it } ?: run {
-                    updates["availableCount"] = if (isAvailFlag) 1 else 0
-                }
-                null -> updates["availableCount"] = if (isAvailFlag) 1 else 0
-                else -> {}
-            }
-
-            when (val galleryVal = data["gallery"]) {
-                is Map<*, *> -> {
-                    fun normalizeList(key: String): List<String> {
-                        val v = galleryVal[key]
-                        return when (v) {
-                            is List<*> -> v.mapNotNull { it as? String }
-                            is String -> listOf(v)
-                            else -> emptyList()
-                        }
-                    }
-                    updates["gallery"] = mapOf(
-                        "exteriorView" to normalizeList("exteriorView"),
-                        "facilities" to normalizeList("facilities"),
-                        "dining" to normalizeList("dining"),
-                        "thisRoom" to normalizeList("thisRoom")
-                    )
-                }
-                else -> {
-                    val imgUrl = (updates["imageUrl"] as? String) ?: (data["imageUrl"] as? String) ?: ""
-                    updates["gallery"] = mapOf(
-                        "exteriorView" to emptyList<String>(),
-                        "facilities" to emptyList<String>(),
-                        "dining" to emptyList<String>(),
-                        "thisRoom" to (if (imgUrl.isNotBlank()) listOf(imgUrl) else emptyList())
-                    )
-                }
-            }
-
-            if (updates.isNotEmpty()) {
-                room.reference.set(updates, SetOptions.merge()).await()
-                roomsFixed++
-            }
-        }
-
-        val bookingsSnapshot = firestore.collection("bookings").get().await()
-        var bookingsUpdated = 0
-        for (b in bookingsSnapshot.documents) {
-            val data = b.data ?: continue
-            val hid = data["hotelId"] as? String
-            val rid = data["roomId"] as? String
-            val update = mutableMapOf<String, Any?>()
-            if (hid.isNullOrBlank() || !hotelIds.contains(hid)) {
-                update["status"] = "CANCELLED"
-                issues.add("booking ${b.id} tham chiếu hotelId không tồn tại")
-            }
-            if (rid.isNullOrBlank() || roomDocs.none { it.id == rid }) {
-                update["status"] = "CANCELLED"
-                issues.add("booking ${b.id} tham chiếu roomId không tồn tại")
-            }
-            if (update.isNotEmpty()) {
-                b.reference.set(update, SetOptions.merge()).await()
-                bookingsUpdated++
-            }
-        }
-
-        return HotelDataConsistencyReport(
-            hotelsChecked = hotelDocs.size,
-            hotelsFixed = hotelsFixed,
-            roomsChecked = roomDocs.size,
-            roomsFixed = roomsFixed,
-            roomsDeleted = roomsDeleted,
-            bookingsChecked = bookingsSnapshot.size(),
-            bookingsUpdated = bookingsUpdated,
-            issues = issues
-        )
-    }
-
     private fun mapHotelDocument(document: DocumentSnapshot): Hotel? {
         val data = document.data ?: run {
             Log.w("FirestoreHotelRepository", "Document ${document.id} has no data")

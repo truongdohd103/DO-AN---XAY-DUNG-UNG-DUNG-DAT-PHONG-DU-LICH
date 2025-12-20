@@ -55,7 +55,6 @@ import com.example.chillstay.ui.admin.accommodation.accommodation_manage.Accommo
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditScreen
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageScreen
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditScreen
-import com.example.chillstay.domain.model.Hotel
 
 @Composable
 fun AppNavHost(
@@ -347,7 +346,7 @@ fun AppNavHost(
         }
         composable(Routes.ADMIN_HOME) {
             AdminHomeScreen(
-                onNavigateToAccommodation = { navController.navigate(Routes.ADMIN_ACCOMMODATION) },
+                onNavigateToAccommodation = { navController.navigate(Routes.ADMIN_ACCOMMODATION_MANAGE) },
                 onNavigateToVoucher = { navController.navigate(Routes.VOUCHER) },
                 onNavigateToCustomer = { /* TODO: Implement navigation */ },
                 onNavigateToNotification = { /* TODO: Implement navigation */ },
@@ -358,7 +357,7 @@ fun AppNavHost(
                 onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
             )
         }
-        composable(Routes.ADMIN_ACCOMMODATION) {
+        composable(Routes.ADMIN_ACCOMMODATION_MANAGE) {
             AccommodationManageScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onCreateNew = {
@@ -377,9 +376,10 @@ fun AppNavHost(
                 hotelId = hotelId,
                 onBack = { navController.popBackStack() },
                 onSaved = { hotel ->
-                    navController.popBackStack()
-                    // Navigate to room manage after save
-                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=${hotel.id}")
+                    navController.popBackStack(
+                        route = Routes.ADMIN_ACCOMMODATION_MANAGE,
+                        inclusive = false
+                    )
                 },
                 onCreated = { hotel ->
                     navController.popBackStack()

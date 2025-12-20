@@ -10,6 +10,8 @@ import com.example.chillstay.domain.model.PropertyType
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.image.UploadAccommodationImagesUseCase
 import com.example.chillstay.core.common.Result
+import com.example.chillstay.domain.usecase.hotel.CreateHotelUseCase
+import com.example.chillstay.domain.usecase.hotel.UpdateHotelUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -17,7 +19,9 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 class AccommodationEditViewModel(
+    private val createHotelUseCase: CreateHotelUseCase,
     private val getHotelByIdUseCase: GetHotelByIdUseCase,
+    private val updateHotelUseCase: UpdateHotelUseCase,
     private val uploadAccommodationImagesUseCase: UploadAccommodationImagesUseCase
 ) :
     BaseViewModel<AccommodationEditUiState, AccommodationEditIntent, AccommodationEditEffect>(
@@ -62,8 +66,8 @@ class AccommodationEditViewModel(
             is AccommodationEditIntent.RemovePolicy -> removePolicy(event.index)
 
             is AccommodationEditIntent.ToggleLanguage -> toggleLanguage(event.value)
-            is AccommodationEditIntent.ToggleFacility -> toggleFacility(event.value)
-            is AccommodationEditIntent.ToggleFeature -> toggleFeature(event.value)
+            is AccommodationEditIntent.ToggleFacility -> toggleFeatureAndFacility(event.value)
+            is AccommodationEditIntent.ToggleFeature -> toggleFeatureAndFacility(event.value)
 
             AccommodationEditIntent.Save -> saveHotel()
             AccommodationEditIntent.Create -> createHotel()
@@ -160,13 +164,7 @@ class AccommodationEditViewModel(
         )
     }
 
-    private fun toggleFacility(value: String) {
-        _state.value = _state.value.copy(
-            selectedFacilities = _state.value.selectedFacilities.toggle(value)
-        )
-    }
-
-    private fun toggleFeature(value: String) {
+    private fun toggleFeatureAndFacility(value: String) {
         _state.value = _state.value.copy(
             selectedFeatures = _state.value.selectedFeatures.toggle(value)
         )
@@ -175,22 +173,63 @@ class AccommodationEditViewModel(
     private fun saveHotel() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isSaving = true)
-            prepareImagesForSave()
-            val hotel = buildHotelFromState()
-            sendEffect { AccommodationEditEffect.ShowSaveSuccess(hotel) }
-            _state.value = _state.value.copy(isSaving = false)
+
+            try {
+                val uploadedImages = prepareImagesForSave()
+                val hotelToUpdate = buildHotelFromState().copy(imageUrl = uploadedImages)
+
+                updateHotelUseCase(hotelToUpdate).first().fold(
+                    onSuccess = {
+                        _state.value = _state.value.copy(isSaving = false, images = uploadedImages)
+                        sendEffect { AccommodationEditEffect.ShowSaveSuccess(hotelToUpdate) }
+                    },
+                    onFailure = { throwable ->
+                        _state.value = _state.value.copy(isSaving = false)
+                        sendEffect { AccommodationEditEffect.ShowError(throwable.message ?: "Failed to save hotel") }
+                    }
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(isSaving = false)
+                sendEffect { AccommodationEditEffect.ShowError(e.message ?: "Unexpected error") }
+            }
         }
     }
-
     private fun createHotel() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isSaving = true)
-            prepareImagesForSave()
-            val hotel = buildHotelFromState().copy(id = _state.value.hotelId.orEmpty())
-            sendEffect { AccommodationEditEffect.ShowCreateSuccess(hotel) }
-            _state.value = _state.value.copy(isSaving = false)
+
+            try {
+                val minimalHotel = buildHotelFromState().copy(id = "", imageUrl = emptyList())
+
+                createHotelUseCase(minimalHotel).first().fold(
+                    onSuccess = { newId ->
+                        _state.value = _state.value.copy(hotelId = newId)
+                        val uploadedImages = prepareImagesForSave()
+                        val finalHotel = buildHotelFromState().copy(id = newId, imageUrl = uploadedImages)
+
+                        updateHotelUseCase(finalHotel).first().fold(
+                            onSuccess = {
+                                _state.value = _state.value.copy(isSaving = false, images = uploadedImages)
+                                sendEffect { AccommodationEditEffect.ShowCreateSuccess(finalHotel) }
+                            },
+                            onFailure = { throwable ->
+                                _state.value = _state.value.copy(isSaving = false)
+                                sendEffect { AccommodationEditEffect.ShowError(throwable.message ?: "Failed to finalize hotel creation") }
+                            }
+                        )
+                    },
+                    onFailure = { throwable ->
+                        _state.value = _state.value.copy(isSaving = false)
+                        sendEffect { AccommodationEditEffect.ShowError(throwable.message ?: "Failed to create hotel") }
+                    }
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(isSaving = false)
+                sendEffect { AccommodationEditEffect.ShowError(e.message ?: "Unexpected error") }
+            }
         }
     }
+
 
     private fun openRooms() {
         viewModelScope.launch {

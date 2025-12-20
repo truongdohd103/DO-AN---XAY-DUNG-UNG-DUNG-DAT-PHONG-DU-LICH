@@ -81,11 +81,11 @@ val viewModelModule = module {
             get()  // UpdateUserProfileUseCase
         )
     }
+    viewModel { AdminHomeViewModel() }
     viewModel { MyReviewsViewModel(get(), get(), get()) }
     viewModel { AllReviewsViewModel(get(), get()) }
-    viewModel { AdminHomeViewModel() }
     viewModel { AccommodationManageViewModel(get()) }
-    viewModel { AccommodationEditViewModel(get(), get()) }
+    viewModel { AccommodationEditViewModel(get(), get(), get(), get()) }
     viewModel { RoomManageViewModel(get()) }
     viewModel { RoomEditViewModel(get()) }
 }
