@@ -8,16 +8,11 @@ data class RoomEditUiState(
     val mode: Mode = Mode.Create,
     val roomId: String? = null,
     val hotelId: String? = null,
-    val roomName: String = "",
+    val name: String = "",
     val area: String = "",
-    val doubleBeds: String = "",
-    val singleBeds: String = "",
-    val maxOccupancy: String = "",
-    val pricePerNight: String = "",
-    val discount: String = "",
+    val doubleBed: String = "",
+    val singleBed: String = "",
     val availableQuantity: String = "",
-    val breakfastPrice: String = "",
-    val imageUrls: List<String> = emptyList(),
     val availableFeatures: List<String> = listOf(
         "TV",
         "Air Conditioning",
@@ -35,6 +30,13 @@ data class RoomEditUiState(
         "Pay Later",
         "Breakfast Included"
     ),
+    val breakfastPrice: String = "",
+    val pricePerNight: String = "",
+    val discount: String = "",
+    val maxOccupancy: String = "",
+    val exteriorView: List<String> = emptyList(),
+    val dining: List<String> = emptyList(),
+    val thisRoom: List<String> = emptyList(),
     val selectedFeatures: Set<String> = emptySet(),
     val isSaving: Boolean = false,
     val error: String? = null
@@ -44,4 +46,3 @@ enum class Mode {
     Create,
     Edit
 }
-

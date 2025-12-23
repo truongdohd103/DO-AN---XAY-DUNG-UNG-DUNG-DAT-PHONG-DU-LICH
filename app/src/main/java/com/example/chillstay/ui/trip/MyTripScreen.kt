@@ -274,7 +274,7 @@ fun MyTripScreen(
                         val hotel = uiState.hotelMap[booking.hotelId]
                         
                         val hotelName = hotel?.name ?: "Hotel not found"
-                        val roomType = room?.detail?.name ?: room?.type ?: "Room type not available"
+                        val roomType = room?.name ?: "Room is not available"
                         val location = if (hotel != null) "${hotel.city}, ${hotel.country}" else "Coordinate not available"
                         val hotelImageUrl = hotel?.imageUrl[0]
                         

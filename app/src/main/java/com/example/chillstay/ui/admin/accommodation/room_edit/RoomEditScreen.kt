@@ -109,7 +109,7 @@ fun RoomEditScreen(
             FormSection(title = "Basic Information") {
                 InputField(
                     label = "Room Name",
-                    value = uiState.roomName,
+                    value = uiState.name,
                     onValueChange = { viewModel.onEvent(RoomEditIntent.UpdateRoomName(it)) },
                     placeholder = "Enter room name",
                     required = true
@@ -132,7 +132,7 @@ fun RoomEditScreen(
             FormSection(title = "Bed Configuration") {
                 InputField(
                     label = "Double Beds",
-                    value = uiState.doubleBeds,
+                    value = uiState.doubleBed,
                     onValueChange = { viewModel.onEvent(RoomEditIntent.UpdateDoubleBeds(it)) },
                     placeholder = "0",
                     required = true,
@@ -143,7 +143,7 @@ fun RoomEditScreen(
 
                 InputField(
                     label = "Single Beds",
-                    value = uiState.singleBeds,
+                    value = uiState.singleBed,
                     onValueChange = { viewModel.onEvent(RoomEditIntent.UpdateSingleBeds(it)) },
                     placeholder = "0",
                     required = true,
@@ -205,10 +205,10 @@ fun RoomEditScreen(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    uiState.imageUrls.forEachIndexed { index, url ->
+                    uiState.exteriorView.forEachIndexed { index, url ->
                         ImageUrlItem(
                             url = url,
-                            onDeleteClick = { viewModel.onEvent(RoomEditIntent.RemoveImage(index)) }
+                            onDeleteClick = { viewModel.onEvent(RoomEditIntent.RemoveImageExteriorView(index)) }
                         )
                     }
 

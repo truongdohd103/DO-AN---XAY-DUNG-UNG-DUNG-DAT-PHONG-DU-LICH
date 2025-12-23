@@ -330,11 +330,7 @@ class AccommodationEditViewModel(
     }
 
     private fun Set<String>.toggle(value: String): Set<String> {
-        return if (contains(value)) {
-            this - value
-        } else {
-            this + value
-        }
+        return if (contains(value)) this - value else this + value
     }
 }
 

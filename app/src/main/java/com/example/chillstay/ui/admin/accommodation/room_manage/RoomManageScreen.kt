@@ -1,5 +1,6 @@
 package com.example.chillstay.ui.admin.accommodation.room_manage
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -85,7 +87,7 @@ fun RoomManageScreen(
             navigationIcon = {
                 IconButton(onClick = { viewModel.onEvent(RoomManageIntent.NavigateBack) }) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.White
                     )
@@ -248,6 +250,7 @@ fun StatCard(
     }
 }
 
+@SuppressLint("DefaultLocale")
 @Composable
 fun RoomCard(
     room: Room,
@@ -255,16 +258,14 @@ fun RoomCard(
     onDisable: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val roomDetail = room.detail
-    val roomSize = roomDetail?.size ?: 0.0
+    val roomSize = room.area
     val roomSizeText = if (roomSize > 0) {
-        "${roomSize.toInt()} m²/${(roomSize * 10.764).toInt()} ft²"
+        "$roomSize m²/${(roomSize * 10.764).toInt()} ft²"
     } else {
         "N/A"
     }
     val maxAdults = room.capacity
-    val bedsText = if (roomDetail != null) {
-        // Try to infer from capacity, but this is a placeholder
+    val bedsText = if (maxAdults > 0) {
         "$maxAdults ${if (maxAdults > 1) "beds" else "bed"}"
     } else {
         "N/A"
@@ -272,7 +273,7 @@ fun RoomCard(
 
     val galleryCount = room.gallery?.totalCount ?: 0
     val price = room.price
-    val originalPrice = price * 1.25 // Assuming 25% discount
+    val originalPrice = price * (1.0 + room.discount / 100)
     val discountPercent = 25
 
     Card(
@@ -292,9 +293,9 @@ fun RoomCard(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Room Title
+            // Room Name
             Text(
-                text = room.type.ifEmpty { "Room" },
+                text = room.name.ifEmpty { "Room" },
                 style = TextStyle(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
@@ -309,10 +310,10 @@ fun RoomCard(
                     .height(200.dp)
                     .clip(RoundedCornerShape(12.dp))
             ) {
-                if (room.imageUrl.isNotEmpty()) {
+                if (room.gallery?.thisRoom[0]?.isEmpty() == false) {
                     AsyncImage(
-                        model = room.imageUrl,
-                        contentDescription = room.type,
+                        model = room.gallery.thisRoom[0],
+                        contentDescription = room.name,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
@@ -324,28 +325,28 @@ fun RoomCard(
                     )
                 }
 
-                // "Our last 4!" Badge - only show if availableCount <= 4
-                if (room.availableCount <= 4 && room.availableCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .background(
-                                color = Color(0xFFFF5722),
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                            .align(Alignment.TopStart)
-                    ) {
-                        Text(
-                            text = "Our last ${room.availableCount}!",
-                            style = TextStyle(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.White
-                            )
-                        )
-                    }
-                }
+//                // "Our last 4!" Badge - only show if availableCount <= 4
+//                if (room.availableCount <= 4 && room.availableCount > 0) {
+//                    Box(
+//                        modifier = Modifier
+//                            .padding(12.dp)
+//                            .background(
+//                                color = Color(0xFFFF5722),
+//                                shape = RoundedCornerShape(4.dp)
+//                            )
+//                            .padding(horizontal = 8.dp, vertical = 4.dp)
+//                            .align(Alignment.TopStart)
+//                    ) {
+//                        Text(
+//                            text = "Our last ${room.availableCount}!",
+//                            style = TextStyle(
+//                                fontSize = 12.sp,
+//                                fontWeight = FontWeight.Medium,
+//                                color = Color.White
+//                            )
+//                        )
+//                    }
+//                }
 
                 // Photo Count Badge
                 if (galleryCount > 0) {
@@ -433,11 +434,11 @@ fun RoomCard(
             }
 
             // Amenities - using facilities from room
-            if (room.facilities.isNotEmpty()) {
+            if (room.feature.isNotEmpty()) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    room.facilities.chunked(2).forEach { chunk ->
+                    room.feature.chunked(2).forEach { chunk ->
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(24.dp)
                         ) {
@@ -570,6 +571,7 @@ fun RoomCard(
                     onClick = onDelete
                 )
             }
+
         }
     }
 }

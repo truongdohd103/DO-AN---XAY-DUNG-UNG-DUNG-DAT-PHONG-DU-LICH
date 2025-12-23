@@ -43,7 +43,6 @@ data class HomeUiState(
 
 data class PendingDisplayItem(
     val hotelName: String?,
-    val roomType: String?,
     val dateFrom: String,
     val dateTo: String,
     val guests: Int,

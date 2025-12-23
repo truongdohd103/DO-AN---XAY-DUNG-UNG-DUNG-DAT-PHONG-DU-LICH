@@ -6,7 +6,6 @@ import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.Policy
 import com.example.chillstay.domain.model.PropertyType
 import com.example.chillstay.domain.model.Room
-import com.example.chillstay.domain.model.RoomDetail
 import com.example.chillstay.domain.repository.HotelRepository
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -23,17 +22,6 @@ import kotlin.collections.mapOf
 class FirestoreHotelRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) : HotelRepository {
-
-    data class HotelDataConsistencyReport(
-        val hotelsChecked: Int,
-        val hotelsFixed: Int,
-        val roomsChecked: Int,
-        val roomsFixed: Int,
-        val roomsDeleted: Int,
-        val bookingsChecked: Int,
-        val bookingsUpdated: Int,
-        val issues: List<String>
-    )
 
     override suspend fun getHotels(): List<Hotel> {
         return try {
@@ -268,7 +256,7 @@ class FirestoreHotelRepository @Inject constructor(
             snapshot.documents.mapNotNull { document ->
                 mapHotelDocument(document)
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
     }
@@ -290,7 +278,7 @@ class FirestoreHotelRepository @Inject constructor(
             snapshot.documents.mapNotNull { document ->
                 document.toObject(Room::class.java)?.copy(id = document.id)
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
     }
@@ -306,7 +294,7 @@ class FirestoreHotelRepository @Inject constructor(
             } else {
                 null
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -326,7 +314,7 @@ class FirestoreHotelRepository @Inject constructor(
                 txn.update(roomRef, updates)
                 true
             }.await()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
@@ -345,7 +333,7 @@ class FirestoreHotelRepository @Inject constructor(
                 txn.update(roomRef, updates)
                 true
             }.await()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
@@ -403,64 +391,6 @@ class FirestoreHotelRepository @Inject constructor(
         )
     }
 
-    data class RoomGalleryImport(
-        val exteriorView: List<String> = emptyList(),
-        val facilities: List<String> = emptyList(),
-        val dining: List<String> = emptyList(),
-        val thisRoom: List<String> = emptyList()
-    )
-
-    data class RoomImport(
-        val id: String? = null,
-        val type: String = "",
-        val price: Double = 0.0,
-        val imageUrl: String? = null,
-        val isAvailable: Boolean = true,
-        val capacity: Int = 0,
-        val availableCount: Int = 0,
-        val facilities: List<String> = emptyList(),
-        val detail: RoomDetail? = null,
-        val gallery: RoomGalleryImport = RoomGalleryImport()
-    )
-
-    suspend fun importRooms(hotelId: String, rooms: List<RoomImport>, merge: Boolean = true): Int {
-        var written = 0
-        for (r in rooms) {
-            val docData = mutableMapOf<String, Any?>()
-            docData["hotelId"] = hotelId
-            docData["type"] = r.type
-            docData["price"] = r.price
-            docData["imageUrl"] = r.imageUrl ?: ""
-            docData["isAvailable"] = r.isAvailable
-            docData["capacity"] = r.capacity
-            docData["availableCount"] = r.availableCount
-            docData["facilities"] = r.facilities
-            r.detail?.let { d ->
-                val dd = mutableMapOf<String, Any>()
-                d.name?.let { dd["name"] = it }
-                d.size?.let { dd["size"] = it }
-                d.view?.let { dd["view"] = it }
-                docData["detail"] = dd
-            }
-            docData["gallery"] = mapOf(
-                "exteriorView" to r.gallery.exteriorView,
-                "facilities" to r.gallery.facilities,
-                "dining" to r.gallery.dining,
-                "thisRoom" to r.gallery.thisRoom
-            )
-
-            val collection = firestore.collection("rooms")
-            if (r.id.isNullOrBlank()) {
-                val ref = collection.add(docData).await()
-                if (merge) ref.set(docData, SetOptions.merge()).await() else ref.set(docData).await()
-            } else {
-                val ref = collection.document(r.id)
-                if (merge) ref.set(docData, SetOptions.merge()).await() else ref.set(docData).await()
-            }
-            written++
-        }
-        return written
-    }
 
     override suspend fun updateHotelAggregation(hotelId: String, rating: Double, numberOfReviews: Int): Boolean {
         return try {

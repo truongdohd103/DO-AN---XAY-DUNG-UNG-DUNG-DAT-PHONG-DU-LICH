@@ -4,8 +4,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.Room
-import com.example.chillstay.domain.model.RoomDetail
 import com.example.chillstay.domain.model.RoomGallery
+import com.example.chillstay.domain.model.RoomStatus
 import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -23,18 +23,22 @@ class RoomEditViewModel(
             is RoomEditIntent.LoadForCreate -> resetForCreate(event.hotelId)
             is RoomEditIntent.LoadForEdit -> loadRoomById(event.roomId)
 
-            is RoomEditIntent.UpdateRoomName -> _state.value = _state.value.copy(roomName = event.value)
+            is RoomEditIntent.UpdateRoomName -> _state.value = _state.value.copy(name = event.value)
             is RoomEditIntent.UpdateArea -> _state.value = _state.value.copy(area = event.value)
-            is RoomEditIntent.UpdateDoubleBeds -> _state.value = _state.value.copy(doubleBeds = event.value)
-            is RoomEditIntent.UpdateSingleBeds -> _state.value = _state.value.copy(singleBeds = event.value)
+            is RoomEditIntent.UpdateDoubleBeds -> _state.value = _state.value.copy(doubleBed = event.value)
+            is RoomEditIntent.UpdateSingleBeds -> _state.value = _state.value.copy(singleBed = event.value)
             is RoomEditIntent.UpdateMaxOccupancy -> _state.value = _state.value.copy(maxOccupancy = event.value)
             is RoomEditIntent.UpdatePricePerNight -> _state.value = _state.value.copy(pricePerNight = event.value)
             is RoomEditIntent.UpdateDiscount -> _state.value = _state.value.copy(discount = event.value)
             is RoomEditIntent.UpdateAvailableQuantity -> _state.value = _state.value.copy(availableQuantity = event.value)
             is RoomEditIntent.UpdateBreakfastPrice -> _state.value = _state.value.copy(breakfastPrice = event.value)
 
-            is RoomEditIntent.AddImage -> addImage(event.url)
-            is RoomEditIntent.RemoveImage -> removeImage(event.index)
+            is RoomEditIntent.AddImageExteriorView -> addImageExteriorView(event.url)
+            is RoomEditIntent.RemoveImageExteriorView -> removeImageExteriorView(event.index)
+            is RoomEditIntent.AddImageDining -> addImageDining(event.url)
+            is RoomEditIntent.RemoveImageDining -> removeImageDining(event.index)
+            is RoomEditIntent.AddImageThisRoom -> addImageThisRoom(event.url)
+            is RoomEditIntent.RemoveImageThisRoom -> removeImageThisRoom(event.index)
 
             is RoomEditIntent.ToggleFeature -> toggleFeature(event.feature)
 
@@ -61,15 +65,21 @@ class RoomEditViewModel(
                         mode = Mode.Edit,
                         roomId = room.id,
                         hotelId = room.hotelId,
-                        roomName = room.detail?.name ?: room.type,
-                        area = room.detail?.size?.toString() ?: "",
+                        name = room.name,
+                        area = room.toString(),
+                        doubleBed = room.doubleBed.toString(),
+                        singleBed = room.singleBed.toString(),
+                        discount = room.discount.toString(),
+                        breakfastPrice = room.breakfastPrice.toString(),
                         maxOccupancy = room.capacity.toString(),
                         pricePerNight = room.price.toString(),
-                        availableQuantity = room.availableCount.toString(),
-                        imageUrls = if (room.imageUrl.isNotEmpty()) listOf(room.imageUrl) else emptyList(),
-                        selectedFeatures = room.facilities.toSet()
+                        availableQuantity = room.quantity.toString(),
+                        selectedFeatures = room.feature.toSet(),
+                        exteriorView = room.gallery?.exteriorView ?: emptyList(),
+                        dining = room.gallery?.dining ?: emptyList(),
+                        thisRoom = room.gallery?.thisRoom ?: emptyList()
                     )
-                    // TODO: Parse beds from room data if available
+
                 }
                 is Result.Error -> {
                     _state.value = _state.value.copy(isSaving = false)
@@ -83,16 +93,40 @@ class RoomEditViewModel(
         }
     }
 
-    private fun addImage(url: String) {
+    private fun addImageExteriorView(url: String) {
         if (url.isBlank()) return
-        _state.value = _state.value.copy(imageUrls = _state.value.imageUrls + url.trim())
+        _state.value = _state.value.copy(exteriorView = _state.value.exteriorView + url.trim())
     }
 
-    private fun removeImage(index: Int) {
-        val images = _state.value.imageUrls.toMutableList()
+    private fun removeImageExteriorView(index: Int) {
+        val images = _state.value.exteriorView.toMutableList()
         if (index in images.indices) {
             images.removeAt(index)
-            _state.value = _state.value.copy(imageUrls = images)
+            _state.value = _state.value.copy(exteriorView = images)
+        }
+    }
+    private fun addImageDining(url: String) {
+        if (url.isBlank()) return
+        _state.value = _state.value.copy(dining = _state.value.dining + url.trim())
+    }
+
+    private fun removeImageDining(index: Int) {
+        val images = _state.value.dining.toMutableList()
+        if (index in images.indices) {
+            images.removeAt(index)
+            _state.value = _state.value.copy(dining = images)
+        }
+    }
+    private fun addImageThisRoom(url: String) {
+        if (url.isBlank()) return
+        _state.value = _state.value.copy(thisRoom = _state.value.thisRoom + url.trim())
+    }
+
+    private fun removeImageThisRoom(index: Int) {
+        val images = _state.value.thisRoom.toMutableList()
+        if (index in images.indices) {
+            images.removeAt(index)
+            _state.value = _state.value.copy(thisRoom = images)
         }
     }
 
@@ -128,43 +162,38 @@ class RoomEditViewModel(
 
     private fun buildRoomFromState(): Room {
         val area = _state.value.area.toDoubleOrNull() ?: 0.0
-        val maxOccupancy = _state.value.maxOccupancy.toIntOrNull() ?: 0
+        val doubleBed = _state.value.doubleBed.toIntOrNull() ?: 0
+        val singleBed = _state.value.doubleBed.toIntOrNull() ?: 0
         val price = _state.value.pricePerNight.toDoubleOrNull() ?: 0.0
-        val availableCount = _state.value.availableQuantity.toIntOrNull() ?: 0
-        val imageUrl = _state.value.imageUrls.firstOrNull() ?: ""
-
+        val discount = _state.value.discount.toDoubleOrNull() ?: 0.0
+        val occupancy = _state.value.maxOccupancy.toIntOrNull() ?: 0
+        val quantity = _state.value.availableQuantity.toIntOrNull() ?: 0
+        val breakfastPrice = _state.value.breakfastPrice.toDoubleOrNull() ?: 0.0
         return Room(
             id = _state.value.roomId.orEmpty(),
             hotelId = _state.value.hotelId.orEmpty(),
-            type = _state.value.roomName,
+            name = _state.value.name,
+            area = area,
+            doubleBed = doubleBed,
+            singleBed = singleBed,
+            quantity = quantity,
+            feature = _state.value.selectedFeatures.toList(),
+            breakfastPrice = breakfastPrice,
             price = price,
-            imageUrl = imageUrl,
-            detail = RoomDetail(
-                name = _state.value.roomName,
-                size = area,
-                view = ""
-            ),
-            isAvailable = true,
-            capacity = maxOccupancy,
-            availableCount = availableCount,
-            facilities = _state.value.selectedFeatures.toList(),
-            gallery = if (_state.value.imageUrls.isNotEmpty()) {
+            discount = discount,
+            capacity = occupancy,
+            gallery =
                 RoomGallery(
-                    exteriorView = emptyList(),
-                    facilities = emptyList(),
-                    dining = emptyList(),
-                    thisRoom = _state.value.imageUrls
+                    exteriorView = _state.value.exteriorView.toList(),
+                    dining = _state.value.dining.toList(),
+                    thisRoom = _state.value.thisRoom.toList()
                 )
-            } else null
         )
     }
 
+
     private fun Set<String>.toggle(value: String): Set<String> {
-        return if (contains(value)) {
-            this - value
-        } else {
-            this + value
-        }
+        return if (contains(value)) this - value else this + value
     }
 }
 

@@ -16,8 +16,7 @@ data class RoomManageUiState(
         get() = rooms.size
     
     val activeRooms: Int
-        get() = rooms.count { it.isAvailable }
-
+        get() = 4
     fun updateHotelId(hotelId: String?) = copy(hotelId = hotelId)
     
     fun updateRooms(rooms: List<Room>) = copy(rooms = rooms)

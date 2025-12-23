@@ -209,7 +209,6 @@ class HomeViewModel(
                         val room = booking.room ?: resolveRoom(booking.roomId)
                         pendingItems += PendingDisplayItem(
                             hotelName = hotel?.name,
-                            roomType = room?.detail?.name ?: room?.type,
                             dateFrom = booking.dateFrom,
                             dateTo = booking.dateTo,
                             guests = booking.guests,
