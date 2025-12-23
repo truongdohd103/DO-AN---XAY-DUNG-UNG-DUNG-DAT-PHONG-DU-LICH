@@ -11,12 +11,6 @@ data class RoomManageUiState(
     val error: String? = null,
     val rooms: List<Room> = emptyList()
 ) : UiState {
-    
-    val totalRooms: Int
-        get() = rooms.size
-    
-    val activeRooms: Int
-        get() = 4
     fun updateHotelId(hotelId: String?) = copy(hotelId = hotelId)
     
     fun updateRooms(rooms: List<Room>) = copy(rooms = rooms)

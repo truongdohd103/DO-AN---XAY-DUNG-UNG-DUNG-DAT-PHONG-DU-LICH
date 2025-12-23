@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chillstay.R
 import com.example.chillstay.domain.model.Room
+import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageIntent
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,148 +62,138 @@ fun RoomManageScreen(
                 is RoomManageEffect.ShowDisableSuccess -> { /* Handle disable success */ }
                 is RoomManageEffect.ShowDeleteSuccess -> onDeleteRoomClick(effect.room)
                 is RoomManageEffect.ShowError -> {
-                    // Can surface snackbar/toast here if needed
                 }
             }
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
     ) {
-        // Header
-        TopAppBar(
-            title = {
-                Text(
-                    text = "Room",
-                    style = TextStyle(
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+        ) {
+            // Header
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Room",
+                        style = TextStyle(
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
                     )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { viewModel.onEvent(RoomManageIntent.NavigateBack) }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1AB6B6)
                 )
-            },
-            navigationIcon = {
-                IconButton(onClick = { viewModel.onEvent(RoomManageIntent.NavigateBack) }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF1AB6B6)
             )
-        )
 
-        // Content
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+            // Content
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
-            uiState.error != null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                uiState.error != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = uiState.error ?: "Error",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Button(
+                                onClick = { hotelId.let { viewModel.onEvent(RoomManageIntent.LoadRooms(it)) } }
+                            ) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                }
+                else -> {
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            text = uiState.error ?: "Error",
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Button(
-                            onClick = { hotelId.let { viewModel.onEvent(RoomManageIntent.LoadRooms(it)) } }
+
+                        // Statistics Cards
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text("Retry")
+                            StatCard(
+                                number = uiState.rooms.size.toString(),
+                                label = "Total Room",
+                                gradient = listOf(Color(0xFF3B82F6), Color(0xFF2563EB)),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        // Room List Title
+                        Text(
+                            text = "Room List",
+                            style = TextStyle(
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1F2937)
+                            )
+                        )
+
+                        // Room Cards
+                        uiState.rooms.forEach { room ->
+                            RoomCard(
+                                room = room,
+                                onEdit = { viewModel.onEvent(RoomManageIntent.EditRoom(room)) },
+                                onDisable = { viewModel.onEvent(RoomManageIntent.DisableRoom(room)) },
+                                onDelete = { viewModel.onEvent(RoomManageIntent.DeleteRoom(room)) }
+                            )
                         }
                     }
                 }
             }
-            else -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Create New Room Button
-                    Button(
-                        onClick = { viewModel.onEvent(RoomManageIntent.CreateNewRoom) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .shadow(
-                                elevation = 4.dp,
-                                shape = RoundedCornerShape(12.dp),
-                                spotColor = Color(0xFF0D9488).copy(alpha = 0.2f)
-                            ),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF1AB6B6)
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = "Create New Room",
-                            style = TextStyle(
-                                fontSize = 12.8.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        )
-                    }
+        }
 
-                    // Statistics Cards
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        StatCard(
-                            number = uiState.totalRooms.toString(),
-                            label = "Total Room",
-                            gradient = listOf(Color(0xFF3B82F6), Color(0xFF2563EB)),
-                            modifier = Modifier.weight(1f)
-                        )
-                        StatCard(
-                            number = uiState.activeRooms.toString(),
-                            label = "Active",
-                            gradient = listOf(Color(0xFF10B981), Color(0xFF059669)),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    // Room List Title
-                    Text(
-                        text = "Room List",
-                        style = TextStyle(
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1F2937)
-                        )
-                    )
-
-                    // Room Cards
-                    uiState.rooms.forEach { room ->
-                        RoomCard(
-                            room = room,
-                            onEdit = { viewModel.onEvent(RoomManageIntent.EditRoom(room)) },
-                            onDisable = { viewModel.onEvent(RoomManageIntent.DisableRoom(room)) },
-                            onDelete = { viewModel.onEvent(RoomManageIntent.DeleteRoom(room)) }
-                        )
-                    }
-                }
-            }
+        // Floating Action Button
+        FloatingActionButton(
+            onClick = { viewModel.onEvent(RoomManageIntent.CreateNewRoom) },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp),
+            containerColor = Color(0xFF1AB6B6)
+        ) {
+            Text(
+                text = "+",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
         }
     }
 }
