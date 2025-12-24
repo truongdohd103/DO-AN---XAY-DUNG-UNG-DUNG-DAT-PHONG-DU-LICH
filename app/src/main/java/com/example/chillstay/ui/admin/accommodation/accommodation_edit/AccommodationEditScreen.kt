@@ -84,7 +84,6 @@ fun AccommodationEditScreen(
         viewModel.effect.collect { effect ->
             when (effect) {
                 is AccommodationEditEffect.NavigateToRooms -> effect.hotelId?.let(onOpenRooms)
-                AccommodationEditEffect.NavigateBack -> onBack()
                 is AccommodationEditEffect.ShowSaveSuccess -> {
                     Toast.makeText(context, "Accommodation updated successfully", Toast.LENGTH_SHORT).show()
                     onSaved(effect.hotel)
@@ -96,8 +95,7 @@ fun AccommodationEditScreen(
                 is AccommodationEditEffect.ShowError -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
                 }
-                AccommodationEditEffect.NavigateBack ->
-                    onBack()
+                AccommodationEditEffect.NavigateBack -> onBack()
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.example.chillstay.ui.admin.accommodation.room_edit
 
+import android.net.Uri
 import androidx.compose.runtime.Immutable
 import com.example.chillstay.core.base.UiState
 
@@ -35,8 +36,11 @@ data class RoomEditUiState(
     val discount: String = "",
     val maxOccupancy: String = "",
     val exteriorView: List<String> = emptyList(),
+    val localExteriorUris: List<Uri> = emptyList(),
     val dining: List<String> = emptyList(),
+    val localDiningUris: List<Uri> = emptyList(),
     val thisRoom: List<String> = emptyList(),
+    val localRoomUris: List<Uri> = emptyList(),
     val selectedFeatures: Set<String> = emptySet(),
     val isSaving: Boolean = false,
     val error: String? = null

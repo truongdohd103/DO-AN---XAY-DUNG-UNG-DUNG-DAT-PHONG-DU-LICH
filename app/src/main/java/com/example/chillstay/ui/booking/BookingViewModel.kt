@@ -1,11 +1,7 @@
 package com.example.chillstay.ui.booking
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
-import com.example.chillstay.core.base.UiEffect
-import com.example.chillstay.core.base.UiEvent
-import com.example.chillstay.core.base.UiState
 import com.example.chillstay.domain.model.Booking
 import com.example.chillstay.domain.model.BookingPreferences
 import com.example.chillstay.domain.model.BookingStatus
@@ -13,11 +9,8 @@ import com.example.chillstay.domain.model.PaymentMethod
 import com.example.chillstay.domain.usecase.booking.CreateBookingUseCase
 import com.example.chillstay.domain.usecase.booking.GetBookingByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
-import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
+import com.example.chillstay.domain.usecase.room.GetRoomByIdUseCase
 import com.example.chillstay.domain.usecase.voucher.GetAvailableVouchersUseCase
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.google.firebase.Timestamp

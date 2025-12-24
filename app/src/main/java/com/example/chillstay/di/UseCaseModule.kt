@@ -10,8 +10,8 @@ import com.example.chillstay.domain.usecase.user.GetCurrentUserIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelsUseCase
 import com.example.chillstay.domain.usecase.hotel.SearchHotelsUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
-import com.example.chillstay.domain.usecase.hotel.GetHotelRoomsUseCase
-import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
+import com.example.chillstay.domain.usecase.room.GetRoomsByHotelIdUseCase
+import com.example.chillstay.domain.usecase.room.GetRoomByIdUseCase
 
 // Booking use cases
 import com.example.chillstay.domain.usecase.booking.CreateBookingUseCase
@@ -61,6 +61,9 @@ import com.example.chillstay.domain.repository.AuthRepository
 import com.example.chillstay.domain.repository.UserRepository
 import com.example.chillstay.domain.usecase.hotel.CreateHotelUseCase
 import com.example.chillstay.domain.usecase.hotel.UpdateHotelUseCase
+import com.example.chillstay.domain.usecase.image.UploadRoomImagesUseCase
+import com.example.chillstay.domain.usecase.room.CreateRoomUseCase
+import com.example.chillstay.domain.usecase.room.UpdateRoomUseCase
 
 val useCaseModule = module {
     // Sample use cases removed
@@ -77,10 +80,15 @@ val useCaseModule = module {
     factory { GetHotelsUseCase(get()) }
     factory { SearchHotelsUseCase(get()) }
     factory { GetHotelByIdUseCase(get()) }
-    factory { GetHotelRoomsUseCase(get()) }
-    factory { GetRoomByIdUseCase(get()) }
     factory { UploadAccommodationImagesUseCase(get()) }
-    
+
+    //Room Use cases
+    factory { GetRoomsByHotelIdUseCase(get()) }
+    factory { GetRoomByIdUseCase(get()) }
+    factory { CreateRoomUseCase(get()) }
+    factory { UpdateRoomUseCase(get()) }
+    factory { UploadRoomImagesUseCase(get()) }
+
     // Booking use cases
     factory { CreateBookingUseCase(get(), get()) }
     factory { GetUserBookingsUseCase(get()) }

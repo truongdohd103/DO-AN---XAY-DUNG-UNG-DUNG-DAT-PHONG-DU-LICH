@@ -1,14 +1,15 @@
 package com.example.chillstay.domain.usecase.booking
 
+import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.Booking
 import com.example.chillstay.domain.repository.BookingRepository
-import com.example.chillstay.domain.repository.HotelRepository
-import com.example.chillstay.core.common.Result
+import com.example.chillstay.domain.repository.RoomRepository
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+
 class CreateBookingUseCase(
     private val bookingRepository: BookingRepository,
-    private val hotelRepository: HotelRepository
+    private val roomRepository: RoomRepository
 ) {
     suspend operator fun invoke(booking: Booking): Result<Booking> {
         return try {
@@ -34,7 +35,7 @@ class CreateBookingUseCase(
             }
             
             // Check and reserve room availability atomically
-            val reserved = hotelRepository.reserveRoomUnits(booking.roomId, booking.rooms)
+            val reserved = roomRepository.reserveRoomUnits(booking.roomId, booking.rooms)
             if (!reserved) {
                 return Result.failure(Exception("Room not available for the requested quantity"))
             }
@@ -46,7 +47,7 @@ class CreateBookingUseCase(
                 Result.success(createdBooking)
             } catch (e: Exception) {
                 // Rollback reservation if booking creation fails
-                hotelRepository.releaseRoomUnits(booking.roomId, booking.rooms)
+                roomRepository.releaseRoomUnits(booking.roomId, booking.rooms)
                 Result.failure(e)
             }
         } catch (e: Exception) {

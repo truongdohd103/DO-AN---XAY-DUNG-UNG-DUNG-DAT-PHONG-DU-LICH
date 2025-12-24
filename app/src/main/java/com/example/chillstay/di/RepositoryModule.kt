@@ -1,6 +1,7 @@
 package com.example.chillstay.di
 
 // Updated to use firestore package structure
+import android.util.Log
 import com.example.chillstay.data.api.ChillStayApi
 import com.example.chillstay.data.api.FirebaseChillStayApi
 import com.example.chillstay.data.repository.firestore.FirebaseAuthRepository
@@ -9,6 +10,7 @@ import com.example.chillstay.data.repository.firestore.FirestoreBookingRepositor
 import com.example.chillstay.data.repository.firestore.FirestoreBookmarkRepository
 import com.example.chillstay.data.repository.firestore.FirestoreHotelRepository
 import com.example.chillstay.data.repository.firestore.FirestoreReviewRepository
+import com.example.chillstay.data.repository.firestore.FirestoreRoomRepository
 import com.example.chillstay.data.repository.firestore.FirestoreUserRepository
 import com.example.chillstay.data.repository.firestore.FirestoreVipStatusRepository
 import com.example.chillstay.data.repository.firestore.FirestoreVoucherRepository
@@ -20,11 +22,14 @@ import com.example.chillstay.domain.repository.BookmarkRepository
 import com.example.chillstay.domain.repository.HotelRepository
 import com.example.chillstay.domain.repository.ImageUploadRepository
 import com.example.chillstay.domain.repository.ReviewRepository
+import com.example.chillstay.domain.repository.RoomRepository
 import com.example.chillstay.domain.repository.UserRepository
 import com.example.chillstay.domain.repository.VipStatusRepository
 import com.example.chillstay.domain.repository.VoucherRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.google.firebase.firestore.firestoreSettings
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.HttpTimeout
@@ -38,7 +43,7 @@ import org.koin.dsl.module
 
 val repositoryModule = module {
     // Firebase Firestore instance
-    single { FirebaseFirestore.getInstance() }
+    single {FirebaseFirestore.getInstance() }
     // Firebase Auth instance
     single { FirebaseAuth.getInstance() }
 
@@ -47,6 +52,7 @@ val repositoryModule = module {
 
     // Firestore repositories
     single<HotelRepository> { FirestoreHotelRepository(get()) }
+    single<RoomRepository> { FirestoreRoomRepository(get()) }
     single<UserRepository> { FirestoreUserRepository(get()) }
     single<BookingRepository> { FirestoreBookingRepository(get()) }
     single<BookmarkRepository> { FirestoreBookmarkRepository(get()) }

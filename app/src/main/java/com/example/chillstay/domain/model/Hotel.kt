@@ -16,6 +16,7 @@ data class Hotel(
     val policy: List<Policy> = emptyList(),
     val propertyType: PropertyType = PropertyType.HOTEL,
     val rating: Double = 0.0,
+    val status: HotelStatus = HotelStatus.ACTIVE,
 
     val reviews: List<Review> = emptyList(),
     val rooms: List<Room> = emptyList()
@@ -26,7 +27,7 @@ enum class PropertyType {
     RESORT
 }
 
-enum class Status {
+enum class HotelStatus {
     ACTIVE,
     INACTIVE
 }

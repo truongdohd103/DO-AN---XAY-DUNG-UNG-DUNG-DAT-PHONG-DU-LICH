@@ -16,7 +16,6 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.collections.mapOf
 
 @Singleton
 class FirestoreHotelRepository @Inject constructor(
@@ -30,17 +29,20 @@ class FirestoreHotelRepository @Inject constructor(
                 .orderBy("rating", Query.Direction.DESCENDING)
                 .get()
                 .await()
-            
-            Log.d("FirestoreHotelRepository", "Successfully fetched ${snapshot.documents.size} hotels")
+
+            Log.d(
+                "FirestoreHotelRepository",
+                "Successfully fetched ${snapshot.documents.size} hotels"
+            )
             snapshot.documents.mapNotNull { document ->
                 val hotel = mapHotelDocument(document)
-                
+
                 // Load rooms for this hotel
                 val roomsSnapshot = firestore.collection("rooms")
                     .whereEqualTo("hotelId", document.id)
                     .get()
                     .await()
-                
+
                 val rooms = roomsSnapshot.documents.mapNotNull { roomDoc ->
                     roomDoc.toObject(Room::class.java)?.copy(id = roomDoc.id)
                 }
@@ -50,16 +52,31 @@ class FirestoreHotelRepository @Inject constructor(
         } catch (e: FirebaseFirestoreException) {
             when (e.code) {
                 FirebaseFirestoreException.Code.FAILED_PRECONDITION -> {
-                    Log.w("FirestoreHotelRepository", "Index not found for hotels query. Please create index in Firebase Console: ${e.message}")
-                    Log.w("FirestoreHotelRepository", "Index required: collection=hotels, fields=rating(desc)")
+                    Log.w(
+                        "FirestoreHotelRepository",
+                        "Index not found for hotels query. Please create index in Firebase Console: ${e.message}"
+                    )
+                    Log.w(
+                        "FirestoreHotelRepository",
+                        "Index required: collection=hotels, fields=rating(desc)"
+                    )
                     emptyList()
                 }
+
                 FirebaseFirestoreException.Code.PERMISSION_DENIED -> {
-                    Log.w("FirestoreHotelRepository", "Permission denied accessing hotels: ${e.message}")
+                    Log.w(
+                        "FirestoreHotelRepository",
+                        "Permission denied accessing hotels: ${e.message}"
+                    )
                     emptyList()
                 }
+
                 else -> {
-                    Log.e("FirestoreHotelRepository", "Firestore error fetching hotels: ${e.message}", e)
+                    Log.e(
+                        "FirestoreHotelRepository",
+                        "Firestore error fetching hotels: ${e.message}",
+                        e
+                    )
                     emptyList()
                 }
             }
@@ -70,64 +87,41 @@ class FirestoreHotelRepository @Inject constructor(
     }
 
     override suspend fun createHotel(hotel: Hotel): String {
-        try {
-            Log.d("FirestoreHotelRepository", "Creating hotel in Firestore")
-            val data = hotelToMap(hotel)
-            val docRef = firestore.collection("hotels")
-                .add(data)
-                .await()
-            Log.d("FirestoreHotelRepository", "Created hotel with id=${docRef.id}")
-            return docRef.id
-        } catch (e: FirebaseFirestoreException) {
-            Log.e("FirestoreHotelRepository", "Firestore error creating hotel: ${e.message}", e)
-            throw e
-        } catch (e: Exception) {
-            Log.e("FirestoreHotelRepository", "Unexpected error creating hotel: ${e.message}", e)
-            throw e
-        }
+        val data = hotelToMap(hotel)
+        val docRef = firestore.collection("hotels")
+            .add(data)
+            .await()
+        return docRef.id
+
     }
 
     override suspend fun updateHotel(hotel: Hotel) {
-        try {
-            Log.d("FirestoreHotelRepository", "Updating hotel id=${hotel.id}")
-            val data = hotelToMap(hotel)
-            firestore.collection("hotels")
-                .document(hotel.id)
-                .set(data, SetOptions.merge())
-                .await()
-            Log.d("FirestoreHotelRepository", "Updated hotel id=${hotel.id}")
-        } catch (e: FirebaseFirestoreException) {
-            Log.e("FirestoreHotelRepository", "Firestore error updating hotel id=${hotel.id}: ${e.message}", e)
-            throw e
-        } catch (e: Exception) {
-            Log.e("FirestoreHotelRepository", "Unexpected error updating hotel id=${hotel.id}: ${e.message}", e)
-            throw e
-        }
+        val docRef = firestore.collection("hotels").document(hotel.id)
+        val data = hotelToMap(hotel)
+        docRef.set(data, SetOptions.merge()).await()
     }
+
+    // Thêm log vào hàm hotelToMap
     private fun hotelToMap(hotel: Hotel): Map<String, Any?> {
         val coordMap = hotel.coordinate.let { mapOf("lat" to it.latitude, "lng" to it.longitude) }
-
         val policies = hotel.policy.map { mapOf("title" to it.title, "content" to it.content) }
-        val images = hotel.imageUrl
-        val languages = hotel.language
-        val features = hotel.feature
-
-        return mapOf(
+        val result = mapOf(
             "name" to hotel.name,
             "description" to hotel.description,
-            "propertyType" to hotel.propertyType,
+            "propertyType" to hotel.propertyType.name,
             "formattedAddress" to hotel.formattedAddress,
             "country" to hotel.country,
             "city" to hotel.city,
             "coordinate" to coordMap,
-            "imageUrl" to images,
+            "imageUrl" to hotel.imageUrl,
             "policy" to policies,
-            "language" to languages,
-            "feature" to features,
+            "language" to hotel.language,
+            "feature" to hotel.feature,
             "minPrice" to hotel.minPrice,
             "rating" to hotel.rating,
             "numberOfReviews" to hotel.numberOfReviews
         )
+        return result
     }
 
     override suspend fun searchHotels(
@@ -139,54 +133,33 @@ class FirestoreHotelRepository @Inject constructor(
     ): List<Hotel> {
         return try {
             var firestoreQuery: Query = firestore.collection("hotels")
-            
+
             // Apply filters
             country?.trim()?.let { firestoreQuery = firestoreQuery.whereEqualTo("country", it) }
             city?.trim()?.let { firestoreQuery = firestoreQuery.whereEqualTo("city", it) }
             // Avoid inequality filters in Firestore to prevent composite index requirements
-            
+
             val snapshot = firestoreQuery.get().await()
-            Log.d("FirestoreHotelRepository", "searchHotels fetched ${snapshot.documents.size} docs from Firestore")
             val mapped = snapshot.documents.mapNotNull { document ->
                 mapHotelDocument(document)
             }
-            Log.d("FirestoreHotelRepository", "searchHotels mapped ${mapped.size} hotels")
-
             val q = query.trim()
             val filtered = mapped
                 .filter { hotel ->
                     q.isEmpty() ||
-                    hotel.name.contains(q, ignoreCase = true) ||
-                    hotel.city.contains(q, ignoreCase = true) ||
-                    hotel.country.contains(q, ignoreCase = true) ||
-                    hotel.description.contains(q, ignoreCase = true)
+                            hotel.name.contains(q, ignoreCase = true) ||
+                            hotel.city.contains(q, ignoreCase = true) ||
+                            hotel.country.contains(q, ignoreCase = true) ||
+                            hotel.description.contains(q, ignoreCase = true)
                 }
-
-            Log.d(
-                "FirestoreHotelRepository",
-                "searchHotels mapped names=${mapped.joinToString(limit = 10, truncated = "...") { it.name }}"
-            )
-            Log.d("FirestoreHotelRepository", "searchHotels returning ${filtered.size} hotels after filters")
             filtered
         } catch (e: FirebaseFirestoreException) {
             when (e.code) {
-                FirebaseFirestoreException.Code.FAILED_PRECONDITION -> {
-                    Log.w("FirestoreHotelRepository", "Index not found. Consider using client-side filtering or create composite index if needed: ${e.message}")
-                    emptyList()
-                }
-                FirebaseFirestoreException.Code.PERMISSION_DENIED -> {
-                    Log.w("FirestoreHotelRepository", "Permission denied searching hotels: ${e.message}")
-                    emptyList()
-                }
-                else -> {
-                    Log.e("FirestoreHotelRepository", "Firestore error searching hotels: ${e.message}", e)
-                    emptyList()
-                }
+                FirebaseFirestoreException.Code.FAILED_PRECONDITION -> { emptyList() }
+                FirebaseFirestoreException.Code.PERMISSION_DENIED -> { emptyList() }
+                else -> { emptyList() }
             }
-        } catch (e: Exception) {
-            Log.e("FirestoreHotelRepository", "Unexpected error searching hotels: ${e.message}", e)
-            emptyList()
-        }
+        } catch (_: Exception) { emptyList() }
     }
 
     override suspend fun getHotelById(id: String): Hotel? {
@@ -196,7 +169,7 @@ class FirestoreHotelRepository @Inject constructor(
                 .document(id)
                 .get()
                 .await()
-            
+
             if (document.exists()) {
                 Log.d(
                     "FirestoreHotelRepository",
@@ -214,13 +187,13 @@ class FirestoreHotelRepository @Inject constructor(
                         "Document for hotelId=$id exists but failed to map to Hotel model"
                     )
                 }
-                
+
                 // Load rooms for this hotel
                 val roomsSnapshot = firestore.collection("rooms")
                     .whereEqualTo("hotelId", id)
                     .get()
                     .await()
-                
+
                 val rooms = roomsSnapshot.documents.mapNotNull { roomDoc ->
                     roomDoc.toObject(Room::class.java)?.copy(id = roomDoc.id)
                 }
@@ -252,7 +225,7 @@ class FirestoreHotelRepository @Inject constructor(
                 .whereEqualTo("city", city)
                 .get()
                 .await()
-            
+
             snapshot.documents.mapNotNull { document ->
                 mapHotelDocument(document)
             }
@@ -261,82 +234,6 @@ class FirestoreHotelRepository @Inject constructor(
         }
     }
 
-    override suspend fun getHotelRooms(
-        hotelId: String,
-        checkIn: String?,
-        checkOut: String?,
-        guests: Int?
-    ): List<Room> {
-        return try {
-            var query = firestore.collection("rooms")
-                .whereEqualTo("hotelId", hotelId)
-            
-            guests?.let { query = query.whereGreaterThanOrEqualTo("capacity", it) }
-            
-            val snapshot = query.get().await()
-            
-            snapshot.documents.mapNotNull { document ->
-                document.toObject(Room::class.java)?.copy(id = document.id)
-            }
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    override suspend fun getRoomById(roomId: String): Room? {
-        return try {
-            val document = firestore.collection("rooms")
-                .document(roomId)
-                .get()
-                .await()
-            if (document.exists()) {
-                document.toObject(Room::class.java)?.copy(id = document.id)
-            } else {
-                null
-            }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    override suspend fun reserveRoomUnits(roomId: String, count: Int): Boolean {
-        return try {
-            firestore.runTransaction { txn ->
-                val roomRef = firestore.collection("rooms").document(roomId)
-                val snapshot = txn.get(roomRef)
-                if (!snapshot.exists()) throw IllegalStateException("Room not found")
-                val current = (snapshot.getLong("availableCount") ?: 0L).toInt()
-                if (count <= 0) throw IllegalArgumentException("Reserve count must be > 0")
-                if (current < count) throw IllegalStateException("Not enough availability")
-                val newCount = current - count
-                val updates = mutableMapOf<String, Any>("availableCount" to newCount)
-                if (newCount == 0) updates["isAvailable"] = false
-                txn.update(roomRef, updates)
-                true
-            }.await()
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    override suspend fun releaseRoomUnits(roomId: String, count: Int): Boolean {
-        return try {
-            firestore.runTransaction { txn ->
-                val roomRef = firestore.collection("rooms").document(roomId)
-                val snapshot = txn.get(roomRef)
-                if (!snapshot.exists()) throw IllegalStateException("Room not found")
-                val current = (snapshot.getLong("availableCount") ?: 0L).toInt()
-                if (count <= 0) throw IllegalArgumentException("Release count must be > 0")
-                val newCount = current + count
-                val updates = mutableMapOf<String, Any>("availableCount" to newCount)
-                if (newCount > 0) updates["isAvailable"] = true
-                txn.update(roomRef, updates)
-                true
-            }.await()
-        } catch (_: Exception) {
-            false
-        }
-    }
     private fun mapHotelDocument(document: DocumentSnapshot): Hotel? {
         val data = document.data ?: run {
             Log.w("FirestoreHotelRepository", "Document ${document.id} has no data")
@@ -360,6 +257,7 @@ class FirestoreHotelRepository @Inject constructor(
                     ?: 0.0
                 Coordinate(lat, lng)
             }
+
             else -> Coordinate()
         }
 
@@ -369,10 +267,13 @@ class FirestoreHotelRepository @Inject constructor(
             coordinate = coordinate,
             country = data["country"] as? String ?: "",
             description = data["description"] as? String ?: "",
-            feature = (data["feature"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+            feature = (data["feature"] as? List<*>)?.mapNotNull { it as? String }
+                ?: emptyList(),
             formattedAddress = data["formattedAddress"] as? String ?: "",
-            imageUrl = (data["imageUrl"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
-            language = (data["language"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+            imageUrl = (data["imageUrl"] as? List<*>)?.mapNotNull { it as? String }
+                ?: emptyList(),
+            language = (data["language"] as? List<*>)?.mapNotNull { it as? String }
+                ?: emptyList(),
             minPrice = (data["minPrice"] as? Number)?.toDouble()
                 ?: (data["minPrice"] as? String)?.toDoubleOrNull(),
             name = name,
@@ -392,7 +293,11 @@ class FirestoreHotelRepository @Inject constructor(
     }
 
 
-    override suspend fun updateHotelAggregation(hotelId: String, rating: Double, numberOfReviews: Int): Boolean {
+    override suspend fun updateHotelAggregation(
+        hotelId: String,
+        rating: Double,
+        numberOfReviews: Int
+    ): Boolean {
         return try {
             val updates = mapOf(
                 "rating" to rating,
@@ -404,7 +309,11 @@ class FirestoreHotelRepository @Inject constructor(
                 .await()
             true
         } catch (e: Exception) {
-            Log.e("FirestoreHotelRepository", "Failed to update hotel aggregation for $hotelId: ${e.message}", e)
+            Log.e(
+                "FirestoreHotelRepository",
+                "Failed to update hotel aggregation for $hotelId: ${e.message}",
+                e
+            )
             false
         }
     }

@@ -14,16 +14,7 @@ interface HotelRepository {
         maxPrice: Double? = null
     ): List<Hotel>
     suspend fun getHotelsByCity(city: String): List<Hotel>
-    suspend fun getHotelRooms(
-        hotelId: String,
-        checkIn: String? = null,
-        checkOut: String? = null,
-        guests: Int? = null
-    ): List<Room>
-    suspend fun getRoomById(roomId: String): Room?
     suspend fun updateHotelAggregation(hotelId: String, rating: Double, numberOfReviews: Int): Boolean
-    suspend fun reserveRoomUnits(roomId: String, count: Int): Boolean
-    suspend fun releaseRoomUnits(roomId: String, count: Int): Boolean
     suspend fun createHotel(hotel: Hotel): String
     suspend fun updateHotel(hotel: Hotel)
 }

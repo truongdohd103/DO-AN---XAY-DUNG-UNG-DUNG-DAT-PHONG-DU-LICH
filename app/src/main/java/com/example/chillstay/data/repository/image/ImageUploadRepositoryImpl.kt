@@ -47,7 +47,6 @@ class ImageUploadRepositoryImpl(
 
     override suspend fun uploadAccommodationImages(
         hotelId: String,
-        accommodationName: String,
         imageUris: List<Uri>
     ): List<String> {
         if (imageUris.isEmpty()) {
@@ -55,9 +54,32 @@ class ImageUploadRepositoryImpl(
             return emptyList()
         }
 
-        Log.d(LOG_TAG, "Starting upload: hotelId=$hotelId, name='$accommodationName', count=${imageUris.size}")
+        val folderName = slugify(hotelId)
+        val folder = "${CloudinaryConfig.BASE_FOLDER}/$folderName"
 
-        val folderName = slugify(accommodationName.ifBlank { hotelId })
+        Log.d(LOG_TAG, "Upload folder: $folder")
+
+        return coroutineScope {
+            imageUris.mapIndexed { index, uri ->
+                async {
+                    uploadSingleImageUnsigned(uri, folderName, folder, index)
+                }
+            }.awaitAll().filterNotNull()
+        }
+    }
+
+    override suspend fun uploadRoomImages(
+        roomId : String,
+        hotelId: String,
+        tag: String,
+        imageUris: List<Uri>
+    ): List<String> {
+        if (imageUris.isEmpty()) {
+            Log.d(LOG_TAG, "No images to upload")
+            return emptyList()
+        }
+
+        val folderName = slugify("$hotelId/$roomId/$tag")
         val folder = "${CloudinaryConfig.BASE_FOLDER}/$folderName"
 
         Log.d(LOG_TAG, "Upload folder: $folder")
@@ -73,7 +95,7 @@ class ImageUploadRepositoryImpl(
 
     private suspend fun uploadSingleImageUnsigned(
         uri: Uri,
-        hotelId: String,
+        folderName: String,
         folder: String,
         index: Int
     ): String? {
@@ -84,7 +106,7 @@ class ImageUploadRepositoryImpl(
             Log.d(LOG_TAG, "[$index] Uploading (UNSIGNED): $fileName (${bytes.size} bytes)")
 
             val timestamp = System.currentTimeMillis()
-            val publicId = "${hotelId}_${timestamp}_$index"
+            val publicId = "${folderName}_${timestamp}_$index"
 
             Log.d(LOG_TAG, "[$index] Upload parameters (UNSIGNED):")
             Log.d(LOG_TAG, "  - URL: ${CloudinaryConfig.getUploadUrl()}")

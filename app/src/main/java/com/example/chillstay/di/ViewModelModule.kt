@@ -49,7 +49,7 @@ val viewModelModule = module {
     viewModel { 
         HotelDetailViewModel(
             get(),  // GetHotelByIdUseCase
-            get(),  // GetHotelRoomsUseCase
+            get(),  // GetRoomsByHotelIdUseCase
             get(),  // GetHotelReviewsUseCase
             get(),  // UserRepository
             get(),  // AddBookmarkUseCase
@@ -87,5 +87,5 @@ val viewModelModule = module {
     viewModel { AccommodationManageViewModel(get()) }
     viewModel { AccommodationEditViewModel(get(), get(), get(), get()) }
     viewModel { RoomManageViewModel(get()) }
-    viewModel { RoomEditViewModel(get()) }
+    viewModel { RoomEditViewModel(get(), get(), get(), get()) }
 }

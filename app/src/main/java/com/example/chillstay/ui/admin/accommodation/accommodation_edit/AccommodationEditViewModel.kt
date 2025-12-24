@@ -6,7 +6,6 @@ import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.domain.model.Coordinate
 import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.Policy
-import com.example.chillstay.domain.model.PropertyType
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.image.UploadAccommodationImagesUseCase
 import com.example.chillstay.core.common.Result
@@ -47,18 +46,9 @@ class AccommodationEditViewModel(
             is AccommodationEditIntent.UpdateCity -> _state.value = _state.value.copy(city = event.value)
             is AccommodationEditIntent.UpdateCoordinate -> _state.value = _state.value.copy(coordinate = event.value)
 
-            is AccommodationEditIntent.AddImage -> addImage(event.url)
             is AccommodationEditIntent.RemoveImage -> removeImage(event.index)
-            is AccommodationEditIntent.SetLocalImages -> {
-                _state.value = _state.value.copy(localImageUris = event.uris)
-            }
-            is AccommodationEditIntent.RemoveLocalImage -> {
-                val current = _state.value.localImageUris.toMutableList()
-                if (event.index in current.indices) {
-                    current.removeAt(event.index)
-                    _state.value = _state.value.copy(localImageUris = current)
-                }
-            }
+            is AccommodationEditIntent.SetLocalImages -> { _state.value = _state.value.copy(localImageUris = event.uris) }
+            is AccommodationEditIntent.RemoveLocalImage -> removeLocalImage(event.index)
 
             AccommodationEditIntent.AddPolicy -> addPolicy()
             is AccommodationEditIntent.UpdatePolicyTitle -> updatePolicyTitle(event.index, event.value)
@@ -117,16 +107,19 @@ class AccommodationEditViewModel(
         }
     }
 
-    private fun addImage(url: String) {
-        if (url.isBlank()) return
-        _state.value = _state.value.copy(images = _state.value.images + url.trim())
-    }
-
     private fun removeImage(index: Int) {
         val images = _state.value.images.toMutableList()
         if (index in images.indices) {
             images.removeAt(index)
             _state.value = _state.value.copy(images = images)
+        }
+    }
+
+    private fun removeLocalImage(index: Int) {
+        val current = _state.value.localImageUris.toMutableList()
+        if (index in current.indices) {
+            current.removeAt(index)
+            _state.value = _state.value.copy(localImageUris = current)
         }
     }
 
@@ -170,25 +163,34 @@ class AccommodationEditViewModel(
         )
     }
 
+    // Trong AccommodationEditViewModel.kt
+
     private fun saveHotel() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isSaving = true)
-
             try {
+                val hotelId = _state.value.hotelId
+                if (hotelId.isNullOrBlank()) {
+                    throw IllegalStateException("Cannot update hotel without ID. Use Create mode instead.")
+                }
                 val uploadedImages = prepareImagesForSave()
                 val hotelToUpdate = buildHotelFromState().copy(imageUrl = uploadedImages)
-
+                Log.d(LOG_TAG, "Hotel details: city=${hotelToUpdate.city}, country=${hotelToUpdate.country}")
                 updateHotelUseCase(hotelToUpdate).first().fold(
                     onSuccess = {
                         _state.value = _state.value.copy(isSaving = false, images = uploadedImages)
                         sendEffect { AccommodationEditEffect.ShowSaveSuccess(hotelToUpdate) }
                     },
-                    onFailure = { throwable ->
-                        _state.value = _state.value.copy(isSaving = false)
+                    onFailure = { throwable -> _state.value = _state.value.copy(isSaving = false)
                         sendEffect { AccommodationEditEffect.ShowError(throwable.message ?: "Failed to save hotel") }
                     }
                 )
+            } catch (e: IllegalStateException) {
+                Log.e(LOG_TAG, "Validation error: ${e.message}", e)
+                _state.value = _state.value.copy(isSaving = false)
+                sendEffect { AccommodationEditEffect.ShowError(e.message ?: "Invalid state") }
             } catch (e: Exception) {
+                Log.e(LOG_TAG, "Unexpected error in saveHotel: ${e.message}", e)
                 _state.value = _state.value.copy(isSaving = false)
                 sendEffect { AccommodationEditEffect.ShowError(e.message ?: "Unexpected error") }
             }
@@ -259,7 +261,6 @@ class AccommodationEditViewModel(
             Log.d(LOG_TAG, "Calling UploadAccommodationImagesUseCase with ${locals.size} images")
             val uploadedUrls = uploadAccommodationImagesUseCase(
                 hotelId = hotelId,
-                accommodationName = name.ifBlank { hotelId },
                 imageUris = locals
             )
             Log.d(LOG_TAG, "Upload success, received ${uploadedUrls.size} URLs: $uploadedUrls")

@@ -16,10 +16,7 @@ sealed interface AccommodationEditIntent : UiEvent {
     data class UpdateCity(val value: String) : AccommodationEditIntent
     data class UpdateCoordinate(val value: String) : AccommodationEditIntent
 
-    // Ảnh đã có sẵn (URL)
-    data class AddImage(val url: String) : AccommodationEditIntent
     data class RemoveImage(val index: Int) : AccommodationEditIntent
-
     // Ảnh mới chọn từ thiết bị (URI tạm thời)
     data class SetLocalImages(val uris: List<Uri>) : AccommodationEditIntent
     data class RemoveLocalImage(val index: Int) : AccommodationEditIntent

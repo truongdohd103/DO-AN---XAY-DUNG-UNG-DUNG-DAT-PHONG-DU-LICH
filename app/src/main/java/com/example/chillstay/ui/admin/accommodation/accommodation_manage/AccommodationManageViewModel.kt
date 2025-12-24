@@ -6,6 +6,7 @@ import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.HotelCategory
 import com.example.chillstay.domain.model.HotelListFilter
+import com.example.chillstay.domain.model.HotelStatus
 import com.example.chillstay.domain.usecase.hotel.GetHotelsUseCase
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -287,7 +288,7 @@ class AccommodationManageViewModel(
 
             // Tính toán statistics dựa trên filtered results
             val totalProperties = filtered.size
-            val activeProperties = filtered.count { it.rooms.isNotEmpty() || it.minPrice != null }
+            val activeProperties = filtered.count { it.status == HotelStatus.ACTIVE }
 
             withContext(Dispatchers.Main) {
                 _state.value = _state.value.updateFilteredHotels(filtered).copy(

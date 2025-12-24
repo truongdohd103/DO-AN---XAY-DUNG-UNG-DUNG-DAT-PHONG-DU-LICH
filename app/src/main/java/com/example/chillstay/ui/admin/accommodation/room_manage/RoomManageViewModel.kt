@@ -4,12 +4,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.Room
-import com.example.chillstay.domain.usecase.hotel.GetHotelRoomsUseCase
+import com.example.chillstay.domain.usecase.room.GetRoomsByHotelIdUseCase
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class RoomManageViewModel(
-    private val getHotelRoomsUseCase: GetHotelRoomsUseCase
+    private val getHotelRoomsUseCase: GetRoomsByHotelIdUseCase
 ) : BaseViewModel<RoomManageUiState, RoomManageIntent, RoomManageEffect>(
     RoomManageUiState()
 ) {

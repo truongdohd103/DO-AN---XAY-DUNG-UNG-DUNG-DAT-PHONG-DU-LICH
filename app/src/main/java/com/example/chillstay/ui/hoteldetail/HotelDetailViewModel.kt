@@ -3,7 +3,7 @@ package com.example.chillstay.ui.hoteldetail
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
-import com.example.chillstay.domain.usecase.hotel.GetHotelRoomsUseCase
+import com.example.chillstay.domain.usecase.room.GetRoomsByHotelIdUseCase
 import com.example.chillstay.domain.usecase.bookmark.AddBookmarkUseCase
 import com.example.chillstay.domain.usecase.bookmark.RemoveBookmarkUseCase
 import com.example.chillstay.domain.usecase.review.GetHotelReviewsUseCase
@@ -17,7 +17,7 @@ import android.util.Log
 
 class HotelDetailViewModel(
     private val getHotelById: GetHotelByIdUseCase,
-    private val getHotelRooms: GetHotelRoomsUseCase,
+    private val getHotelRooms: GetRoomsByHotelIdUseCase,
     private val getHotelReviews: GetHotelReviewsUseCase,
     private val userRepository: UserRepository,
     private val addBookmark: AddBookmarkUseCase,

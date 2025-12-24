@@ -3,12 +3,10 @@ package com.example.chillstay.ui.trip
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.domain.model.Booking
-import com.example.chillstay.domain.model.Hotel
-import com.example.chillstay.domain.model.Room
 import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
 import com.example.chillstay.domain.usecase.booking.CancelBookingUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
-import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
+import com.example.chillstay.domain.usecase.room.GetRoomByIdUseCase
 import com.example.chillstay.domain.repository.ReviewRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update

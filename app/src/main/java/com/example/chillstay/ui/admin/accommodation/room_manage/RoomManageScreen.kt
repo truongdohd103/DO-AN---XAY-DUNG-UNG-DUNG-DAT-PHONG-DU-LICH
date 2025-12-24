@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chillstay.R
 import com.example.chillstay.domain.model.Room
+import com.example.chillstay.domain.model.RoomStatus
 import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageIntent
 import org.koin.androidx.compose.koinViewModel
 
@@ -152,6 +153,12 @@ fun RoomManageScreen(
                                 number = uiState.rooms.size.toString(),
                                 label = "Total Room",
                                 gradient = listOf(Color(0xFF3B82F6), Color(0xFF2563EB)),
+                                modifier = Modifier.weight(1f)
+                            )
+                            StatCard(
+                                number = uiState.rooms.filter { it.status == RoomStatus.ACTIVE }.size.toString(),
+                                label = "Active Room",
+                                gradient = listOf(Color(0xFF92F63B), Color(0xFF4CAF50)),
                                 modifier = Modifier.weight(1f)
                             )
                         }

@@ -5,7 +5,13 @@ import android.net.Uri
 interface ImageUploadRepository {
     suspend fun uploadAccommodationImages(
         hotelId: String,
-        accommodationName: String,
+        imageUris: List<Uri>
+    ): List<String>
+
+    suspend fun uploadRoomImages(
+        roomId: String,
+        hotelId: String,
+        tag: String,
         imageUris: List<Uri>
     ): List<String>
 }

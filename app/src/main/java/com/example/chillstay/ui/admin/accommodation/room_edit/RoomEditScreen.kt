@@ -1,6 +1,10 @@
 package com.example.chillstay.ui.admin.accommodation.room_edit
 
-import androidx.compose.foundation.BorderStroke
+import android.net.Uri
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,21 +14,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,7 +45,24 @@ fun RoomEditScreen(
     onSaveClick: (Room) -> Unit = {},
     viewModel: RoomEditViewModel = koinViewModel()
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val pendingTag = remember { mutableStateOf<String?>(RoomEditConstant.THIS_ROOM) }
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            val tag = pendingTag.value
+            viewModel.onEvent(RoomEditIntent.SetLocalImages(tag!!, uris))
+        }
+    }
+
+    fun pickImagesWithTag(tag: String) {
+        Log.d("ImagePick", "pickImagesWithTag called for $tag")
+        pendingTag.value = tag
+        imagePickerLauncher.launch("image/*")
+    }
 
     LaunchedEffect(roomId, hotelId) {
         if (roomId != null) {
@@ -54,12 +75,18 @@ fun RoomEditScreen(
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when (effect) {
-                RoomEditEffect.NavigateBack -> onBackClick()
-                is RoomEditEffect.ShowSaveSuccess -> onSaveClick(effect.room)
-                is RoomEditEffect.ShowCreateSuccess -> onCreateClick(effect.room)
-                is RoomEditEffect.ShowError -> {
-                    // Can surface snackbar/toast here if needed
+                is RoomEditEffect.ShowSaveSuccess -> {
+                    Toast.makeText(context, "Room updated successfully", Toast.LENGTH_SHORT).show()
+                    onSaveClick(effect.room)
                 }
+                is RoomEditEffect.ShowCreateSuccess -> {
+                    Toast.makeText(context, "Room created successfully", Toast.LENGTH_SHORT).show()
+                    onCreateClick(effect.room)
+                }
+                is RoomEditEffect.ShowError -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
+                }
+                RoomEditEffect.NavigateBack -> onBackClick()
             }
         }
     }
@@ -86,7 +113,7 @@ fun RoomEditScreen(
             navigationIcon = {
                 IconButton(onClick = { viewModel.onEvent(RoomEditIntent.NavigateBack) }) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.White
                     )
@@ -201,44 +228,43 @@ fun RoomEditScreen(
             }
 
             // Room Images
-            FormSection(title = "Room Images") {
+            FormSection(title = "Images") {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    uiState.exteriorView.forEachIndexed { index, url ->
-                        ImageUrlItem(
-                            url = url,
-                            onDeleteClick = { viewModel.onEvent(RoomEditIntent.RemoveImageExteriorView(index)) }
-                        )
-                    }
+                    ImagesSection(
+                        images = uiState.exteriorView,
+                        localImages = uiState.localExteriorUris,
+                        title = "Exterior View Images",
+                        onPickImages = { pickImagesWithTag(RoomEditConstant.EXTERIOR_VIEW) },
+                        onRemoveLocal = { index -> viewModel.onEvent(RoomEditIntent.RemoveLocalImage(RoomEditConstant.EXTERIOR_VIEW, index)) },
+                        onRemoveImage = { index -> viewModel.onEvent(RoomEditIntent.RemoveImage(RoomEditConstant.EXTERIOR_VIEW, index)) }
+                    )
 
-                    OutlinedButton(
-                        onClick = { /* Add image URL dialog - TODO */ },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(40.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFF1AB6B6)
-                        ),
-                        border = BorderStroke(1.dp, Color(0xFFD1D5DB)),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            tint = Color(0xFF1AB6B6),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Add Image URL",
-                            style = TextStyle(
-                                fontSize = 12.6.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFF1AB6B6)
-                            )
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    ImagesSection(
+                        images = uiState.dining,
+                        localImages = uiState.localDiningUris,
+                        title = "Dining Images",
+                        onPickImages = { pickImagesWithTag(RoomEditConstant.DINING) },
+                        onRemoveLocal = { index -> viewModel.onEvent(RoomEditIntent.RemoveLocalImage(RoomEditConstant.DINING, index)) },
+                        onRemoveImage = { index -> viewModel.onEvent(RoomEditIntent.RemoveImage(RoomEditConstant.DINING, index)) }
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+
+                    ImagesSection(
+                        images = uiState.thisRoom,
+                        localImages = uiState.localRoomUris,
+                        title = "Room Images",
+                        onPickImages = { pickImagesWithTag(RoomEditConstant.THIS_ROOM) },
+                        onRemoveLocal = { index -> viewModel.onEvent(RoomEditIntent.RemoveLocalImage(RoomEditConstant.THIS_ROOM, index)) },
+                        onRemoveImage = { index -> viewModel.onEvent(RoomEditIntent.RemoveImage(RoomEditConstant.THIS_ROOM, index)) }
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
@@ -456,52 +482,101 @@ fun InputField(
 }
 
 @Composable
-fun ImageUrlItem(
-    url: String,
-    onDeleteClick: () -> Unit
+private fun ImagesSection(
+    images: List<String>,
+    localImages: List<Uri>,
+    title: String,
+    onPickImages: () -> Unit,
+    onRemoveLocal: (Int) -> Unit,
+    onRemoveImage: (Int) -> Unit
 ) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(modifier = Modifier.size(18.dp))
+                Text(
+                    text = title,
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1F2937)
+                    )
+                )
+            }
+
+            Column {
+                // Ảnh URL đã lưu (từ Firestore / Cloudinary)
+                if (images.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        images.forEachIndexed { index, url ->
+                            ImageItem(url = url, onRemove = { onRemoveImage(index) })
+                        }
+                    }
+                }
+
+                // Ảnh người dùng vừa chọn từ máy (URI)
+                if (localImages.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        localImages.forEachIndexed { index, uri ->
+                            ImageItem(url = uri.toString(), onRemove = { onRemoveLocal(index) })
+                        }
+                    }
+                }
+
+                // Nút chọn ảnh mới từ thiết bị
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF3F4F6), RoundedCornerShape(8.dp))
+                        .border(0.5.dp, Color(0xFFD1D5DB), RoundedCornerShape(8.dp))
+                        .padding(10.dp)
+                        .clickable { onPickImages() },
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.size(16.dp))
+                    Text(
+                        text = "Pick images from device",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF1AB5B5)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImageItem(url: String, onRemove: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                color = Color(0xFFF9FAFB),
-                shape = RoundedCornerShape(8.dp)
-            )
-            .border(
-                width = 1.dp,
-                color = Color(0xFFE5E7EB),
-                shape = RoundedCornerShape(8.dp)
-            )
+            .background(Color(0xFFFAFAFA), RoundedCornerShape(8.dp))
+            .border(0.5.dp, Color(0xFFE5E7EB), RoundedCornerShape(8.dp))
             .padding(10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = url,
-            style = TextStyle(
-                fontSize = 12.sp,
-                color = Color(0xFF757575)
-            ),
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            fontSize = 12.sp,
+            color = Color(0xFF757575),
+            modifier = Modifier.weight(1f)
         )
-
-        IconButton(
-            onClick = onDeleteClick,
+        Box(
             modifier = Modifier
                 .size(28.dp)
-                .background(
-                    color = Color(0xFFEF4444),
-                    shape = RoundedCornerShape(6.dp)
-                )
+                .background(Color(0xFFF04545), RoundedCornerShape(6.dp))
+                .clickable { onRemove() },
+            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Delete",
-                tint = Color.White,
-                modifier = Modifier.size(14.dp)
-            )
+            Text(text = "−", color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -538,4 +613,3 @@ fun FeatureChip(
         )
     }
 }
-
