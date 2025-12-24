@@ -2,7 +2,6 @@ package com.example.chillstay.ui.admin.accommodation.room_edit
 
 import android.net.Uri
 import com.example.chillstay.core.base.UiEvent
-import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditIntent
 
 sealed interface RoomEditIntent : UiEvent {
     data class LoadForCreate(val hotelId: String) : RoomEditIntent
@@ -18,9 +17,8 @@ sealed interface RoomEditIntent : UiEvent {
     data class UpdateAvailableQuantity(val value: String) : RoomEditIntent
     data class UpdateBreakfastPrice(val value: String) : RoomEditIntent
 
-    data class RemoveImage(val tag : String, val index: Int) : RoomEditIntent
-    data class SetLocalImages(val tag : String, val uris: List<Uri>) : RoomEditIntent
-    data class RemoveLocalImage(val tag : String, val index: Int) : RoomEditIntent
+    data class AddImages(val tag: String, val uris: List<Uri>) : RoomEditIntent
+    data class RemoveImage(val tag: String, val index: Int) : RoomEditIntent
 
     data class ToggleFeature(val feature: String) : RoomEditIntent
 
@@ -29,4 +27,3 @@ sealed interface RoomEditIntent : UiEvent {
     data object NavigateBack : RoomEditIntent
     data object ClearError : RoomEditIntent
 }
-

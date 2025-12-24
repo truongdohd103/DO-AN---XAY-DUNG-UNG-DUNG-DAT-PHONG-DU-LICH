@@ -35,12 +35,13 @@ data class RoomEditUiState(
     val pricePerNight: String = "",
     val discount: String = "",
     val maxOccupancy: String = "",
-    val exteriorView: List<String> = emptyList(),
-    val localExteriorUris: List<Uri> = emptyList(),
-    val dining: List<String> = emptyList(),
-    val localDiningUris: List<Uri> = emptyList(),
-    val thisRoom: List<String> = emptyList(),
-    val localRoomUris: List<Uri> = emptyList(),
+
+    val allExteriorUris: List<Uri> = emptyList(),
+    val allDiningUris: List<Uri> = emptyList(),
+    val allRoomUris: List<Uri> = emptyList(),
+    // Flag để biết có đang load ảnh cũ không
+    val isLoadingImages: Boolean = false,
+
     val selectedFeatures: Set<String> = emptySet(),
     val isSaving: Boolean = false,
     val error: String? = null

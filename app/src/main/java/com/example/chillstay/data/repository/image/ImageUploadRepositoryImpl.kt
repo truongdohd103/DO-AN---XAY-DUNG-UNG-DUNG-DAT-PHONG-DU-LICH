@@ -25,7 +25,6 @@ import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.statement.readBytes
-import io.ktor.client.statement.readRawBytes
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.ContentType
@@ -94,6 +93,10 @@ class ImageUploadRepositoryImpl(
             return emptyList()
         }
 
+        // Xóa folder cũ của room trước khi upload
+        Log.d(LOG_TAG, "Deleting old folder for room: $hotelId/$roomId")
+        deleteRoomFolder(hotelId, roomId)
+
         val folderName = slugify("$hotelId/$roomId/$tag")
         val folder = "${CloudinaryConfig.BASE_FOLDER}/$folderName"
 
@@ -151,6 +154,47 @@ class ImageUploadRepositoryImpl(
         }
     }
 
+    override suspend fun deleteRoomFolder(hotelId: String, roomId: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val folderName = slugify("$hotelId/$roomId")
+                val prefix = "${CloudinaryConfig.BASE_FOLDER}/$folderName"
+
+                Log.d(LOG_TAG, "Attempting to delete room folder with prefix: $prefix")
+
+                // Cloudinary Admin API endpoint để xóa resources by prefix
+                val timestamp = System.currentTimeMillis() / 1000
+                val signature = generateSignature(prefix, timestamp)
+
+                val deleteUrl = "https://api.cloudinary.com/v1_1/${CloudinaryConfig.CLOUD_NAME}/resources/image/upload"
+
+                val response: HttpResponse = httpClient.delete(deleteUrl) {
+                    headers {
+                        append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    }
+                    url {
+                        parameters.append("prefix", prefix)
+                        parameters.append("api_key", CloudinaryConfig.API_KEY)
+                        parameters.append("timestamp", timestamp.toString())
+                        parameters.append("signature", signature)
+                    }
+                }
+
+                if (response.status.isSuccess()) {
+                    Log.d(LOG_TAG, "Successfully deleted room folder: $prefix")
+                    true
+                } else {
+                    val errorBody = response.bodyAsText()
+                    Log.w(LOG_TAG, "Failed to delete room folder: ${response.status.value} - $errorBody")
+                    false
+                }
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "Error deleting room folder: ${e.message}", e)
+                false
+            }
+        }
+    }
+
     override suspend fun downloadImageToLocal(imageUrl: String): Uri? {
         return withContext(Dispatchers.IO) {
             try {
@@ -169,7 +213,7 @@ class ImageUploadRepositoryImpl(
                     return@withContext null
                 }
 
-                val bytes = response.readRawBytes()
+                val bytes = response.readBytes()
                 Log.d(LOG_TAG, "Downloaded ${bytes.size} bytes")
 
                 // Lưu vào cache directory

@@ -7,19 +7,23 @@ import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.Room
 import com.example.chillstay.domain.model.RoomGallery
+import com.example.chillstay.domain.repository.ImageUploadRepository
 import com.example.chillstay.domain.usecase.room.GetRoomByIdUseCase
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import com.example.chillstay.domain.usecase.image.UploadRoomImagesUseCase
 import com.example.chillstay.domain.usecase.room.CreateRoomUseCase
 import com.example.chillstay.domain.usecase.room.UpdateRoomUseCase
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class RoomEditViewModel(
     private val getRoomByIdUseCase: GetRoomByIdUseCase,
     private val uploadRoomImagesUseCase: UploadRoomImagesUseCase,
     private val updateRoomUseCase: UpdateRoomUseCase,
-    private val createRoomUseCase: CreateRoomUseCase
+    private val createRoomUseCase: CreateRoomUseCase,
+    private val imageUploadRepository: ImageUploadRepository
 ) : BaseViewModel<RoomEditUiState, RoomEditIntent, RoomEditEffect>(
     RoomEditUiState()
 ) {
@@ -44,9 +48,8 @@ class RoomEditViewModel(
             is RoomEditIntent.UpdateAvailableQuantity -> _state.value = _state.value.copy(availableQuantity = event.value)
             is RoomEditIntent.UpdateBreakfastPrice -> _state.value = _state.value.copy(breakfastPrice = event.value)
 
+            is RoomEditIntent.AddImages -> addImages(event.tag, event.uris)
             is RoomEditIntent.RemoveImage -> removeImage(event.tag, event.index)
-            is RoomEditIntent.SetLocalImages -> setLocalImage(event.tag, event.uris)
-            is RoomEditIntent.RemoveLocalImage -> removeLocalImage(event.tag, event.index)
 
             is RoomEditIntent.ToggleFeature -> toggleFeature(event.feature)
 
@@ -63,7 +66,13 @@ class RoomEditViewModel(
 
     private fun loadRoomById(roomId: String) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isSaving = true, mode = Mode.Edit, roomId = roomId)
+            _state.value = _state.value.copy(
+                isSaving = true,
+                isLoadingImages = true,
+                mode = Mode.Edit,
+                roomId = roomId
+            )
+
             val result = getRoomByIdUseCase(roomId).first()
             when (result) {
                 is Result.Success -> {
@@ -82,15 +91,21 @@ class RoomEditViewModel(
                         maxOccupancy = room.capacity.toString(),
                         pricePerNight = room.price.toString(),
                         availableQuantity = room.quantity.toString(),
-                        selectedFeatures = room.feature.toSet(),
-                        exteriorView = room.gallery?.exteriorView ?: emptyList(),
-                        dining = room.gallery?.dining ?: emptyList(),
-                        thisRoom = room.gallery?.thisRoom ?: emptyList()
+                        selectedFeatures = room.feature.toSet()
                     )
 
+                    // Download tất cả ảnh cũ về local
+                    downloadExistingImages(
+                        exteriorUrls = room.gallery?.exteriorView ?: emptyList(),
+                        diningUrls = room.gallery?.dining ?: emptyList(),
+                        roomUrls = room.gallery?.thisRoom ?: emptyList()
+                    )
                 }
                 is Result.Error -> {
-                    _state.value = _state.value.copy(isSaving = false)
+                    _state.value = _state.value.copy(
+                        isSaving = false,
+                        isLoadingImages = false
+                    )
                     sendEffect {
                         RoomEditEffect.ShowError(
                             result.throwable.message ?: "Failed to load room"
@@ -100,62 +115,98 @@ class RoomEditViewModel(
             }
         }
     }
+
+    /**
+     * Download tất cả ảnh cũ từ URL về local storage
+     */
+    private fun downloadExistingImages(
+        exteriorUrls: List<String>,
+        diningUrls: List<String>,
+        roomUrls: List<String>
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d(LOG_TAG, "Downloading images: exterior=${exteriorUrls.size}, dining=${diningUrls.size}, room=${roomUrls.size}")
+
+                // Download parallel
+                val exteriorUris = exteriorUrls.mapIndexed { index, url ->
+                    async {
+                        Log.d(LOG_TAG, "Downloading exterior image $index: $url")
+                        imageUploadRepository.downloadImageToLocal(url)
+                    }
+                }.awaitAll().filterNotNull()
+
+                val diningUris = diningUrls.mapIndexed { index, url ->
+                    async {
+                        Log.d(LOG_TAG, "Downloading dining image $index: $url")
+                        imageUploadRepository.downloadImageToLocal(url)
+                    }
+                }.awaitAll().filterNotNull()
+
+                val roomUris = roomUrls.mapIndexed { index, url ->
+                    async {
+                        Log.d(LOG_TAG, "Downloading room image $index: $url")
+                        imageUploadRepository.downloadImageToLocal(url)
+                    }
+                }.awaitAll().filterNotNull()
+
+                Log.d(LOG_TAG, "Download completed: exterior=${exteriorUris.size}, dining=${diningUris.size}, room=${roomUris.size}")
+
+                _state.value = _state.value.copy(
+                    allExteriorUris = exteriorUris,
+                    allDiningUris = diningUris,
+                    allRoomUris = roomUris,
+                    isLoadingImages = false
+                )
+
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "Error downloading images: ${e.message}", e)
+                _state.value = _state.value.copy(isLoadingImages = false)
+                sendEffect {
+                    RoomEditEffect.ShowError("Failed to load some images: ${e.message}")
+                }
+            }
+        }
+    }
+
+    private fun addImages(tag: String, newUris: List<Uri>) {
+        when (tag) {
+            RoomEditConstant.EXTERIOR_VIEW -> {
+                val current = _state.value.allExteriorUris
+                _state.value = _state.value.copy(allExteriorUris = current + newUris)
+            }
+            RoomEditConstant.DINING -> {
+                val current = _state.value.allDiningUris
+                _state.value = _state.value.copy(allDiningUris = current + newUris)
+            }
+            RoomEditConstant.THIS_ROOM -> {
+                val current = _state.value.allRoomUris
+                _state.value = _state.value.copy(allRoomUris = current + newUris)
+            }
+        }
+    }
+
     private fun removeImage(tag: String, index: Int) {
         when (tag) {
             RoomEditConstant.EXTERIOR_VIEW -> {
-                val images = _state.value.exteriorView.toMutableList()
+                val images = _state.value.allExteriorUris.toMutableList()
                 if (index in images.indices) {
                     images.removeAt(index)
-                    _state.value = _state.value.copy(exteriorView = images)
+                    _state.value = _state.value.copy(allExteriorUris = images)
                 }
             }
             RoomEditConstant.DINING -> {
-                val images = _state.value.dining.toMutableList()
+                val images = _state.value.allDiningUris.toMutableList()
                 if (index in images.indices) {
                     images.removeAt(index)
-                    _state.value = _state.value.copy(dining = images)
+                    _state.value = _state.value.copy(allDiningUris = images)
                 }
             }
-            else -> {
-                val images = _state.value.thisRoom.toMutableList()
+            RoomEditConstant.THIS_ROOM -> {
+                val images = _state.value.allRoomUris.toMutableList()
                 if (index in images.indices) {
                     images.removeAt(index)
-                    _state.value = _state.value.copy(thisRoom = images)
-                }
-            }
-        }
-    }
-
-
-    private fun setLocalImage(tag: String, uris: List<Uri>) {
-        when (tag) {
-            RoomEditConstant.EXTERIOR_VIEW -> _state.value = _state.value.copy(localExteriorUris = uris)
-            RoomEditConstant.DINING -> _state.value = _state.value.copy(localDiningUris = uris)
-            else -> _state.value = _state.value.copy(localRoomUris = uris)
-        }
-    }
-
-    private fun removeLocalImage(tag: String, index: Int) {
-        when (tag) {
-            RoomEditConstant.EXTERIOR_VIEW -> {
-                val uris = _state.value.localExteriorUris.toMutableList()
-                if (index in uris.indices) {
-                    uris.removeAt(index)
-                    _state.value = _state.value.copy(localExteriorUris = uris)
-                }
-            }
-            RoomEditConstant.DINING -> {
-                val uris = _state.value.localDiningUris.toMutableList()
-                if (index in uris.indices) {
-                    uris.removeAt(index)
-                    _state.value = _state.value.copy(localDiningUris = uris)
-                }
-            }
-            else -> {
-                val uris = _state.value.localRoomUris.toMutableList()
-                if (index in uris.indices) {
-                    uris.removeAt(index)
-                    _state.value = _state.value.copy(localRoomUris = uris)
+                    _state.value = _state.value.copy(allRoomUris = images)
                 }
             }
         }
@@ -172,119 +223,47 @@ class RoomEditViewModel(
             _state.value = _state.value.copy(isSaving = true)
 
             try {
-                val uploadedExteriorImages = prepareImagesForSave(
-                    tag = RoomEditConstant.EXTERIOR_VIEW,
-                    existing = _state.value.exteriorView,
-                    locals = _state.value.localExteriorUris,
-                    roomId = _state.value.roomId.orEmpty(),
-                    hotelId = _state.value.hotelId.orEmpty(),
-                    name = _state.value.name
+                val roomId = _state.value.roomId
+                val hotelId = _state.value.hotelId
+
+                if (roomId.isNullOrBlank() || hotelId.isNullOrBlank()) {
+                    throw IllegalStateException("Cannot update room without ID")
+                }
+
+                // Upload TẤT CẢ ảnh (folder cũ sẽ được xóa trong repository)
+                val (exteriorUrls, diningUrls, roomUrls) = uploadAllRoomImages(hotelId, roomId)
+
+                val roomToUpdate = buildRoomFromState().copy(
+                    gallery = RoomGallery(
+                        exteriorView = exteriorUrls,
+                        dining = diningUrls,
+                        thisRoom = roomUrls
+                    )
                 )
-                val uploadedDiningImages = prepareImagesForSave(
-                    tag = RoomEditConstant.DINING,
-                    existing = _state.value.dining,
-                    locals = _state.value.localDiningUris,
-                    roomId = _state.value.roomId.orEmpty(),
-                    hotelId = _state.value.hotelId.orEmpty(),
-                    name = _state.value.name
-                )
-                val uploadedRoomImages = prepareImagesForSave(
-                    tag = RoomEditConstant.THIS_ROOM,
-                    existing = _state.value.thisRoom,
-                    locals = _state.value.localRoomUris,
-                    roomId = _state.value.roomId.orEmpty(),
-                    hotelId = _state.value.hotelId.orEmpty(),
-                    name = _state.value.name
-                )
-                val roomToUpdate = buildRoomFromState().copy(gallery = RoomGallery(
-                    exteriorView = uploadedExteriorImages,
-                    dining = uploadedDiningImages,
-                    thisRoom = uploadedRoomImages
-                ))
+
                 updateRoomUseCase(roomToUpdate).first().fold(
                     onSuccess = {
-                        _state.value = _state.value.copy(
-                            isSaving = false,
-                            exteriorView = uploadedExteriorImages,
-                            dining = uploadedDiningImages,
-                            thisRoom = uploadedRoomImages)
+                        _state.value = _state.value.copy(isSaving = false)
                         sendEffect { RoomEditEffect.ShowSaveSuccess(roomToUpdate) }
                     },
                     onFailure = { throwable ->
                         _state.value = _state.value.copy(isSaving = false)
-                        sendEffect { RoomEditEffect.ShowError(throwable.message ?: "Failed to save room") }
+                        sendEffect {
+                            RoomEditEffect.ShowError(
+                                throwable.message ?: "Failed to save room"
+                            )
+                        }
                     }
                 )
+            } catch (e: IllegalStateException) {
+                Log.e(LOG_TAG, "Validation error: ${e.message}", e)
+                _state.value = _state.value.copy(isSaving = false)
+                sendEffect { RoomEditEffect.ShowError(e.message ?: "Invalid state") }
             } catch (e: Exception) {
+                Log.e(LOG_TAG, "Unexpected error in saveRoom: ${e.message}", e)
                 _state.value = _state.value.copy(isSaving = false)
                 sendEffect { RoomEditEffect.ShowError(e.message ?: "Unexpected error") }
             }
-        }
-    }
-
-    private suspend fun prepareImagesForSave(tag: String, existing: List<String>, locals: List<Uri>, roomId: String, hotelId: String, name: String): List<String> {
-        Log.d(LOG_TAG, "prepareImagesForSave() start, existing=${existing.size}, locals=${locals.size}, name='$name'")
-
-        if (locals.isEmpty()) {
-            Log.d(LOG_TAG, "No local images to upload, skip upload")
-            return existing
-        }
-        // Nếu chưa có hotelId (trường hợp create mới hoàn toàn), tạm thời không upload
-        if (hotelId.isBlank()) {
-            Log.d(LOG_TAG, "Skip upload because hotelId is blank")
-            return existing
-        }
-        if (roomId.isBlank()) {
-            Log.d(LOG_TAG, "Skip upload because roomId is blank")
-            return existing
-        }
-
-        return try {
-            Log.d(LOG_TAG, "Calling UploadAccommodationImagesUseCase with ${locals.size} images")
-            val uploadedUrls = uploadRoomImagesUseCase(
-                hotelId = hotelId,
-                roomId = roomId,
-                tag = tag,
-                imageUris = locals
-            )
-            Log.d(LOG_TAG, "Upload success, received ${uploadedUrls.size} URLs: $uploadedUrls")
-
-            val merged = existing + uploadedUrls
-            when(tag) {
-                RoomEditConstant.EXTERIOR_VIEW -> _state.value = _state.value.copy(
-                    exteriorView = merged,
-                    localExteriorUris = emptyList()
-                )
-                RoomEditConstant.DINING -> _state.value = _state.value.copy(
-                    dining = merged,
-                    localDiningUris = emptyList()
-                )
-                RoomEditConstant.THIS_ROOM -> _state.value = _state.value.copy(
-                    thisRoom = merged,
-                    localDiningUris = emptyList()
-                )
-            }
-
-            merged
-        } catch (e: CancellationException) {
-            // Nếu upload bị cancel (ViewModel bị clear), chỉ log warning và return existing images
-            // Không throw lại để tránh crash app
-            Log.w(LOG_TAG, "Upload cancelled (ViewModel may have been cleared): ${e.message}")
-            existing
-        } catch (e: Exception) {
-            Log.e(LOG_TAG, "Error while uploading images: ${e.message}", e)
-            // Gửi error effect để UI có thể hiển thị message
-            val errorMessage = when {
-                e.message?.contains("timeout", ignoreCase = true) == true ->
-                    "Connection timed out."
-                e.message?.contains("Connection refused", ignoreCase = true) == true ->
-                    "Connection refused."
-                e.message?.contains("Cannot connect", ignoreCase = true) == true ->
-                    "Cannot connect to image service."
-                else -> "Failed to upload images: ${e.message}"
-            }
-            sendEffect { RoomEditEffect.ShowError(errorMessage) }
-            existing
         }
     }
 
@@ -295,63 +274,49 @@ class RoomEditViewModel(
             try {
                 val minimalRoom = buildRoomFromState().copy(
                     id = "",
-                    gallery = RoomGallery(
-                        emptyList(),
-                        emptyList(),
-                        emptyList()
-                    ))
+                    gallery = RoomGallery(emptyList(), emptyList(), emptyList())
+                )
 
                 createRoomUseCase(minimalRoom).first().fold(
                     onSuccess = { newId ->
-                        _state.value = _state.value.copy(hotelId = newId)
-                        val uploadedExteriorImages = prepareImagesForSave(
-                            tag = RoomEditConstant.EXTERIOR_VIEW,
-                            existing = _state.value.exteriorView,
-                            locals = _state.value.localExteriorUris,
-                            roomId = _state.value.roomId.orEmpty(),
-                            hotelId = _state.value.hotelId.orEmpty(),
-                            name = _state.value.name
+                        _state.value = _state.value.copy(roomId = newId)
+
+                        val hotelId = _state.value.hotelId.orEmpty()
+
+                        // Upload tất cả ảnh
+                        val (exteriorUrls, diningUrls, roomUrls) = uploadAllRoomImages(hotelId, newId)
+
+                        val finalRoom = buildRoomFromState().copy(
+                            id = newId,
+                            gallery = RoomGallery(
+                                exteriorView = exteriorUrls,
+                                dining = diningUrls,
+                                thisRoom = roomUrls
+                            )
                         )
-                        val uploadedDiningImages = prepareImagesForSave(
-                            tag = RoomEditConstant.DINING,
-                            existing = _state.value.dining,
-                            locals = _state.value.localDiningUris,
-                            roomId = _state.value.roomId.orEmpty(),
-                            hotelId = _state.value.hotelId.orEmpty(),
-                            name = _state.value.name
-                        )
-                        val uploadedRoomImages = prepareImagesForSave(
-                            tag = RoomEditConstant.THIS_ROOM,
-                            existing = _state.value.thisRoom,
-                            locals = _state.value.localRoomUris,
-                            roomId = _state.value.roomId.orEmpty(),
-                            hotelId = _state.value.hotelId.orEmpty(),
-                            name = _state.value.name
-                        )
-                        val finalRoom = buildRoomFromState().copy(gallery = RoomGallery(
-                            exteriorView = uploadedExteriorImages,
-                            dining = uploadedDiningImages,
-                            thisRoom = uploadedRoomImages
-                        ))
 
                         updateRoomUseCase(finalRoom).first().fold(
                             onSuccess = {
-                                _state.value = _state.value.copy(
-                                    isSaving = false,
-                                    exteriorView = uploadedExteriorImages,
-                                    dining = uploadedDiningImages,
-                                    thisRoom = uploadedRoomImages)
+                                _state.value = _state.value.copy(isSaving = false)
                                 sendEffect { RoomEditEffect.ShowCreateSuccess(finalRoom) }
                             },
                             onFailure = { throwable ->
                                 _state.value = _state.value.copy(isSaving = false)
-                                sendEffect { RoomEditEffect.ShowError(throwable.message ?: "Failed to finalize room creation") }
+                                sendEffect {
+                                    RoomEditEffect.ShowError(
+                                        throwable.message ?: "Failed to finalize room creation"
+                                    )
+                                }
                             }
                         )
                     },
                     onFailure = { throwable ->
                         _state.value = _state.value.copy(isSaving = false)
-                        sendEffect { RoomEditEffect.ShowError(throwable.message ?: "Failed to create room") }
+                        sendEffect {
+                            RoomEditEffect.ShowError(
+                                throwable.message ?: "Failed to create room"
+                            )
+                        }
                     }
                 )
             } catch (e: Exception) {
@@ -360,6 +325,76 @@ class RoomEditViewModel(
             }
         }
     }
+
+    /**
+     * Upload tất cả ảnh của room (repository sẽ tự động xóa folder cũ)
+     * @return Triple(exteriorUrls, diningUrls, roomUrls)
+     */
+    private suspend fun uploadAllRoomImages(
+        hotelId: String,
+        roomId: String
+    ): Triple<List<String>, List<String>, List<String>> = kotlinx.coroutines.coroutineScope {
+        Log.d(LOG_TAG, "Uploading all room images for: $hotelId/$roomId")
+
+        try {
+            val exteriorDeferred = async {
+                if (_state.value.allExteriorUris.isNotEmpty()) {
+                    uploadRoomImagesUseCase(
+                        hotelId = hotelId,
+                        roomId = roomId,
+                        tag = RoomEditConstant.EXTERIOR_VIEW,
+                        imageUris = _state.value.allExteriorUris
+                    )
+                } else emptyList()
+            }
+
+            val diningDeferred = async {
+                if (_state.value.allDiningUris.isNotEmpty()) {
+                    uploadRoomImagesUseCase(
+                        hotelId = hotelId,
+                        roomId = roomId,
+                        tag = RoomEditConstant.DINING,
+                        imageUris = _state.value.allDiningUris
+                    )
+                } else emptyList()
+            }
+
+            val roomDeferred = async {
+                if (_state.value.allRoomUris.isNotEmpty()) {
+                    uploadRoomImagesUseCase(
+                        hotelId = hotelId,
+                        roomId = roomId,
+                        tag = RoomEditConstant.THIS_ROOM,
+                        imageUris = _state.value.allRoomUris
+                    )
+                } else emptyList()
+            }
+
+            val exteriorUrls = exteriorDeferred.await()
+            val diningUrls = diningDeferred.await()
+            val roomUrls = roomDeferred.await()
+
+            Log.d(
+                LOG_TAG,
+                "Upload completed: exterior=${exteriorUrls.size}, dining=${diningUrls.size}, room=${roomUrls.size}"
+            )
+
+            Triple(exteriorUrls, diningUrls, roomUrls)
+        } catch (e: CancellationException) {
+            Log.w(LOG_TAG, "Upload cancelled: ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            Log.e(LOG_TAG, "Error uploading room images: ${e.message}", e)
+            val errorMessage = when {
+                e.message?.contains("timeout", ignoreCase = true) == true -> "Connection timed out."
+                e.message?.contains("Connection refused", ignoreCase = true) == true -> "Connection refused."
+                else -> "Failed to upload images: ${e.message}"
+            }
+            sendEffect { RoomEditEffect.ShowError(errorMessage) }
+            Triple(emptyList(), emptyList(), emptyList())
+        }
+    }
+
 
     private fun navigateBack() {
         viewModelScope.launch {
@@ -370,12 +405,13 @@ class RoomEditViewModel(
     private fun buildRoomFromState(): Room {
         val area = _state.value.area.toDoubleOrNull() ?: 0.0
         val doubleBed = _state.value.doubleBed.toIntOrNull() ?: 0
-        val singleBed = _state.value.doubleBed.toIntOrNull() ?: 0
+        val singleBed = _state.value.singleBed.toIntOrNull() ?: 0
         val price = _state.value.pricePerNight.toDoubleOrNull() ?: 0.0
         val discount = _state.value.discount.toDoubleOrNull() ?: 0.0
         val occupancy = _state.value.maxOccupancy.toIntOrNull() ?: 0
         val quantity = _state.value.availableQuantity.toIntOrNull() ?: 0
         val breakfastPrice = _state.value.breakfastPrice.toDoubleOrNull() ?: 0.0
+
         return Room(
             id = _state.value.roomId.orEmpty(),
             hotelId = _state.value.hotelId.orEmpty(),
@@ -389,18 +425,11 @@ class RoomEditViewModel(
             price = price,
             discount = discount,
             capacity = occupancy,
-            gallery =
-                RoomGallery(
-                    exteriorView = _state.value.exteriorView.toList(),
-                    dining = _state.value.dining.toList(),
-                    thisRoom = _state.value.thisRoom.toList()
-                )
+            gallery = null // Sẽ được set sau khi upload
         )
     }
-
 
     private fun Set<String>.toggle(value: String): Set<String> {
         return if (contains(value)) this - value else this + value
     }
 }
-

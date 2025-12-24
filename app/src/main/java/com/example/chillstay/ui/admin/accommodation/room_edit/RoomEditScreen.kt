@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -23,8 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +35,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.example.chillstay.domain.model.Room
 import org.koin.androidx.compose.koinViewModel
 
@@ -54,7 +58,7 @@ fun RoomEditScreen(
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
             val tag = pendingTag.value
-            viewModel.onEvent(RoomEditIntent.SetLocalImages(tag!!, uris))
+            viewModel.onEvent(RoomEditIntent.AddImages(tag!!, uris))
         }
     }
 
@@ -233,34 +237,30 @@ fun RoomEditScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ImagesSection(
-                        images = uiState.exteriorView,
-                        localImages = uiState.localExteriorUris,
+                        allImages = uiState.allExteriorUris,
                         title = "Exterior View Images",
+                        isLoading = uiState.isLoadingImages,
                         onPickImages = { pickImagesWithTag(RoomEditConstant.EXTERIOR_VIEW) },
-                        onRemoveLocal = { index -> viewModel.onEvent(RoomEditIntent.RemoveLocalImage(RoomEditConstant.EXTERIOR_VIEW, index)) },
                         onRemoveImage = { index -> viewModel.onEvent(RoomEditIntent.RemoveImage(RoomEditConstant.EXTERIOR_VIEW, index)) }
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
                     ImagesSection(
-                        images = uiState.dining,
-                        localImages = uiState.localDiningUris,
+                        allImages = uiState.allDiningUris,
                         title = "Dining Images",
+                        isLoading = uiState.isLoadingImages,
                         onPickImages = { pickImagesWithTag(RoomEditConstant.DINING) },
-                        onRemoveLocal = { index -> viewModel.onEvent(RoomEditIntent.RemoveLocalImage(RoomEditConstant.DINING, index)) },
                         onRemoveImage = { index -> viewModel.onEvent(RoomEditIntent.RemoveImage(RoomEditConstant.DINING, index)) }
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-
                     ImagesSection(
-                        images = uiState.thisRoom,
-                        localImages = uiState.localRoomUris,
+                        allImages = uiState.allRoomUris,
                         title = "Room Images",
+                        isLoading = uiState.isLoadingImages,
                         onPickImages = { pickImagesWithTag(RoomEditConstant.THIS_ROOM) },
-                        onRemoveLocal = { index -> viewModel.onEvent(RoomEditIntent.RemoveLocalImage(RoomEditConstant.THIS_ROOM, index)) },
                         onRemoveImage = { index -> viewModel.onEvent(RoomEditIntent.RemoveImage(RoomEditConstant.THIS_ROOM, index)) }
                     )
 
@@ -483,100 +483,113 @@ fun InputField(
 
 @Composable
 private fun ImagesSection(
-    images: List<String>,
-    localImages: List<Uri>,
+    allImages: List<Uri>,
     title: String,
+    isLoading: Boolean,
     onPickImages: () -> Unit,
-    onRemoveLocal: (Int) -> Unit,
     onRemoveImage: (Int) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White, RoundedCornerShape(12.dp))
+            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(12.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(modifier = Modifier.size(18.dp))
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF1F2937)
+            )
+
+            if (isLoading) {
                 Text(
-                    text = title,
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1F2937)
-                    )
+                    text = "Loading...",
+                    fontSize = 12.sp,
+                    color = Color.Gray
                 )
             }
+        }
 
-            Column {
-                // Ảnh URL đã lưu (từ Firestore / Cloudinary)
-                if (images.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        images.forEachIndexed { index, url ->
-                            ImageItem(url = url, onRemove = { onRemoveImage(index) })
-                        }
-                    }
-                }
-
-                // Ảnh người dùng vừa chọn từ máy (URI)
-                if (localImages.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        localImages.forEachIndexed { index, uri ->
-                            ImageItem(url = uri.toString(), onRemove = { onRemoveLocal(index) })
-                        }
-                    }
-                }
-
-                // Nút chọn ảnh mới từ thiết bị
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFF3F4F6), RoundedCornerShape(8.dp))
-                        .border(0.5.dp, Color(0xFFD1D5DB), RoundedCornerShape(8.dp))
-                        .padding(10.dp)
-                        .clickable { onPickImages() },
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(modifier = Modifier.size(16.dp))
-                    Text(
-                        text = "Pick images from device",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF1AB5B5)
+        // Hiển thị tất cả ảnh
+        if (allImages.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                allImages.forEachIndexed { index, uri ->
+                    ImageItem(
+                        uri = uri,
+                        onRemove = { onRemoveImage(index) }
                     )
                 }
             }
+        }
+
+        // Add Images Button
+        Button(
+            onClick = onPickImages,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFF3F4F6),
+                contentColor = Color(0xFF1AB5B5)
+            ),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Text(
+                text = "+ Add Images",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }
 
 @Composable
-private fun ImageItem(url: String, onRemove: () -> Unit) {
-    Row(
+private fun ImageItem(
+    uri: Uri,
+    onRemove: () -> Unit
+) {
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFFAFAFA), RoundedCornerShape(8.dp))
-            .border(0.5.dp, Color(0xFFE5E7EB), RoundedCornerShape(8.dp))
-            .padding(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .size(80.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFF3F4F6))
     ) {
-        Text(
-            text = url,
-            fontSize = 12.sp,
-            color = Color(0xFF757575),
-            modifier = Modifier.weight(1f)
+        // Hiển thị ảnh
+        AsyncImage(
+            model = uri,
+            contentDescription = "Image",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
         )
+
+        // Nút xóa
         Box(
             modifier = Modifier
-                .size(28.dp)
-                .background(Color(0xFFF04545), RoundedCornerShape(6.dp))
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(Color.Red.copy(alpha = 0.8f))
                 .clickable { onRemove() },
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "−", color = Color.White, fontWeight = FontWeight.Bold)
+            Text(
+                text = "×",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
