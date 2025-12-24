@@ -6,7 +6,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Base64
 import android.util.Log
+import androidx.core.content.FileProvider
 import com.example.chillstay.data.image.config.CloudinaryConfig
 import com.example.chillstay.data.image.dto.CloudinaryUploadResponse
 import com.example.chillstay.domain.repository.ImageUploadRepository
@@ -18,15 +20,24 @@ import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.plugins.timeout
+import io.ktor.client.request.delete
+import io.ktor.client.request.get
+import io.ktor.client.request.headers
 import io.ktor.client.request.post
+import io.ktor.client.statement.readBytes
+import io.ktor.client.statement.readRawBytes
 import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.ContentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.security.MessageDigest
 import java.text.Normalizer
 
 class ImageUploadRepositoryImpl(
@@ -36,7 +47,7 @@ class ImageUploadRepositoryImpl(
 
     companion object {
         private const val LOG_TAG = "ChillStayImageUpload"
-        private const val UPLOAD_PRESET = "ml_default" // ensure exact
+        private const val UPLOAD_PRESET = "ml_default"
         private const val REQUEST_TIMEOUT_MS: Long = 120_000
         private const val CONNECT_TIMEOUT_MS: Long = 60_000
         private const val SOCKET_TIMEOUT_MS: Long = 120_000
@@ -54,6 +65,10 @@ class ImageUploadRepositoryImpl(
             return emptyList()
         }
 
+        // Xóa folder cũ trước khi upload
+        Log.d(LOG_TAG, "Deleting old folder for hotel: $hotelId")
+        deleteHotelFolder(hotelId)
+
         val folderName = slugify(hotelId)
         val folder = "${CloudinaryConfig.BASE_FOLDER}/$folderName"
 
@@ -69,7 +84,7 @@ class ImageUploadRepositoryImpl(
     }
 
     override suspend fun uploadRoomImages(
-        roomId : String,
+        roomId: String,
         hotelId: String,
         tag: String,
         imageUris: List<Uri>
@@ -93,6 +108,100 @@ class ImageUploadRepositoryImpl(
         }
     }
 
+    override suspend fun deleteHotelFolder(hotelId: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val folderName = slugify(hotelId)
+                val prefix = "${CloudinaryConfig.BASE_FOLDER}/$folderName"
+
+                Log.d(LOG_TAG, "Attempting to delete folder with prefix: $prefix")
+
+                // Cloudinary Admin API endpoint để xóa resources by prefix
+                val timestamp = System.currentTimeMillis() / 1000
+                val signature = generateSignature(prefix, timestamp)
+
+                val deleteUrl = "https://api.cloudinary.com/v1_1/${CloudinaryConfig.CLOUD_NAME}/resources/image/upload"
+
+                val response: HttpResponse = httpClient.delete(deleteUrl) {
+                    headers {
+                        append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    }
+                    url {
+                        parameters.append("prefix", prefix)
+                        parameters.append("api_key", CloudinaryConfig.API_KEY)
+                        parameters.append("timestamp", timestamp.toString())
+                        parameters.append("signature", signature)
+                    }
+                }
+
+                if (response.status.isSuccess()) {
+                    Log.d(LOG_TAG, "Successfully deleted folder: $prefix")
+                    true
+                } else {
+                    val errorBody = response.bodyAsText()
+                    Log.w(LOG_TAG, "Failed to delete folder: ${response.status.value} - $errorBody")
+                    // Không throw exception, chỉ return false vì folder có thể không tồn tại
+                    false
+                }
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "Error deleting folder: ${e.message}", e)
+                // Không throw exception vì việc xóa folder thất bại không nên block việc upload
+                false
+            }
+        }
+    }
+
+    override suspend fun downloadImageToLocal(imageUrl: String): Uri? {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(LOG_TAG, "Downloading image from: $imageUrl")
+
+                val response: HttpResponse = httpClient.get(imageUrl) {
+                    timeout {
+                        requestTimeoutMillis = 60_000
+                        connectTimeoutMillis = 30_000
+                        socketTimeoutMillis = 60_000
+                    }
+                }
+
+                if (!response.status.isSuccess()) {
+                    Log.e(LOG_TAG, "Failed to download image: ${response.status.value}")
+                    return@withContext null
+                }
+
+                val bytes = response.readRawBytes()
+                Log.d(LOG_TAG, "Downloaded ${bytes.size} bytes")
+
+                // Lưu vào cache directory
+                val cacheDir = File(context.cacheDir, "downloaded_images")
+                if (!cacheDir.exists()) {
+                    cacheDir.mkdirs()
+                }
+
+                // Tạo tên file unique từ URL
+                val fileName = "img_${imageUrl.hashCode()}_${System.currentTimeMillis()}.jpg"
+                val imageFile = File(cacheDir, fileName)
+
+                imageFile.outputStream().use { it.write(bytes) }
+
+                Log.d(LOG_TAG, "Saved image to: ${imageFile.absolutePath}")
+
+                // Trả về Uri sử dụng FileProvider
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    imageFile
+                )
+
+                Log.d(LOG_TAG, "Created Uri: $uri")
+                uri
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "Error downloading image: ${e.message}", e)
+                null
+            }
+        }
+    }
+
     private suspend fun uploadSingleImageUnsigned(
         uri: Uri,
         folderName: String,
@@ -103,20 +212,18 @@ class ImageUploadRepositoryImpl(
             val fileName = queryFileName(uri) ?: "image_$index.jpg"
             val contentTypeString = context.contentResolver.getType(uri) ?: "image/jpeg"
             val bytes = prepareBytesForUpload(uri)
-            Log.d(LOG_TAG, "[$index] Uploading (UNSIGNED): $fileName (${bytes.size} bytes)")
+            Log.d(LOG_TAG, "[$index] Uploading: $fileName (${bytes.size} bytes)")
 
             val timestamp = System.currentTimeMillis()
             val publicId = "${folderName}_${timestamp}_$index"
 
-            Log.d(LOG_TAG, "[$index] Upload parameters (UNSIGNED):")
+            Log.d(LOG_TAG, "[$index] Upload parameters:")
             Log.d(LOG_TAG, "  - URL: ${CloudinaryConfig.getUploadUrl()}")
             Log.d(LOG_TAG, "  - Upload Preset: $UPLOAD_PRESET")
             Log.d(LOG_TAG, "  - Folder: $folder")
             Log.d(LOG_TAG, "  - Public ID: $publicId")
 
-            // Build multipart with explicit Content-Disposition for text parts AND file part
             val multipart = formData {
-                // Text parts with explicit headers
                 append(
                     key = "upload_preset",
                     value = UPLOAD_PRESET,
@@ -144,7 +251,6 @@ class ImageUploadRepositoryImpl(
                     }
                 )
 
-                // File part
                 append(
                     key = "file",
                     value = bytes,
@@ -187,6 +293,13 @@ class ImageUploadRepositoryImpl(
         }
     }
 
+    private fun generateSignature(prefix: String, timestamp: Long): String {
+        val toSign = "prefix=$prefix&timestamp=$timestamp${CloudinaryConfig.API_SECRET}"
+        val digest = MessageDigest.getInstance("SHA-1")
+        val hash = digest.digest(toSign.toByteArray())
+        return hash.joinToString("") { "%02x".format(it) }
+    }
+
     private fun queryFileName(uri: Uri): String? {
         val projection = arrayOf(OpenableColumns.DISPLAY_NAME)
         var cursor: Cursor? = null
@@ -216,7 +329,8 @@ class ImageUploadRepositoryImpl(
     }
 
     private fun prepareBytesForUpload(uri: Uri): ByteArray {
-        val input = context.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Cannot open $uri")
+        val input = context.contentResolver.openInputStream(uri)
+            ?: throw IllegalStateException("Cannot open $uri")
         val raw = input.use { it.readBytes() }
         return if (raw.size > COMPRESS_THRESHOLD_BYTES) {
             compressImageUri(uri, MAX_COMPRESS_WIDTH, DEFAULT_QUALITY)
@@ -227,15 +341,19 @@ class ImageUploadRepositoryImpl(
 
     private fun compressImageUri(uri: Uri, maxWidth: Int, quality: Int): ByteArray {
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+        context.contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, options)
+        }
 
-        val origW = options.outWidth.takeIf { it > 0 } ?: return context.contentResolver.openInputStream(uri)!!.use { it.readBytes() }
+        val origW = options.outWidth.takeIf { it > 0 }
+            ?: return context.contentResolver.openInputStream(uri)!!.use { it.readBytes() }
         val scale = (origW.toFloat() / maxWidth).coerceAtLeast(1f)
         val sampleSize = scale.toInt().coerceAtLeast(1)
 
         val opts2 = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-        val bitmap = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts2) }
-            ?: throw IllegalStateException("Cannot decode bitmap for $uri")
+        val bitmap = context.contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, opts2)
+        } ?: throw IllegalStateException("Cannot decode bitmap for $uri")
 
         val baos = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, quality, baos)

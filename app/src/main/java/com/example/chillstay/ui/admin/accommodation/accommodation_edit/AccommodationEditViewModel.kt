@@ -1,5 +1,6 @@
 package com.example.chillstay.ui.admin.accommodation.accommodation_edit
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
@@ -9,9 +10,12 @@ import com.example.chillstay.domain.model.Policy
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.image.UploadAccommodationImagesUseCase
 import com.example.chillstay.core.common.Result
+import com.example.chillstay.domain.repository.ImageUploadRepository
 import com.example.chillstay.domain.usecase.hotel.CreateHotelUseCase
 import com.example.chillstay.domain.usecase.hotel.UpdateHotelUseCase
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -21,7 +25,8 @@ class AccommodationEditViewModel(
     private val createHotelUseCase: CreateHotelUseCase,
     private val getHotelByIdUseCase: GetHotelByIdUseCase,
     private val updateHotelUseCase: UpdateHotelUseCase,
-    private val uploadAccommodationImagesUseCase: UploadAccommodationImagesUseCase
+    private val uploadAccommodationImagesUseCase: UploadAccommodationImagesUseCase,
+    private val imageUploadRepository: ImageUploadRepository
 ) :
     BaseViewModel<AccommodationEditUiState, AccommodationEditIntent, AccommodationEditEffect>(
         AccommodationEditUiState()
@@ -47,8 +52,7 @@ class AccommodationEditViewModel(
             is AccommodationEditIntent.UpdateCoordinate -> _state.value = _state.value.copy(coordinate = event.value)
 
             is AccommodationEditIntent.RemoveImage -> removeImage(event.index)
-            is AccommodationEditIntent.SetLocalImages -> { _state.value = _state.value.copy(localImageUris = event.uris) }
-            is AccommodationEditIntent.RemoveLocalImage -> removeLocalImage(event.index)
+            is AccommodationEditIntent.AddImages -> addImages(event.uris)
 
             AccommodationEditIntent.AddPolicy -> addPolicy()
             is AccommodationEditIntent.UpdatePolicyTitle -> updatePolicyTitle(event.index, event.value)
@@ -73,7 +77,13 @@ class AccommodationEditViewModel(
 
     private fun loadHotelById(hotelId: String) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isSaving = true, mode = Mode.Edit, hotelId = hotelId)
+            _state.value = _state.value.copy(
+                isSaving = true,
+                isLoadingImages = true,
+                mode = Mode.Edit,
+                hotelId = hotelId
+            )
+
             val result = getHotelByIdUseCase(hotelId).first()
             when (result) {
                 is Result.Success -> {
@@ -89,14 +99,19 @@ class AccommodationEditViewModel(
                         country = hotel.country,
                         city = hotel.city,
                         coordinate = "${hotel.coordinate.latitude},${hotel.coordinate.longitude}",
-                        images = hotel.imageUrl,
                         policies = hotel.policy.map { PolicyUi(title = it.title, content = it.content) },
                         selectedLanguages = hotel.language.toSet(),
                         selectedFeatures = hotel.feature.toSet()
                     )
+
+                    // Download tất cả ảnh cũ về local
+                    downloadExistingImages(hotel.imageUrl)
                 }
                 is Result.Error -> {
-                    _state.value = _state.value.copy(isSaving = false)
+                    _state.value = _state.value.copy(
+                        isSaving = false,
+                        isLoadingImages = false
+                    )
                     sendEffect {
                         AccommodationEditEffect.ShowError(
                             result.throwable.message ?: "Failed to load hotel"
@@ -107,20 +122,49 @@ class AccommodationEditViewModel(
         }
     }
 
-    private fun removeImage(index: Int) {
-        val images = _state.value.images.toMutableList()
-        if (index in images.indices) {
-            images.removeAt(index)
-            _state.value = _state.value.copy(images = images)
+    /**
+     * Download tất cả ảnh cũ từ URL về local storage
+     */
+    private fun downloadExistingImages(imageUrls: List<String>) {
+        viewModelScope.launch {
+            try {
+                Log.d(LOG_TAG, "Downloading ${imageUrls.size} existing images...")
+
+                val downloadedUris = imageUrls.mapIndexed { index, url ->
+                    async {
+                        Log.d(LOG_TAG, "Downloading image $index: $url")
+                        imageUploadRepository.downloadImageToLocal(url)
+                    }
+                }.awaitAll().filterNotNull()
+
+                Log.d(LOG_TAG, "Successfully downloaded ${downloadedUris.size}/${imageUrls.size} images")
+
+                _state.value = _state.value.copy(
+                    allImageUris = downloadedUris,
+                    isLoadingImages = false
+                )
+
+            } catch (e: Exception) {
+                Log.e(LOG_TAG, "Error downloading images: ${e.message}", e)
+                _state.value = _state.value.copy(isLoadingImages = false)
+                sendEffect {
+                    AccommodationEditEffect.ShowError("Failed to load some images: ${e.message}")
+                }
+            }
         }
     }
 
-    private fun removeLocalImage(index: Int) {
-        val current = _state.value.localImageUris.toMutableList()
-        if (index in current.indices) {
-            current.removeAt(index)
-            _state.value = _state.value.copy(localImageUris = current)
+    private fun removeImage(index: Int) {
+        val images = _state.value.allImageUris.toMutableList()
+        if (index in images.indices) {
+            images.removeAt(index)
+            _state.value = _state.value.copy(allImageUris = images)
         }
+    }
+
+    private fun addImages(newUris: List<Uri>) {
+        val current = _state.value.allImageUris
+        _state.value = _state.value.copy(allImageUris = current + newUris)
     }
 
     private fun addPolicy() {
@@ -163,8 +207,6 @@ class AccommodationEditViewModel(
         )
     }
 
-    // Trong AccommodationEditViewModel.kt
-
     private fun saveHotel() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isSaving = true)
@@ -173,16 +215,25 @@ class AccommodationEditViewModel(
                 if (hotelId.isNullOrBlank()) {
                     throw IllegalStateException("Cannot update hotel without ID. Use Create mode instead.")
                 }
-                val uploadedImages = prepareImagesForSave()
+
+                // Upload TẤT CẢ ảnh (folder cũ sẽ được xóa trong repository)
+                val uploadedImages = uploadAllImages(hotelId)
+
                 val hotelToUpdate = buildHotelFromState().copy(imageUrl = uploadedImages)
                 Log.d(LOG_TAG, "Hotel details: city=${hotelToUpdate.city}, country=${hotelToUpdate.country}")
+
                 updateHotelUseCase(hotelToUpdate).first().fold(
                     onSuccess = {
-                        _state.value = _state.value.copy(isSaving = false, images = uploadedImages)
+                        _state.value = _state.value.copy(isSaving = false)
                         sendEffect { AccommodationEditEffect.ShowSaveSuccess(hotelToUpdate) }
                     },
-                    onFailure = { throwable -> _state.value = _state.value.copy(isSaving = false)
-                        sendEffect { AccommodationEditEffect.ShowError(throwable.message ?: "Failed to save hotel") }
+                    onFailure = { throwable ->
+                        _state.value = _state.value.copy(isSaving = false)
+                        sendEffect {
+                            AccommodationEditEffect.ShowError(
+                                throwable.message ?: "Failed to save hotel"
+                            )
+                        }
                     }
                 )
             } catch (e: IllegalStateException) {
@@ -196,6 +247,7 @@ class AccommodationEditViewModel(
             }
         }
     }
+
     private fun createHotel() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isSaving = true)
@@ -206,23 +258,37 @@ class AccommodationEditViewModel(
                 createHotelUseCase(minimalHotel).first().fold(
                     onSuccess = { newId ->
                         _state.value = _state.value.copy(hotelId = newId)
-                        val uploadedImages = prepareImagesForSave()
-                        val finalHotel = buildHotelFromState().copy(id = newId, imageUrl = uploadedImages)
+
+                        // Upload tất cả ảnh
+                        val uploadedImages = uploadAllImages(newId)
+
+                        val finalHotel = buildHotelFromState().copy(
+                            id = newId,
+                            imageUrl = uploadedImages
+                        )
 
                         updateHotelUseCase(finalHotel).first().fold(
                             onSuccess = {
-                                _state.value = _state.value.copy(isSaving = false, images = uploadedImages)
+                                _state.value = _state.value.copy(isSaving = false)
                                 sendEffect { AccommodationEditEffect.ShowCreateSuccess(finalHotel) }
                             },
                             onFailure = { throwable ->
                                 _state.value = _state.value.copy(isSaving = false)
-                                sendEffect { AccommodationEditEffect.ShowError(throwable.message ?: "Failed to finalize hotel creation") }
+                                sendEffect {
+                                    AccommodationEditEffect.ShowError(
+                                        throwable.message ?: "Failed to finalize hotel creation"
+                                    )
+                                }
                             }
                         )
                     },
                     onFailure = { throwable ->
                         _state.value = _state.value.copy(isSaving = false)
-                        sendEffect { AccommodationEditEffect.ShowError(throwable.message ?: "Failed to create hotel") }
+                        sendEffect {
+                            AccommodationEditEffect.ShowError(
+                                throwable.message ?: "Failed to create hotel"
+                            )
+                        }
                     }
                 )
             } catch (e: Exception) {
@@ -232,65 +298,48 @@ class AccommodationEditViewModel(
         }
     }
 
-
     private fun openRooms() {
         viewModelScope.launch {
             sendEffect { AccommodationEditEffect.NavigateToRooms(_state.value.hotelId) }
         }
     }
 
-    private suspend fun prepareImagesForSave(): List<String> {
-        val existing = _state.value.images
-        val locals = _state.value.localImageUris
-        val hotelId = _state.value.hotelId.orEmpty()
-        val name = _state.value.name
-        Log.d(LOG_TAG, "prepareImagesForSave() start, existing=${existing.size}, locals=${locals.size}, hotelId=$hotelId, name='$name'")
+    /**
+     * Upload tất cả ảnh hiện có (repository sẽ tự động xóa folder cũ)
+     */
+    private suspend fun uploadAllImages(hotelId: String): List<String> {
+        val allUris = _state.value.allImageUris
 
-        if (locals.isEmpty()) {
-            Log.d(LOG_TAG, "No local images to upload, skip upload")
-            return existing
+        if (allUris.isEmpty()) {
+            Log.d(LOG_TAG, "No images to upload")
+            return emptyList()
         }
 
-        // Nếu chưa có hotelId (trường hợp create mới hoàn toàn), tạm thời không upload
-        if (hotelId.isBlank()) {
-            Log.d(LOG_TAG, "Skip upload because hotelId is blank (create mode, chưa có ID)")
-            return existing
-        }
+        Log.d(LOG_TAG, "Uploading ${allUris.size} images for hotel: $hotelId")
 
         return try {
-            Log.d(LOG_TAG, "Calling UploadAccommodationImagesUseCase with ${locals.size} images")
             val uploadedUrls = uploadAccommodationImagesUseCase(
                 hotelId = hotelId,
-                imageUris = locals
+                imageUris = allUris
             )
-            Log.d(LOG_TAG, "Upload success, received ${uploadedUrls.size} URLs: $uploadedUrls")
 
-            val merged = existing + uploadedUrls
+            Log.d(LOG_TAG, "Upload completed: ${uploadedUrls.size} images uploaded successfully")
+            uploadedUrls
 
-            _state.value = _state.value.copy(
-                images = merged,
-                localImageUris = emptyList()
-            )
-            merged
         } catch (e: CancellationException) {
-            // Nếu upload bị cancel (ViewModel bị clear), chỉ log warning và return existing images
-            // Không throw lại để tránh crash app
-            Log.w(LOG_TAG, "Upload cancelled (ViewModel may have been cleared): ${e.message}")
-            existing
+            Log.w(LOG_TAG, "Upload cancelled: ${e.message}")
+            throw e
         } catch (e: Exception) {
-            Log.e(LOG_TAG, "Error while uploading images: ${e.message}", e)
-            // Gửi error effect để UI có thể hiển thị message
+            Log.e(LOG_TAG, "Error uploading images: ${e.message}", e)
             val errorMessage = when {
-                e.message?.contains("timeout", ignoreCase = true) == true -> 
-                    "Cannot connect to image service. Please ensure the Spring Boot backend is running on port 8080."
-                e.message?.contains("Connection refused", ignoreCase = true) == true -> 
-                    "Connection refused. Is the Spring Boot backend running?"
-                e.message?.contains("Cannot connect", ignoreCase = true) == true -> 
-                    "Cannot connect to image service. Please start the backend server."
+                e.message?.contains("timeout", ignoreCase = true) == true ->
+                    "Cannot connect to image service. Please check your connection."
+                e.message?.contains("Connection refused", ignoreCase = true) == true ->
+                    "Connection refused. Please check the backend service."
                 else -> "Failed to upload images: ${e.message}"
             }
             sendEffect { AccommodationEditEffect.ShowError(errorMessage) }
-            existing
+            emptyList()
         }
     }
 
@@ -311,7 +360,7 @@ class AccommodationEditViewModel(
             country = _state.value.country,
             city = _state.value.city,
             coordinate = Coordinate(lat, lng),
-            imageUrl = _state.value.images,
+            imageUrl = emptyList(), // Sẽ được set sau khi upload
             policy = _state.value.policies.map { Policy(title = it.title, content = it.content) },
             language = _state.value.selectedLanguages.toList(),
             feature = _state.value.selectedFeatures.toList(),
@@ -334,4 +383,3 @@ class AccommodationEditViewModel(
         return if (contains(value)) this - value else this + value
     }
 }
-

@@ -14,6 +14,9 @@ interface ImageUploadRepository {
         tag: String,
         imageUris: List<Uri>
     ): List<String>
+
+    suspend fun deleteHotelFolder(hotelId: String): Boolean
+    suspend fun downloadImageToLocal(imageUrl: String): Uri?
 }
 
 

@@ -22,10 +22,9 @@ data class AccommodationEditUiState(
     val country: String = "",
     val city: String = "",
     val coordinate: String = "",
-    val images: List<String> = emptyList(),
-
-    // Ảnh người dùng vừa chọn từ thiết bị (chưa upload)
-    val localImageUris: List<Uri> = emptyList(),
+    val allImageUris: List<Uri> = emptyList(),
+    // Flag để biết có đang load ảnh cũ không
+    val isLoadingImages: Boolean = false,
 
     val policies: List<PolicyUi> = emptyList(),
 

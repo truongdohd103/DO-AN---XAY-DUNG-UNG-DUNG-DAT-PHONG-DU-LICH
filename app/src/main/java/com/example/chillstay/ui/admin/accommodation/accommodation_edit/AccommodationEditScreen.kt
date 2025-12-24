@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -40,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,6 +51,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.PropertyType
 import org.koin.androidx.compose.koinViewModel
@@ -69,7 +73,7 @@ fun AccommodationEditScreen(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
-            viewModel.onEvent(AccommodationEditIntent.SetLocalImages(uris))
+            viewModel.onEvent(AccommodationEditIntent.AddImages(uris))
         }
     }
 
@@ -214,12 +218,9 @@ fun AccommodationEditScreen(
 
                 // Images Section
                 ImagesSection(
-                    images = uiState.images,
-                    localImages = uiState.localImageUris,
+                    allImages = uiState.allImageUris,
+                    isLoading = uiState.isLoadingImages,
                     onPickImages = { imagePickerLauncher.launch("image/*") },
-                    onRemoveLocal = { index ->
-                        viewModel.onEvent(AccommodationEditIntent.RemoveLocalImage(index))
-                    },
                     onRemoveImage = { index ->
                         viewModel.onEvent(AccommodationEditIntent.RemoveImage(index))
                     }
@@ -420,63 +421,85 @@ private fun LocationSection(
 
 @Composable
 private fun ImagesSection(
-    images: List<String>,
-    localImages: List<Uri>,
+    allImages: List<Uri>,
+    isLoading: Boolean,
     onPickImages: () -> Unit,
-    onRemoveLocal: (Int) -> Unit,
     onRemoveImage: (Int) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(title = "Images")
 
-        // Ảnh URL đã lưu (từ Firestore / Cloudinary)
-        if (images.isNotEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                images.forEachIndexed { index, url ->
-                    ImageItem(url = url, onRemove = { onRemoveImage(index) })
-                }
+        // Loading indicator
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Loading images...",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
             }
         }
 
-        // Ảnh người dùng vừa chọn từ máy (URI)
-        if (localImages.isNotEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                localImages.forEachIndexed { index, uri ->
-                    ImageItem(url = uri.toString(), onRemove = { onRemoveLocal(index) })
-                }
+        // Hiển thị tất cả ảnh
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            allImages.forEachIndexed { index, uri ->
+                ImageItem(
+                    uri = uri,
+                    onRemove = { onRemoveImage(index) }
+                )
             }
         }
 
-        // Nút chọn ảnh mới từ thiết bị
-        AddButton(text = "Pick images from device", onClick = onPickImages)
+        // Nút Add Images
+        AddButton(text = "Add Images", onClick = onPickImages)
     }
 }
 
 @Composable
-private fun ImageItem(url: String, onRemove: () -> Unit) {
-    Row(
+private fun ImageItem(
+    uri: Uri,
+    onRemove: () -> Unit
+) {
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFFAFAFA), RoundedCornerShape(8.dp))
-            .border(0.5.dp, Color(0xFFE5E7EB), RoundedCornerShape(8.dp))
-            .padding(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .size(80.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFF3F4F6))
     ) {
-        Text(
-            text = url,
-            fontSize = 12.sp,
-            color = Color(0xFF757575),
-            modifier = Modifier.weight(1f)
+        // Hiển thị ảnh
+        AsyncImage(
+            model = uri,
+            contentDescription = "Image",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
         )
+
+        // Nút xóa
         Box(
             modifier = Modifier
-                .size(28.dp)
-                .background(Color(0xFFF04545), RoundedCornerShape(6.dp))
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .size(20.dp)
+                .clip(CircleShape)
+                .background(Color.Red.copy(alpha = 0.8f))
                 .clickable { onRemove() },
             contentAlignment = Alignment.Center
         ) {
-            Text(text = "−", color = Color.White, fontWeight = FontWeight.Bold)
+            Text(
+                text = "×",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

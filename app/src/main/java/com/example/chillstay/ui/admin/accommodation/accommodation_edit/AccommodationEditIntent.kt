@@ -16,10 +16,10 @@ sealed interface AccommodationEditIntent : UiEvent {
     data class UpdateCity(val value: String) : AccommodationEditIntent
     data class UpdateCoordinate(val value: String) : AccommodationEditIntent
 
+    data class AddImages(val uris: List<Uri>) : AccommodationEditIntent
+
     data class RemoveImage(val index: Int) : AccommodationEditIntent
     // Ảnh mới chọn từ thiết bị (URI tạm thời)
-    data class SetLocalImages(val uris: List<Uri>) : AccommodationEditIntent
-    data class RemoveLocalImage(val index: Int) : AccommodationEditIntent
 
     data object AddPolicy : AccommodationEditIntent
     data class UpdatePolicyTitle(val index: Int, val value: String) : AccommodationEditIntent
