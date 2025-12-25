@@ -56,7 +56,6 @@ fun AdminHomeScreen(
                 is AdminHomeEffect.NavigateToCalendar -> onNavigateToCalendar()
                 is AdminHomeEffect.NavigateToProfile -> onNavigateToProfile()
                 is AdminHomeEffect.ShowError -> {
-                    // Handle error if needed
                 }
             }
         }

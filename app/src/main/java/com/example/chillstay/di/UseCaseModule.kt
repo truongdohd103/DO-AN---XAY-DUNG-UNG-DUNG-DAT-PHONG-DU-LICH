@@ -64,6 +64,11 @@ import com.example.chillstay.domain.usecase.hotel.UpdateHotelUseCase
 import com.example.chillstay.domain.usecase.image.UploadRoomImagesUseCase
 import com.example.chillstay.domain.usecase.room.CreateRoomUseCase
 import com.example.chillstay.domain.usecase.room.UpdateRoomUseCase
+import com.example.chillstay.domain.usecase.voucher.CreateVoucherUseCase
+import com.example.chillstay.domain.usecase.voucher.DeleteVoucherUseCase
+import com.example.chillstay.domain.usecase.voucher.GetAllVouchersUseCase
+import com.example.chillstay.domain.usecase.voucher.UpdateVoucherStatusUseCase
+import com.example.chillstay.domain.usecase.voucher.UpdateVoucherUseCase
 
 val useCaseModule = module {
     // Sample use cases removed
@@ -118,6 +123,12 @@ val useCaseModule = module {
     factory { GetVoucherByIdUseCase(get<VoucherRepository>()) }
     factory { ClaimVoucherUseCase(get<VoucherRepository>()) }
     factory { CheckVoucherEligibilityUseCase(get<VoucherRepository>()) }
+    //Admin Voucher use cases
+    factory { GetAllVouchersUseCase(get<VoucherRepository>()) }
+    factory { CreateVoucherUseCase(get<VoucherRepository>()) }
+    factory { UpdateVoucherUseCase(get<VoucherRepository>()) }
+    factory { UpdateVoucherStatusUseCase(get<VoucherRepository>()) }
+    factory { DeleteVoucherUseCase(get<VoucherRepository>()) }
     
     // VIP use cases
     factory { GetVipStatusUseCase(get<VipStatusRepository>()) }

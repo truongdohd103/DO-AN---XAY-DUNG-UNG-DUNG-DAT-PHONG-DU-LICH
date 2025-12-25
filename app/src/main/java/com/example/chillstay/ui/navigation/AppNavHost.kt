@@ -55,6 +55,7 @@ import com.example.chillstay.ui.admin.accommodation.accommodation_manage.Accommo
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditScreen
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageScreen
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditScreen
+import com.example.chillstay.ui.admin.voucher.voucher_manage.VoucherManageScreen
 
 @Composable
 fun AppNavHost(
@@ -347,7 +348,7 @@ fun AppNavHost(
         composable(Routes.ADMIN_HOME) {
             AdminHomeScreen(
                 onNavigateToAccommodation = { navController.navigate(Routes.ADMIN_ACCOMMODATION_MANAGE) },
-                onNavigateToVoucher = { navController.navigate(Routes.VOUCHER) },
+                onNavigateToVoucher = { navController.navigate(Routes.ADMIN_VOUCHER_MANAGE) },
                 onNavigateToCustomer = { /* TODO: Implement navigation */ },
                 onNavigateToNotification = { /* TODO: Implement navigation */ },
                 onNavigateToBooking = { /* TODO: Implement navigation */ },
@@ -436,6 +437,17 @@ fun AppNavHost(
                 }
             )
         }
+
+        composable(Routes.ADMIN_VOUCHER_MANAGE) {
+            VoucherManageScreen(
+                onBackClick = { navController.popBackStack() },
+                onCreateClick = { navController.navigate(Routes.ADMIN_VOUCHER_CREATE) },
+                onEditClick = { voucherId ->
+                    navController.navigate("${Routes.ADMIN_VOUCHER_EDIT}/$voucherId")
+                }
+            )
+        }
+
         searchRoute(
             onBackClick = {
                 navController.navigate("${Routes.MAIN}?tab=0") {
