@@ -12,10 +12,7 @@ import android.util.Log
 import java.util.Date
 
 class VoucherViewModel(
-    private val getAvailableVouchersUseCase: GetAvailableVouchersUseCase,
-    private val getVoucherByIdUseCase: GetVoucherByIdUseCase,
-    private val claimVoucherUseCase: ClaimVoucherUseCase,
-    private val checkVoucherEligibilityUseCase: CheckVoucherEligibilityUseCase
+    private val getAvailableVouchersUseCase: GetAvailableVouchersUseCase
 ) : BaseViewModel<VoucherUiState, VoucherIntent, VoucherEffect>(VoucherUiState()) {
 
     val uiState = state
@@ -319,35 +316,5 @@ class VoucherDetailViewModel(
 
     private fun clearError() {
         _state.value = _state.value.copy(error = null)
-    }
-
-    private fun formatVoucherConditions(conditions: com.example.chillstay.domain.model.VoucherConditions): String {
-        val conditionsList = mutableListOf<String>()
-        
-        if (conditions.minBookingAmount > 0) {
-            conditionsList.add("Minimum booking amount: $${conditions.minBookingAmount}")
-        }
-        
-        if (conditions.maxDiscountAmount > 0) {
-            conditionsList.add("Maximum discount: $${conditions.maxDiscountAmount}")
-        }
-        
-        if (conditions.maxUsagePerUser > 0) {
-            conditionsList.add("Usage limit per user: ${conditions.maxUsagePerUser}")
-        }
-        
-        if (conditions.requiredUserLevel != null) {
-            conditionsList.add("Required user level: ${conditions.requiredUserLevel}")
-        }
-        
-        if (conditions.validDays.isNotEmpty()) {
-            conditionsList.add("Valid days: ${conditions.validDays.joinToString(", ")}")
-        }
-        
-        return if (conditionsList.isEmpty()) {
-            "No special conditions"
-        } else {
-            conditionsList.joinToString("\n")
-        }
     }
 }

@@ -14,10 +14,16 @@ data class Voucher(
     val status: VoucherStatus = VoucherStatus.ACTIVE,
     val validFrom: Timestamp = Timestamp.now(),
     val validTo: Timestamp = Timestamp.now(),
+    val isStackable: Boolean = true,
+    val minBookingAmount: Double = 0.0,
+    val maxDiscountAmount: Double = 0.0,
+    val maxUsagePerUser: Int = 1,
+    val maxTotalUsage: Int = 0, // 0 means unlimited
+    val requiredUserLevel: String? = null, // VIP, GOLD, SILVER, etc.
+    val validDays: List<String> = emptyList(), // MONDAY, TUESDAY, etc.
+    val validTimeSlots: List<String> = emptyList(), // MORNING, AFTERNOON, EVENING
     val applyForHotel: List<String>? = null, // null means apply for all hotels
-    val conditions: VoucherConditions = VoucherConditions(),
-    val createdAt: Timestamp = Timestamp.now(),
-    val updatedAt: Timestamp = Timestamp.now()
+    val createdAt: Timestamp = Timestamp.now()
 )
 
 data class VoucherDetail(
@@ -30,20 +36,7 @@ data class VoucherDetail(
     val claimedAt: Timestamp? = null,
     val claimedBy: String? = null,
     val createdAt: Timestamp = Timestamp.now(),
-    val updatedAt: Timestamp = Timestamp.now()
-)
-
-data class VoucherConditions(
-    val minBookingAmount: Double = 0.0,
-    val maxDiscountAmount: Double = 0.0,
-    val applicableForNewUsers: Boolean = false,
-    val applicableForExistingUsers: Boolean = true,
-    val maxUsagePerUser: Int = 1,
-    val maxTotalUsage: Int = 0, // 0 means unlimited
-    val currentUsage: Int = 0,
-    val requiredUserLevel: String? = null, // VIP, GOLD, SILVER, etc.
-    val validDays: List<String> = emptyList(), // MONDAY, TUESDAY, etc.
-    val validTimeSlots: List<String> = emptyList() // MORNING, AFTERNOON, EVENING
+    val updatedAt: Timestamp = Timestamp.now(),
 )
 
 enum class VoucherType {
@@ -119,8 +112,8 @@ fun Voucher.infoText(): String {
 
     parts.add(expiryText())
 
-    if (conditions.minBookingAmount > 0) {
-        parts.add("Minimum spend $${conditions.minBookingAmount.toInt()}")
+    if (minBookingAmount > 0) {
+        parts.add("Minimum spend $${minBookingAmount.toInt()}")
     }
 
     parts.add("Promo Code: $code")

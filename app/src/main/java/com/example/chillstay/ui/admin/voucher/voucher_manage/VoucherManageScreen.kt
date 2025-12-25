@@ -19,7 +19,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -37,7 +36,6 @@ import com.example.chillstay.domain.model.infoText
 import com.example.chillstay.domain.model.discountText
 import com.example.chillstay.domain.model.gradientColors
 import com.example.chillstay.domain.model.decorativeEmojis
-import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditIntent
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

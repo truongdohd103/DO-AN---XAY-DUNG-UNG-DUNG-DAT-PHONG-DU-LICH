@@ -199,14 +199,14 @@ class FirestoreVoucherRepository @Inject constructor(
             }
             
             // Check usage limits with PERMISSION_DENIED handling
-            if (voucher.conditions.maxTotalUsage > 0) {
+            if (voucher.maxTotalUsage > 0) {
                 try {
                     val totalClaimsSnapshot = firestore.collection("voucher_claims")
                         .whereEqualTo("voucherId", voucherId)
                         .get()
                         .await()
                     
-                    if (totalClaimsSnapshot.documents.size >= voucher.conditions.maxTotalUsage) {
+                    if (totalClaimsSnapshot.documents.size >= voucher.maxTotalUsage) {
                         return Pair(false, "Voucher usage limit reached")
                     }
                 } catch (e: FirebaseFirestoreException) {
@@ -220,7 +220,7 @@ class FirestoreVoucherRepository @Inject constructor(
             }
             
             // Check per-user usage limit with PERMISSION_DENIED handling
-            if (voucher.conditions.maxUsagePerUser > 0) {
+            if (voucher.maxUsagePerUser > 0) {
                 try {
                     val userClaimsSnapshot = firestore.collection("voucher_claims")
                         .whereEqualTo("voucherId", voucherId)
@@ -228,7 +228,7 @@ class FirestoreVoucherRepository @Inject constructor(
                         .get()
                         .await()
                     
-                    if (userClaimsSnapshot.documents.size >= voucher.conditions.maxUsagePerUser) {
+                    if (userClaimsSnapshot.documents.size >= voucher.maxUsagePerUser) {
                         return Pair(false, "You have reached the usage limit for this voucher")
                     }
                 } catch (e: FirebaseFirestoreException) {

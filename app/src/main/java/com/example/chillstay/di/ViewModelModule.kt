@@ -62,7 +62,7 @@ val viewModelModule = module {
     viewModel { RoomViewModel(get(), get()) }
     viewModel { RoomGalleryViewModel(get(), get()) }
     viewModel { BookingViewModel(get(), get(), get(), get(), get()) }
-    viewModel { VoucherViewModel(get(), get(), get(), get()) }
+    viewModel { VoucherViewModel(get()) }
     viewModel { VoucherDetailViewModel(get(), get(), get()) }
     viewModel { ReviewViewModel(
         get(), // GetUserBookingsUseCase
