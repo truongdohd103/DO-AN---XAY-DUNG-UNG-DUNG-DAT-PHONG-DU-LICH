@@ -1,5 +1,6 @@
 package com.example.chillstay.ui.admin.voucher.voucher_manage
 
+import android.annotation.SuppressLint
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,9 +8,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -19,9 +22,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -29,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.example.chillstay.domain.model.Voucher
 import com.example.chillstay.domain.model.VoucherStatus
 import com.example.chillstay.domain.model.timeLeftText
@@ -37,6 +43,7 @@ import com.example.chillstay.domain.model.discountText
 import com.example.chillstay.domain.model.gradientColors
 import com.example.chillstay.domain.model.decorativeEmojis
 import org.koin.androidx.compose.koinViewModel
+import androidx.core.graphics.toColorInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,117 +112,112 @@ fun VoucherManageScreen(
             }
         }
     ) { innerPadding ->
-        // content chính — giữ innerPadding để tránh bị IME / nav bar che
+        // FIX 1: Chỉ dùng innerPadding 1 lần
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.White)
-                .padding(innerPadding)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(innerPadding)
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 16.dp, bottom = 100.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Content
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 24.dp,
-                        end = 24.dp,
-                        top = 16.dp,
-                        bottom = 24.dp
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                // Search Bar
+                SearchBar(
+                    query = uiState.searchQuery,
+                    onQueryChange = {
+                        viewModel.onEvent(VoucherManageIntent.UpdateSearchQuery(it))
+                    }
+                )
+
+                // Statistics Cards
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Search Bar
-                    item {
-                        SearchBar(
-                            query = uiState.searchQuery,
-                            onQueryChange = {
-                                viewModel.onEvent(VoucherManageIntent.UpdateSearchQuery(it))
-                            }
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        count = uiState.activeCount,
+                        label = "Active Codes",
+                        gradient = Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFFA855F7),
+                                Color(0xFF9333EA)
+                            )
                         )
-                    }
-
-                    // Statistics Cards
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            StatCard(
-                                modifier = Modifier.weight(1f),
-                                count = uiState.activeCount,
-                                label = "Active Codes",
-                                gradient = Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFFA855F7),
-                                        Color(0xFF9333EA)
-                                    )
-                                )
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        count = uiState.inactiveCount,
+                        label = "Inactive",
+                        gradient = Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFFF97316),
+                                Color(0xFFEA580C)
                             )
-                            StatCard(
-                                modifier = Modifier.weight(1f),
-                                count = uiState.inactiveCount,
-                                label = "Inactive",
-                                gradient = Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFFF97316),
-                                        Color(0xFFEA580C)
-                                    )
-                                )
-                            )
-                        }
-                    }
+                        )
+                    )
+                }
 
-                    // Section Title
-                    item {
+                // Section Title
+                Text(
+                    text = "All Discount Codes",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1F2937),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
+                // FIX 2: Hiển thị paginatedVouchers thay vì filteredVouchers
+                uiState.paginatedVouchers.forEach { voucher ->
+                    VoucherCard(
+                        voucher = voucher,
+                        onEditClick = {
+                            viewModel.onEvent(VoucherManageIntent.EditVoucher(voucher.id))
+                        },
+                        onInvalidClick = {
+                            viewModel.onEvent(VoucherManageIntent.ToggleVoucherStatus(voucher.id))
+                        },
+                        onDeleteClick = { showDeleteDialog = voucher.id }
+                    )
+                }
+
+                // Empty State
+                if (uiState.filteredVouchers.isEmpty() && !uiState.isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = "All Discount Codes",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1F2937),
-                            modifier = Modifier.padding(top = 4.dp)
+                            text = if (uiState.searchQuery.isBlank())
+                                "No vouchers found"
+                            else
+                                "No matching vouchers",
+                            fontSize = 16.sp,
+                            color = Color(0xFF9E9E9E)
                         )
                     }
+                }
 
-                    // Voucher List
-                    items(uiState.filteredVouchers) { voucher ->
-                        VoucherCard(
-                            voucher = voucher,
-                            onEditClick = {
-                                viewModel.onEvent(VoucherManageIntent.EditVoucher(voucher.id))
-                            },
-                            onInvalidClick = {
-                                viewModel.onEvent(VoucherManageIntent.ToggleVoucherStatus(voucher.id))
-                            },
-                            onDeleteClick = { showDeleteDialog = voucher.id }
-                        )
-                    }
-
-                    // Empty State
-                    if (uiState.filteredVouchers.isEmpty() && !uiState.isLoading) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 48.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = if (uiState.searchQuery.isBlank())
-                                        "No vouchers found"
-                                    else
-                                        "No matching vouchers",
-                                    fontSize = 16.sp,
-                                    color = Color(0xFF9E9E9E)
-                                )
-                            }
-                        }
-                    }
+                // FIX 2: Thêm Pagination Controls
+                if (uiState.filteredVouchers.isNotEmpty()) {
+                    PaginationControls(
+                        currentPage = uiState.currentPage,
+                        totalPages = uiState.totalPages,
+                        onPageChange = { viewModel.onEvent(VoucherManageIntent.GoToPage(it)) },
+                        onPreviousPage = { viewModel.onEvent(VoucherManageIntent.PreviousPage) },
+                        onNextPage = { viewModel.onEvent(VoucherManageIntent.NextPage) },
+                        tealColor = Color(0xFF1AB6B6)
+                    )
                 }
             }
 
@@ -357,51 +359,67 @@ private fun VoucherCard(
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column {
-            // Header with gradient and badge
+            // FIX 3: Header với hình ảnh hoặc gradient
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = voucher.gradientColors().map { parseColor(it) }
-                        )
-                    ),
+                    .height(120.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Decorative emojis
-                Box(modifier = Modifier.fillMaxSize()) {
-                    voucher.decorativeEmojis().forEachIndexed { index, emoji ->
-                        Text(
-                            text = emoji,
-                            fontSize = when (index % 3) {
-                                0 -> 10.sp
-                                1 -> 14.sp
-                                else -> 20.sp
-                            },
-                            color = Color.White.copy(alpha = 0.6f),
-                            modifier = Modifier
-                                .align(
-                                    when (index % 4) {
-                                        0 -> Alignment.TopStart
-                                        1 -> Alignment.TopEnd
-                                        2 -> Alignment.BottomStart
-                                        else -> Alignment.BottomEnd
-                                    }
+                // Nếu có imageUrl thì hiển thị ảnh, không thì dùng gradient
+                if (voucher.imageUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = voucher.imageUrl,
+                        contentDescription = voucher.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Gradient background như cũ
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                brush = Brush.linearGradient(
+                                    colors = voucher.gradientColors().map { parseColor(it) }
                                 )
-                                .padding(
-                                    when (index % 4) {
-                                        0 -> PaddingValues(start = 20.dp, top = 20.dp)
-                                        1 -> PaddingValues(end = 30.dp, top = 30.dp)
-                                        2 -> PaddingValues(start = 30.dp, bottom = 20.dp)
-                                        else -> PaddingValues(end = 20.dp, bottom = 20.dp)
-                                    }
-                                )
-                        )
+                            )
+                    )
+
+                    // Decorative emojis
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        voucher.decorativeEmojis().forEachIndexed { index, emoji ->
+                            Text(
+                                text = emoji,
+                                fontSize = when (index % 3) {
+                                    0 -> 10.sp
+                                    1 -> 14.sp
+                                    else -> 20.sp
+                                },
+                                color = Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier
+                                    .align(
+                                        when (index % 4) {
+                                            0 -> Alignment.TopStart
+                                            1 -> Alignment.TopEnd
+                                            2 -> Alignment.BottomStart
+                                            else -> Alignment.BottomEnd
+                                        }
+                                    )
+                                    .padding(
+                                        when (index % 4) {
+                                            0 -> PaddingValues(start = 20.dp, top = 20.dp)
+                                            1 -> PaddingValues(end = 30.dp, top = 30.dp)
+                                            2 -> PaddingValues(start = 30.dp, bottom = 20.dp)
+                                            else -> PaddingValues(end = 20.dp, bottom = 20.dp)
+                                        }
+                                    )
+                            )
+                        }
                     }
                 }
 
-                // Discount badge
+                // Discount badge (luôn hiển thị)
                 Box(
                     modifier = Modifier
                         .background(
@@ -522,10 +540,54 @@ private fun ActionButton(
     }
 }
 
+// FIX 2: Thêm Pagination Controls giống AccommodationManageScreen
+@Composable
+fun PaginationControls(
+    currentPage: Int,
+    totalPages: Int,
+    onPageChange: (Int) -> Unit,
+    onPreviousPage: () -> Unit,
+    onNextPage: () -> Unit,
+    tealColor: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Button(
+            onClick = onPreviousPage,
+            enabled = currentPage > 1,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = tealColor
+            )
+        ) {
+            Text("Previous")
+        }
+
+        Text(
+            text = "Page $currentPage of $totalPages",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
+        )
+
+        Button(
+            onClick = onNextPage,
+            enabled = currentPage < totalPages,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = tealColor
+            )
+        ) {
+            Text("Next")
+        }
+    }
+}
+
 // Helper function to parse color string
+@SuppressLint("UseKtx")
 private fun parseColor(colorString: String): Color {
     return try {
-        Color(android.graphics.Color.parseColor(colorString))
+        Color(colorString.toColorInt())
     } catch (e: Exception) {
         Color.Gray
     }

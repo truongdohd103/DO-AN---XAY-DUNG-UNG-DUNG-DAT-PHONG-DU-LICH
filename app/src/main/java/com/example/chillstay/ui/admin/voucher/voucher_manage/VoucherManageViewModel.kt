@@ -3,11 +3,10 @@ package com.example.chillstay.ui.admin.voucher.voucher_manage
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
-import com.example.chillstay.domain.model.Voucher
 import com.example.chillstay.domain.model.VoucherStatus
+import com.example.chillstay.domain.usecase.voucher.DeleteVoucherUseCase
 import com.example.chillstay.domain.usecase.voucher.GetAllVouchersUseCase
 import com.example.chillstay.domain.usecase.voucher.UpdateVoucherStatusUseCase
-import com.example.chillstay.domain.usecase.voucher.DeleteVoucherUseCase
 import kotlinx.coroutines.launch
 
 class VoucherManageViewModel(
@@ -34,6 +33,25 @@ class VoucherManageViewModel(
             is VoucherManageIntent.EditVoucher -> navigateToEdit(event.voucherId)
             is VoucherManageIntent.ToggleVoucherStatus -> toggleVoucherStatus(event.voucherId)
             is VoucherManageIntent.DeleteVoucher -> deleteVoucher(event.voucherId)
+            is VoucherManageIntent.GoToPage -> {
+                val maxPage = _state.value.totalPages
+                if (event.page in 1..maxPage) {
+                    _state.value = _state.value.updateCurrentPage(event.page)
+                }
+            }
+            is VoucherManageIntent.NextPage -> {
+                val currentPage = _state.value.currentPage
+                val maxPage = _state.value.totalPages
+                if (currentPage < maxPage) {
+                    _state.value = _state.value.updateCurrentPage(currentPage + 1)
+                }
+            }
+            is VoucherManageIntent.PreviousPage -> {
+                val currentPage = _state.value.currentPage
+                if (currentPage > 1) {
+                    _state.value = _state.value.updateCurrentPage(currentPage - 1)
+                }
+            }
             VoucherManageIntent.CreateNewVoucher -> navigateToCreate()
             VoucherManageIntent.NavigateBack -> navigateBack()
             VoucherManageIntent.ClearError -> _state.value = _state.value.copy(error = null)
