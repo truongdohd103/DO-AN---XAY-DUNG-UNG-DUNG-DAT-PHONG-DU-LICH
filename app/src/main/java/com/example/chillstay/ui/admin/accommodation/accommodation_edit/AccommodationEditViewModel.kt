@@ -2,20 +2,18 @@ package com.example.chillstay.ui.admin.accommodation.accommodation_edit
 
 import android.net.Uri
 import android.util.Log
+import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
+import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.Coordinate
 import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.Policy
-import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
-import com.example.chillstay.domain.usecase.image.UploadAccommodationImagesUseCase
-import com.example.chillstay.core.common.Result
-import com.example.chillstay.domain.repository.ImageUploadRepository
 import com.example.chillstay.domain.usecase.hotel.CreateHotelUseCase
+import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.UpdateHotelUseCase
+import com.example.chillstay.domain.usecase.image.UploadAccommodationImagesUseCase
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -25,8 +23,7 @@ class AccommodationEditViewModel(
     private val createHotelUseCase: CreateHotelUseCase,
     private val getHotelByIdUseCase: GetHotelByIdUseCase,
     private val updateHotelUseCase: UpdateHotelUseCase,
-    private val uploadAccommodationImagesUseCase: UploadAccommodationImagesUseCase,
-    private val imageUploadRepository: ImageUploadRepository
+    private val uploadAccommodationImagesUseCase: UploadAccommodationImagesUseCase
 ) :
     BaseViewModel<AccommodationEditUiState, AccommodationEditIntent, AccommodationEditEffect>(
         AccommodationEditUiState()
@@ -92,6 +89,7 @@ class AccommodationEditViewModel(
                         isSaving = false,
                         mode = Mode.Edit,
                         hotelId = hotel.id,
+                        allImageUris = hotel.imageUrl.map { it -> it.toUri() },
                         name = hotel.name,
                         propertyType = hotel.propertyType,
                         description = hotel.description,
@@ -103,9 +101,6 @@ class AccommodationEditViewModel(
                         selectedLanguages = hotel.language.toSet(),
                         selectedFeatures = hotel.feature.toSet()
                     )
-
-                    // Download tất cả ảnh cũ về local
-                    downloadExistingImages(hotel.imageUrl)
                 }
                 is Result.Error -> {
                     _state.value = _state.value.copy(
@@ -117,38 +112,6 @@ class AccommodationEditViewModel(
                             result.throwable.message ?: "Failed to load hotel"
                         )
                     }
-                }
-            }
-        }
-    }
-
-    /**
-     * Download tất cả ảnh cũ từ URL về local storage
-     */
-    private fun downloadExistingImages(imageUrls: List<String>) {
-        viewModelScope.launch {
-            try {
-                Log.d(LOG_TAG, "Downloading ${imageUrls.size} existing images...")
-
-                val downloadedUris = imageUrls.mapIndexed { index, url ->
-                    async {
-                        Log.d(LOG_TAG, "Downloading image $index: $url")
-                        imageUploadRepository.downloadImageToLocal(url)
-                    }
-                }.awaitAll().filterNotNull()
-
-                Log.d(LOG_TAG, "Successfully downloaded ${downloadedUris.size}/${imageUrls.size} images")
-
-                _state.value = _state.value.copy(
-                    allImageUris = downloadedUris,
-                    isLoadingImages = false
-                )
-
-            } catch (e: Exception) {
-                Log.e(LOG_TAG, "Error downloading images: ${e.message}", e)
-                _state.value = _state.value.copy(isLoadingImages = false)
-                sendEffect {
-                    AccommodationEditEffect.ShowError("Failed to load some images: ${e.message}")
                 }
             }
         }
@@ -318,10 +281,7 @@ class AccommodationEditViewModel(
         Log.d(LOG_TAG, "Uploading ${allUris.size} images for hotel: $hotelId")
 
         return try {
-            val uploadedUrls = uploadAccommodationImagesUseCase(
-                hotelId = hotelId,
-                imageUris = allUris
-            )
+            val uploadedUrls = uploadAccommodationImagesUseCase(hotelId = hotelId, imageUris = allUris)
 
             Log.d(LOG_TAG, "Upload completed: ${uploadedUrls.size} images uploaded successfully")
             uploadedUrls

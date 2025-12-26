@@ -2,19 +2,18 @@ package com.example.chillstay.ui.admin.accommodation.room_edit
 
 import android.net.Uri
 import android.util.Log
+import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.Room
 import com.example.chillstay.domain.model.RoomGallery
-import com.example.chillstay.domain.repository.ImageUploadRepository
-import com.example.chillstay.domain.usecase.room.GetRoomByIdUseCase
 import com.example.chillstay.domain.usecase.image.UploadRoomImagesUseCase
 import com.example.chillstay.domain.usecase.room.CreateRoomUseCase
+import com.example.chillstay.domain.usecase.room.GetRoomByIdUseCase
 import com.example.chillstay.domain.usecase.room.UpdateRoomUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -22,8 +21,7 @@ class RoomEditViewModel(
     private val getRoomByIdUseCase: GetRoomByIdUseCase,
     private val uploadRoomImagesUseCase: UploadRoomImagesUseCase,
     private val updateRoomUseCase: UpdateRoomUseCase,
-    private val createRoomUseCase: CreateRoomUseCase,
-    private val imageUploadRepository: ImageUploadRepository
+    private val createRoomUseCase: CreateRoomUseCase
 ) : BaseViewModel<RoomEditUiState, RoomEditIntent, RoomEditEffect>(
     RoomEditUiState()
 ) {
@@ -91,14 +89,10 @@ class RoomEditViewModel(
                         maxOccupancy = room.capacity.toString(),
                         pricePerNight = room.price.toString(),
                         availableQuantity = room.quantity.toString(),
-                        selectedFeatures = room.feature.toSet()
-                    )
-
-                    // Download tất cả ảnh cũ về local
-                    downloadExistingImages(
-                        exteriorUrls = room.gallery?.exteriorView ?: emptyList(),
-                        diningUrls = room.gallery?.dining ?: emptyList(),
-                        roomUrls = room.gallery?.thisRoom ?: emptyList()
+                        selectedFeatures = room.feature.toSet(),
+                        allExteriorUris = room.gallery?.exteriorView?.map { it.toUri() } ?: emptyList(),
+                        allDiningUris = room.gallery?.dining?.map { it.toUri() } ?: emptyList(),
+                        allRoomUris = room.gallery?.thisRoom?.map { it.toUri() } ?: emptyList()
                     )
                 }
                 is Result.Error -> {
@@ -111,59 +105,6 @@ class RoomEditViewModel(
                             result.throwable.message ?: "Failed to load room"
                         )
                     }
-                }
-            }
-        }
-    }
-
-    /**
-     * Download tất cả ảnh cũ từ URL về local storage
-     */
-    private fun downloadExistingImages(
-        exteriorUrls: List<String>,
-        diningUrls: List<String>,
-        roomUrls: List<String>
-    ) {
-        viewModelScope.launch {
-            try {
-                Log.d(LOG_TAG, "Downloading images: exterior=${exteriorUrls.size}, dining=${diningUrls.size}, room=${roomUrls.size}")
-
-                // Download parallel
-                val exteriorUris = exteriorUrls.mapIndexed { index, url ->
-                    async {
-                        Log.d(LOG_TAG, "Downloading exterior image $index: $url")
-                        imageUploadRepository.downloadImageToLocal(url)
-                    }
-                }.awaitAll().filterNotNull()
-
-                val diningUris = diningUrls.mapIndexed { index, url ->
-                    async {
-                        Log.d(LOG_TAG, "Downloading dining image $index: $url")
-                        imageUploadRepository.downloadImageToLocal(url)
-                    }
-                }.awaitAll().filterNotNull()
-
-                val roomUris = roomUrls.mapIndexed { index, url ->
-                    async {
-                        Log.d(LOG_TAG, "Downloading room image $index: $url")
-                        imageUploadRepository.downloadImageToLocal(url)
-                    }
-                }.awaitAll().filterNotNull()
-
-                Log.d(LOG_TAG, "Download completed: exterior=${exteriorUris.size}, dining=${diningUris.size}, room=${roomUris.size}")
-
-                _state.value = _state.value.copy(
-                    allExteriorUris = exteriorUris,
-                    allDiningUris = diningUris,
-                    allRoomUris = roomUris,
-                    isLoadingImages = false
-                )
-
-            } catch (e: Exception) {
-                Log.e(LOG_TAG, "Error downloading images: ${e.message}", e)
-                _state.value = _state.value.copy(isLoadingImages = false)
-                sendEffect {
-                    RoomEditEffect.ShowError("Failed to load some images: ${e.message}")
                 }
             }
         }

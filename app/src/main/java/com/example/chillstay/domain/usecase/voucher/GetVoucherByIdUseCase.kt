@@ -10,12 +10,9 @@ class GetVoucherByIdUseCase constructor(
 ) {
     suspend operator fun invoke(voucherId: String): Result<Voucher?> {
         return try {
-            Log.d("GetVoucherByIdUseCase", "Getting voucher by ID: $voucherId")
             val voucher = voucherRepository.getVoucherById(voucherId)
-            Log.d("GetVoucherByIdUseCase", "Successfully retrieved voucher: ${voucher?.title}")
             Result.success(voucher)
         } catch (e: Exception) {
-            Log.e("GetVoucherByIdUseCase", "Error getting voucher by ID: ${e.message}", e)
             Result.failure(e)
         }
     }

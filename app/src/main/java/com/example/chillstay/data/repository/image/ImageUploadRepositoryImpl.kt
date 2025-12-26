@@ -43,7 +43,6 @@ class ImageUploadRepositoryImpl(
     private val httpClient: HttpClient,
     private val context: Context
 ) : ImageUploadRepository {
-
     companion object {
         private const val LOG_TAG = "ChillStayImageUpload"
         private const val UPLOAD_PRESET = "ml_default"
@@ -195,57 +194,6 @@ class ImageUploadRepositoryImpl(
         }
     }
 
-    override suspend fun downloadImageToLocal(imageUrl: String): Uri? {
-        return withContext(Dispatchers.IO) {
-            try {
-                Log.d(LOG_TAG, "Downloading image from: $imageUrl")
-
-                val response: HttpResponse = httpClient.get(imageUrl) {
-                    timeout {
-                        requestTimeoutMillis = 60_000
-                        connectTimeoutMillis = 30_000
-                        socketTimeoutMillis = 60_000
-                    }
-                }
-
-                if (!response.status.isSuccess()) {
-                    Log.e(LOG_TAG, "Failed to download image: ${response.status.value}")
-                    return@withContext null
-                }
-
-                val bytes = response.readBytes()
-                Log.d(LOG_TAG, "Downloaded ${bytes.size} bytes")
-
-                // Lưu vào cache directory
-                val cacheDir = File(context.cacheDir, "downloaded_images")
-                if (!cacheDir.exists()) {
-                    cacheDir.mkdirs()
-                }
-
-                // Tạo tên file unique từ URL
-                val fileName = "img_${imageUrl.hashCode()}_${System.currentTimeMillis()}.jpg"
-                val imageFile = File(cacheDir, fileName)
-
-                imageFile.outputStream().use { it.write(bytes) }
-
-                Log.d(LOG_TAG, "Saved image to: ${imageFile.absolutePath}")
-
-                // Trả về Uri sử dụng FileProvider
-                val uri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    imageFile
-                )
-
-                Log.d(LOG_TAG, "Created Uri: $uri")
-                uri
-            } catch (e: Exception) {
-                Log.e(LOG_TAG, "Error downloading image: ${e.message}", e)
-                null
-            }
-        }
-    }
-
     private suspend fun uploadSingleImageUnsigned(
         uri: Uri,
         folderName: String,
@@ -253,10 +201,22 @@ class ImageUploadRepositoryImpl(
         index: Int
     ): String? {
         return try {
-            val fileName = queryFileName(uri) ?: "image_$index.jpg"
-            val contentTypeString = context.contentResolver.getType(uri) ?: "image/jpeg"
-            val bytes = prepareBytesForUpload(uri)
-            Log.d(LOG_TAG, "[$index] Uploading: $fileName (${bytes.size} bytes)")
+            val isRemote = uri.scheme?.lowercase() in listOf("http", "https")
+
+            // fileName: nếu là remote lấy từ URL, nếu local cố query từ contentResolver
+            val fileName = if (isRemote) {
+                extractFileNameFromUrl(uri.toString()) ?: "image_$index.jpg"
+            } else {
+                queryFileName(uri) ?: "image_$index.jpg"
+            }
+
+            // content-type: với remote đặt mặc định (hoặc detect từ extension), local lấy từ contentResolver
+            val contentTypeString = if (isRemote) {
+                // bạn có thể cải tiến: detect từ fileName extension nếu muốn
+                "image/jpeg"
+            } else {
+                context.contentResolver.getType(uri) ?: "image/jpeg"
+            }
 
             val timestamp = System.currentTimeMillis()
             val publicId = "${folderName}_${timestamp}_$index"
@@ -266,6 +226,7 @@ class ImageUploadRepositoryImpl(
             Log.d(LOG_TAG, "  - Upload Preset: $UPLOAD_PRESET")
             Log.d(LOG_TAG, "  - Folder: $folder")
             Log.d(LOG_TAG, "  - Public ID: $publicId")
+            Log.d(LOG_TAG, "  - Is remote: $isRemote")
 
             val multipart = formData {
                 append(
@@ -295,14 +256,28 @@ class ImageUploadRepositoryImpl(
                     }
                 )
 
-                append(
-                    key = "file",
-                    value = bytes,
-                    headers = Headers.build {
-                        append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$fileName\"")
-                        append(HttpHeaders.ContentType, contentTypeString)
-                    }
-                )
+                if (isRemote) {
+                    // gửi URL string để Cloudinary fetch
+                    append(
+                        key = "file",
+                        value = uri.toString(),
+                        headers = Headers.build {
+                            append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"")
+                            append(HttpHeaders.ContentType, ContentType.Text.Plain.toString())
+                        }
+                    )
+                } else {
+                    // chỉ gọi prepareBytesForUpload với LOCAL uri
+                    val bytes = prepareBytesForUpload(uri)
+                    append(
+                        key = "file",
+                        value = bytes,
+                        headers = Headers.build {
+                            append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$fileName\"")
+                            append(HttpHeaders.ContentType, contentTypeString)
+                        }
+                    )
+                }
             }
 
             val response: HttpResponse = httpClient.post(CloudinaryConfig.getUploadUrl()) {
@@ -336,6 +311,19 @@ class ImageUploadRepositoryImpl(
             null
         }
     }
+
+    private fun extractFileNameFromUrl(url: String): String? {
+        return try {
+            val parsed = Uri.parse(url)
+            val path = parsed.path ?: return null
+            val name = path.substringAfterLast('/')
+            if (name.isEmpty()) null else name.substringBefore('?')
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+
 
     private fun generateSignature(prefix: String, timestamp: Long): String {
         val toSign = "prefix=$prefix&timestamp=$timestamp${CloudinaryConfig.API_SECRET}"
