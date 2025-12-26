@@ -65,7 +65,7 @@ class ImageUploadRepositoryImpl(
 
         // Xóa folder cũ trước khi upload
         Log.d(LOG_TAG, "Deleting old folder for hotel: $hotelId")
-        deleteHotelFolder(hotelId)
+        deleteFolder(hotelId)
 
         val folderName = slugify(hotelId)
         val folder = "${CloudinaryConfig.BASE_FOLDER}/$folderName"
@@ -93,7 +93,7 @@ class ImageUploadRepositoryImpl(
         }
 
         // Xóa folder cũ của room trước khi upload
-        Log.d(LOG_TAG, "Deleting old folder for room: $hotelId/$roomId")
+        Log.d(LOG_TAG, "Deleting old folder for room: $hotelId/$roomId/$tag")
         deleteRoomFolder(hotelId, roomId)
 
         val folderName = slugify("$hotelId/$roomId/$tag")
@@ -104,16 +104,37 @@ class ImageUploadRepositoryImpl(
         return coroutineScope {
             imageUris.mapIndexed { index, uri ->
                 async {
-                    uploadSingleImageUnsigned(uri, hotelId, folder, index)
+                    uploadSingleImageUnsigned(uri, folderName, folder, index)
                 }
             }.awaitAll().filterNotNull()
         }
     }
 
-    override suspend fun deleteHotelFolder(hotelId: String): Boolean {
+    override suspend fun uploadVoucherImage(
+        voucherId: String,
+        imageUri: Uri
+    ): String {
+        // Xóa folder cũ của room trước khi upload
+        Log.d(LOG_TAG, "Deleting old folder for voucher: $voucherId")
+        deleteFolder(voucherId)
+
+        val folderName = slugify(voucherId)
+        val folder = "${CloudinaryConfig.BASE_FOLDER}/$folderName"
+
+        Log.d(LOG_TAG, "Upload folder: $folder")
+
+        return coroutineScope {
+            async {
+                uploadSingleImageUnsigned(imageUri, folderName, folder, 0)
+            }
+        }.await() ?: throw IllegalStateException("Upload voucher image failed")
+
+    }
+
+    override suspend fun deleteFolder(id: String): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                val folderName = slugify(hotelId)
+                val folderName = slugify(id)
                 val prefix = "${CloudinaryConfig.BASE_FOLDER}/$folderName"
 
                 Log.d(LOG_TAG, "Attempting to delete folder with prefix: $prefix")
@@ -122,7 +143,8 @@ class ImageUploadRepositoryImpl(
                 val timestamp = System.currentTimeMillis() / 1000
                 val signature = generateSignature(prefix, timestamp)
 
-                val deleteUrl = "https://api.cloudinary.com/v1_1/${CloudinaryConfig.CLOUD_NAME}/resources/image/upload"
+                val deleteUrl =
+                    "https://api.cloudinary.com/v1_1/${CloudinaryConfig.CLOUD_NAME}/resources/image/upload"
 
                 val response: HttpResponse = httpClient.delete(deleteUrl) {
                     headers {
@@ -165,7 +187,8 @@ class ImageUploadRepositoryImpl(
                 val timestamp = System.currentTimeMillis() / 1000
                 val signature = generateSignature(prefix, timestamp)
 
-                val deleteUrl = "https://api.cloudinary.com/v1_1/${CloudinaryConfig.CLOUD_NAME}/resources/image/upload"
+                val deleteUrl =
+                    "https://api.cloudinary.com/v1_1/${CloudinaryConfig.CLOUD_NAME}/resources/image/upload"
 
                 val response: HttpResponse = httpClient.delete(deleteUrl) {
                     headers {
@@ -184,7 +207,10 @@ class ImageUploadRepositoryImpl(
                     true
                 } else {
                     val errorBody = response.bodyAsText()
-                    Log.w(LOG_TAG, "Failed to delete room folder: ${response.status.value} - $errorBody")
+                    Log.w(
+                        LOG_TAG,
+                        "Failed to delete room folder: ${response.status.value} - $errorBody"
+                    )
                     false
                 }
             } catch (e: Exception) {
@@ -273,7 +299,10 @@ class ImageUploadRepositoryImpl(
                         key = "file",
                         value = bytes,
                         headers = Headers.build {
-                            append(HttpHeaders.ContentDisposition, "form-data; name=\"file\"; filename=\"$fileName\"")
+                            append(
+                                HttpHeaders.ContentDisposition,
+                                "form-data; name=\"file\"; filename=\"$fileName\""
+                            )
                             append(HttpHeaders.ContentType, contentTypeString)
                         }
                     )
@@ -289,7 +318,10 @@ class ImageUploadRepositoryImpl(
                 }
             }
 
-            Log.d(LOG_TAG, "[$index] Response status: ${response.status.value} ${response.status.description}")
+            Log.d(
+                LOG_TAG,
+                "[$index] Response status: ${response.status.value} ${response.status.description}"
+            )
 
             if (!response.status.isSuccess()) {
                 val errorBody = response.bodyAsText()
@@ -322,7 +354,6 @@ class ImageUploadRepositoryImpl(
             null
         }
     }
-
 
 
     private fun generateSignature(prefix: String, timestamp: Long): String {

@@ -5,6 +5,7 @@ import com.example.chillstay.domain.model.Voucher
 import com.example.chillstay.domain.repository.VoucherRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 import javax.inject.Inject
@@ -80,32 +81,45 @@ class FirestoreVoucherRepository @Inject constructor(
         }
     }
 
-    override suspend fun createVoucher(voucher: Voucher): Voucher {
-        return try {
-            Log.d("FirestoreVoucherRepository", "Creating voucher: ${voucher.title}")
-            val documentRef = firestore.collection("vouchers").add(voucher).await()
-            val createdVoucher = voucher.copy(id = documentRef.id)
-            Log.d("FirestoreVoucherRepository", "Successfully created voucher with ID: ${createdVoucher.id}")
-            createdVoucher
-        } catch (e: Exception) {
-            Log.e("FirestoreVoucherRepository", "Error creating voucher: ${e.message}", e)
-            voucher
-        }
+    override suspend fun createVoucher(voucher: Voucher): String {
+        val data = voucherToMap(voucher)
+        val docRef = firestore.collection("vouchers")
+            .add(data)
+            .await()
+        return docRef.id
     }
 
-    override suspend fun updateVoucher(voucher: Voucher): Voucher {
-        return try {
-            Log.d("FirestoreVoucherRepository", "Updating voucher: ${voucher.id}")
-            firestore.collection("vouchers")
-                .document(voucher.id)
-                .set(voucher)
-                .await()
-            Log.d("FirestoreVoucherRepository", "Successfully updated voucher: ${voucher.id}")
-            voucher
-        } catch (e: Exception) {
-            Log.e("FirestoreVoucherRepository", "Error updating voucher: ${e.message}", e)
-            voucher
-        }
+    override suspend fun updateVoucher(voucher: Voucher) {
+        val docRef = firestore.collection("vouchers").document(voucher.id)
+        val data = voucherToMap(voucher)
+        docRef.set(data, SetOptions.merge()).await()
+    }
+
+    private fun voucherToMap(voucher: Voucher): Map<String, Any?> {
+        val result = mapOf(
+            "name" to voucher.id,
+            "code" to voucher.code,
+            "title" to voucher.title,
+            "description" to voucher.description,
+            "type" to voucher.type.name,
+            "value" to voucher.value,
+            "imageUrl" to voucher.imageUrl,
+            "status" to voucher.status.name,
+            "validFrom" to voucher.validFrom,
+            "validTo" to voucher.validTo,
+            "isStackable" to voucher.isStackable,
+            "minBookingAmount" to voucher.minBookingAmount,
+            "maxDiscountAmount" to voucher.maxDiscountAmount,
+            "maxUsagePerUser" to voucher.maxUsagePerUser,
+            "maxTotalUsage" to voucher.maxTotalUsage,
+            "minNights" to voucher.minNights,
+            "requiredUserLevel" to voucher.requiredUserLevel,
+            "validDays" to voucher.validDays,
+            "validTimeSlots" to voucher.validTimeSlots,
+            "applyForHotel" to voucher.applyForHotel,
+            "createdAt" to voucher.createdAt
+        )
+        return result
     }
 
     // Claim methods

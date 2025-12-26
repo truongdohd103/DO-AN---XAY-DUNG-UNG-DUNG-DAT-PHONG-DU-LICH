@@ -55,6 +55,7 @@ import com.example.chillstay.ui.admin.accommodation.accommodation_manage.Accommo
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditScreen
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageScreen
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditScreen
+import com.example.chillstay.ui.admin.voucher.voucher_edit.VoucherEditScreen
 import com.example.chillstay.ui.admin.voucher.voucher_manage.VoucherManageScreen
 
 @Composable
@@ -371,10 +372,9 @@ fun AppNavHost(
                 onDelete = { /* TODO: Implement navigation */ }
             )
         }
-        composable("${Routes.ADMIN_ACCOMMODATION_EDIT}?hotelId={hotelId}") { backStackEntry ->
-            val hotelId = backStackEntry.arguments?.getString("hotelId")
+        composable(Routes.ADMIN_ACCOMMODATION_EDIT) {
             AccommodationEditScreen(
-                hotelId = hotelId,
+                hotelId = "",
                 onBack = { navController.popBackStack() },
                 onSaved = { hotel ->
                     navController.popBackStack(
@@ -441,12 +441,49 @@ fun AppNavHost(
         composable(Routes.ADMIN_VOUCHER_MANAGE) {
             VoucherManageScreen(
                 onBackClick = { navController.popBackStack() },
-                onCreateClick = { navController.navigate(Routes.ADMIN_VOUCHER_CREATE) },
+                onCreateClick = { navController.navigate(Routes.ADMIN_VOUCHER_EDIT) },
                 onEditClick = { voucherId ->
-                    navController.navigate("${Routes.ADMIN_VOUCHER_EDIT}/$voucherId")
+                    navController.navigate("${Routes.ADMIN_VOUCHER_EDIT}?voucherId=${voucherId}")
                 }
             )
         }
+
+        composable("${Routes.ADMIN_VOUCHER_EDIT}?voucherId={voucherId}") { backStackEntry ->
+            val voucherId = backStackEntry.arguments?.getString("voucherId")
+            VoucherEditScreen(
+                voucherId = voucherId,
+                onBack = { navController.popBackStack() },
+                onSaved = { voucher ->
+                    navController.popBackStack(
+                        route = Routes.ADMIN_VOUCHER_MANAGE,
+                        inclusive = false
+                    )
+                },
+                onSelectAccommodation = {},
+                onCreated = { voucher ->
+                    navController.popBackStack()
+                    // Navigate to room manage after create
+                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?voucherId=${voucher.id}")
+                }
+            )
+        }
+        composable(Routes.ADMIN_VOUCHER_EDIT) {
+            VoucherEditScreen(
+                voucherId = null,
+                onBack = { navController.popBackStack() },
+                onSaved = { voucher ->
+                    navController.popBackStack(
+                        route = Routes.ADMIN_VOUCHER_MANAGE,
+                        inclusive = false
+                    )
+                },
+                onSelectAccommodation = {},
+                onCreated = { voucher ->
+                    navController.popBackStack()
+                }
+            )
+        }
+
 
         searchRoute(
             onBackClick = {

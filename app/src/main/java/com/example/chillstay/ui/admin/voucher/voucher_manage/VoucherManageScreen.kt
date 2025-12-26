@@ -66,9 +66,11 @@ fun VoucherManageScreen(
                 is VoucherManageEffect.ShowSuccess -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
+
                 is VoucherManageEffect.ShowError -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
                 }
+
                 VoucherManageEffect.NavigateBack -> onBackClick()
             }
         }
@@ -417,36 +419,36 @@ private fun VoucherCard(
                             )
                         }
                     }
-                }
 
-                // Discount badge (luôn hiển thị)
-                Box(
-                    modifier = Modifier
-                        .background(
-                            Color.White.copy(alpha = 0.95f),
-                            RoundedCornerShape(12.dp)
-                        )
-                        .shadow(4.dp, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 24.dp, vertical = 12.dp)
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    // Discount badge
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                Color.White.copy(alpha = 0.95f),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .shadow(4.dp, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 24.dp, vertical = 12.dp)
                     ) {
-                        Text(
-                            text = voucher.discountText(),
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF212121),
-                            textAlign = TextAlign.Center,
-                            lineHeight = 32.sp
-                        )
-                        Text(
-                            text = "OFF",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF212121)
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Text(
+                                text = voucher.discountText(),
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF212121),
+                                textAlign = TextAlign.Center,
+                                lineHeight = 32.sp
+                            )
+                            Text(
+                                text = "OFF",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF212121)
+                            )
+                        }
                     }
                 }
             }

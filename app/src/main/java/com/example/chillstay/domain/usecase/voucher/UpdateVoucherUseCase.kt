@@ -2,11 +2,17 @@ package com.example.chillstay.domain.usecase.voucher
 
 import com.example.chillstay.domain.model.Voucher
 import com.example.chillstay.domain.repository.VoucherRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flow
 
 class UpdateVoucherUseCase(
-    private val repository: VoucherRepository
+    private val voucherRepository: VoucherRepository
 ) {
-    suspend operator fun invoke(voucher: Voucher): Voucher {
-        return repository.updateVoucher(voucher)
+    operator fun invoke(voucher: Voucher): Flow<Result<Unit>> = flow {
+        voucherRepository.updateVoucher(voucher)
+        emit(Result.success(Unit))
+    }.catch { throwable ->
+        emit(Result.failure(throwable))
     }
 }

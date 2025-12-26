@@ -1,5 +1,6 @@
 package com.example.chillstay.domain.model
 
+import android.net.Uri
 import com.google.firebase.Timestamp
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -11,14 +12,17 @@ data class Voucher(
     val description: String = "",
     val type: VoucherType = VoucherType.PERCENTAGE,
     val value: Double = 0.0,
+    val imageUrl : String = "",
     val status: VoucherStatus = VoucherStatus.ACTIVE,
     val validFrom: Timestamp = Timestamp.now(),
     val validTo: Timestamp = Timestamp.now(),
     val isStackable: Boolean = true,
+    //conditions
     val minBookingAmount: Double = 0.0,
     val maxDiscountAmount: Double = 0.0,
     val maxUsagePerUser: Int = 1,
     val maxTotalUsage: Int = 0, // 0 means unlimited
+    val minNights: Int = 0,
     val requiredUserLevel: String? = null, // VIP, GOLD, SILVER, etc.
     val validDays: List<String> = emptyList(), // MONDAY, TUESDAY, etc.
     val validTimeSlots: List<String> = emptyList(), // MORNING, AFTERNOON, EVENING

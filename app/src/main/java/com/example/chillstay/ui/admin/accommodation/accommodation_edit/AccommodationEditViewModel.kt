@@ -224,12 +224,10 @@ class AccommodationEditViewModel(
 
                         // Upload tất cả ảnh
                         val uploadedImages = uploadAllImages(newId)
-
                         val finalHotel = buildHotelFromState().copy(
                             id = newId,
                             imageUrl = uploadedImages
                         )
-
                         updateHotelUseCase(finalHotel).first().fold(
                             onSuccess = {
                                 _state.value = _state.value.copy(isSaving = false)
@@ -238,9 +236,7 @@ class AccommodationEditViewModel(
                             onFailure = { throwable ->
                                 _state.value = _state.value.copy(isSaving = false)
                                 sendEffect {
-                                    AccommodationEditEffect.ShowError(
-                                        throwable.message ?: "Failed to finalize hotel creation"
-                                    )
+                                    AccommodationEditEffect.ShowError(throwable.message ?: "Failed to finalize hotel creation")
                                 }
                             }
                         )

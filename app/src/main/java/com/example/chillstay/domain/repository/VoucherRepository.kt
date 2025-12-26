@@ -6,8 +6,8 @@ interface VoucherRepository {
     suspend fun getVouchers(): List<Voucher>
     suspend fun getVoucherById(id: String): Voucher?
     suspend fun getVoucherByCode(code: String): Voucher?
-    suspend fun createVoucher(voucher: Voucher): Voucher
-    suspend fun updateVoucher(voucher: Voucher): Voucher
+    suspend fun createVoucher(voucher: Voucher): String
+    suspend fun updateVoucher(voucher: Voucher)
     
     // Claim methods
     suspend fun claimVoucher(voucherId: String, userId: String): Boolean

@@ -15,7 +15,12 @@ interface ImageUploadRepository {
         imageUris: List<Uri>
     ): List<String>
 
-    suspend fun deleteHotelFolder(hotelId: String): Boolean
+    suspend fun uploadVoucherImage(
+        voucherId: String,
+        imageUri: Uri
+    ): String
+
+    suspend fun deleteFolder(hotelId: String): Boolean
     suspend fun deleteRoomFolder(hotelId: String, roomId: String): Boolean
 }
 

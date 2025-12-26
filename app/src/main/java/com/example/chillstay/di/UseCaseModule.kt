@@ -58,10 +58,12 @@ import com.example.chillstay.domain.repository.BookingRepository
 import com.example.chillstay.domain.repository.VipStatusRepository
 import org.koin.dsl.module
 import com.example.chillstay.domain.repository.AuthRepository
+import com.example.chillstay.domain.repository.ImageUploadRepository
 import com.example.chillstay.domain.repository.UserRepository
 import com.example.chillstay.domain.usecase.hotel.CreateHotelUseCase
 import com.example.chillstay.domain.usecase.hotel.UpdateHotelUseCase
 import com.example.chillstay.domain.usecase.image.UploadRoomImagesUseCase
+import com.example.chillstay.domain.usecase.image.UploadVoucherImageUseCase
 import com.example.chillstay.domain.usecase.room.CreateRoomUseCase
 import com.example.chillstay.domain.usecase.room.UpdateRoomUseCase
 import com.example.chillstay.domain.usecase.voucher.CreateVoucherUseCase
@@ -129,6 +131,7 @@ val useCaseModule = module {
     factory { UpdateVoucherUseCase(get<VoucherRepository>()) }
     factory { UpdateVoucherStatusUseCase(get<VoucherRepository>()) }
     factory { DeleteVoucherUseCase(get<VoucherRepository>()) }
+    factory { UploadVoucherImageUseCase(get<ImageUploadRepository>()) }
     
     // VIP use cases
     factory { GetVipStatusUseCase(get<VipStatusRepository>()) }
