@@ -1,52 +1,41 @@
 package com.example.chillstay.ui.components
 
-import android.text.TextUtils
-import android.util.TypedValue
-import android.view.ViewGroup
-import android.widget.TextView
 import androidx.annotation.FontRes
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.graphics.toColorInt
-import androidx.core.content.res.ResourcesCompat
-
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun MarqueeText(
     text: String,
     modifier: Modifier = Modifier,
-    textSizeSp: Float = 16f,
-    textColorHex: String = "#757575",
+    textSize: TextUnit = 16.sp,
+    textColor: Color = Color(0xFF757575),
+    fontWeight: FontWeight = FontWeight.Normal,
     @FontRes fontResId: Int? = null
 ) {
-    AndroidView(
-        modifier = modifier,
-        factory = { ctx ->
-            TextView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+    val fontFamily = fontResId?.let { FontFamily(Font(it)) }
 
-                // marquee config
-                setSingleLine(true)
-                ellipsize = TextUtils.TruncateAt.MARQUEE
-                isSelected = true
-                marqueeRepeatLimit = -1
-                setHorizontallyScrolling(true)
-
-                // size / color / font
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
-                try { setTextColor(textColorHex.toColorInt()) } catch (_: Exception) {}
-                fontResId?.let { res ->
-                    ResourcesCompat.getFont(ctx, res)?.let { typeface = it }
-                }
-            }
-        },
-        update = { tv ->
-            tv.text = text
-            tv.isSelected = true
-        }
+    Text(
+        text = text,
+        modifier = modifier.basicMarquee(iterations = Int.MAX_VALUE),
+        maxLines = 1,
+        overflow = TextOverflow.Visible,
+        style = TextStyle(
+            color = textColor,
+            fontSize = textSize,
+            fontWeight = fontWeight,
+            fontFamily = fontFamily
+        ),
+        softWrap = false
     )
 }

@@ -1,35 +1,52 @@
 package com.example.chillstay.domain.model
 
-import com.google.firebase.firestore.PropertyName
-
 data class Room(
     val id: String = "",
     val hotelId: String = "",
-    val type: String = "",
+    val name: String = "",
+    val area: Double = 0.0,
+    val doubleBed : Int = 0,
+    val singleBed : Int = 0,
+    val quantity : Int = 0,
+    val feature: List<String> = emptyList(),
+    val breakfastPrice: Double = 0.0,
     val price: Double = 0.0,
-    val imageUrl: String = "",
-    val detail: RoomDetail? = null,
-    @get:PropertyName("isAvailable")
-    val isAvailable: Boolean = true,
+    val discount: Double = 0.0,
     val capacity: Int = 0,
-    val availableCount: Int = 0,
-    val facilities: List<String> = emptyList(),
-    val gallery: RoomGallery? = null
+    val gallery: RoomGallery? = null,
+    val status : RoomStatus = RoomStatus.ACTIVE,
 ) {
     // Firestore mapping helper
     constructor() : this(
         id = "",
         hotelId = "",
-        type = "",
+        name = "",
+        area = 0.0,
+        doubleBed = 0,
+        singleBed = 0,
+        quantity = 0,
+        feature = emptyList(),
+        breakfastPrice = 0.0,
         price = 0.0,
-        imageUrl = "",
-        detail = null,
-        isAvailable = true,
+        discount = 0.0,
         capacity = 0,
-        availableCount = 0,
-        facilities = emptyList(),
-        gallery = null
+        gallery = null,
+        status = RoomStatus.ACTIVE
     )
+}
+
+enum class RoomStatus {
+    ACTIVE,
+    INACTIVE
+}
+
+data class RoomGallery(
+    val exteriorView: List<String> = emptyList(),
+    val dining: List<String> = emptyList(),
+    val thisRoom: List<String> = emptyList()
+) {
+    val totalCount: Int
+        get() = exteriorView.size + dining.size + thisRoom.size
 }
 
 

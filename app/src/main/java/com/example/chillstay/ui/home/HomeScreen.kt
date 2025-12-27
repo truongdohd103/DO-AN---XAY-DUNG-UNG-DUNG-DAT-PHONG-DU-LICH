@@ -11,41 +11,29 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -182,14 +170,11 @@ fun HomeScreen(
                                     items = uiState.hotels,
                                     key = { hotel -> hotel.id }
                                 ) { hotel ->
-                                    val minPrice = remember(hotel.rooms, hotel.minPrice) {
-                                        hotel.rooms.minByOrNull { it.price }?.price ?: hotel.minPrice
-                                    }
                                     val imageUrl = if (hotel.imageUrl.isNotEmpty()) hotel.imageUrl[0] else ""
                                     HotelCard(
                                         title = hotel.name,
                                         location = "${hotel.city}, ${hotel.country}",
-                                        price = minPrice?.let { "$${it.toInt()}" },
+                                        price = hotel.minPrice.toString(),
                                         rating = hotel.rating.toFloat(),
                                         reviews = hotel.numberOfReviews,
                                         imageUrl = imageUrl,
@@ -367,7 +352,7 @@ fun HotelCardsSection(
         items(hotels.size) { index ->
             val hotel = hotels[index]
             // Compute minimum room price if rooms are embedded; otherwise, omit price
-                val minPrice = hotel.rooms.minByOrNull { it.price }?.price ?: hotel.minPrice
+                val minPrice = hotel.minPrice
             val imageUrl = hotel.imageUrl.firstOrNull() ?: ""
             HotelCard(
                 title = hotel.name,
@@ -408,7 +393,7 @@ fun PopularHotelsSection(
                 HotelCard(
                     title = hotel.name,
                     location = "${hotel.city}, ${hotel.country}",
-                    price = hotel.rooms.minByOrNull { it.price }?.price?.let { "$${it.toInt()}" },
+                    price = hotel.minPrice.toString(),
                     rating = hotel.rating.toFloat(),
                     reviews = hotel.numberOfReviews,
                     imageUrl = imageUrl,
@@ -775,7 +760,7 @@ fun ContinuePlanningSection(
                         }
                         Column {
                             Text(
-                                text = listOfNotNull(it.hotelName, it.roomType).joinToString(" - ").ifEmpty { "Pending booking" },
+                                text = listOfNotNull(it.hotelName).joinToString(" - ").ifEmpty { "Pending booking" },
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF212121)

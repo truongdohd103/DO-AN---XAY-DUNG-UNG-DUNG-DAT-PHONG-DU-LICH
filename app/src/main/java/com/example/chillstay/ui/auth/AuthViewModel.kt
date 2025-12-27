@@ -3,6 +3,7 @@ package com.example.chillstay.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.common.Result
+import com.example.chillstay.domain.model.UserRole
 import com.example.chillstay.domain.usecase.user.GetCurrentUserIdUseCase
 import com.example.chillstay.domain.usecase.user.SignInUseCase
 import com.example.chillstay.domain.usecase.user.SignOutUseCase
@@ -63,6 +64,7 @@ class AuthViewModel(
             signInUseCase(email, password).collectLatest { result ->
                 when (result) {
                     is Result.Success -> {
+                        val user = result.data
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -75,7 +77,12 @@ class AuthViewModel(
                                 preserveMessage = false
                             )
                         }
+                        // Check user role and navigate accordingly
+                        if (user.role == UserRole.ADMIN) {
+                            sendEffect(AuthEffect.NavigateToAdminHome)
+                        } else {
                         sendEffect(AuthEffect.NavigateToMain)
+                        }
                     }
 
                     is Result.Error -> {

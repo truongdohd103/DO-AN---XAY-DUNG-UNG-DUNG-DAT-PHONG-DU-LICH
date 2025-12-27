@@ -12,7 +12,7 @@ import com.example.chillstay.domain.usecase.bookmark.RemoveBookmarkUseCase
 import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelsUseCase
-import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
+import com.example.chillstay.domain.usecase.room.GetRoomByIdUseCase
 import com.example.chillstay.domain.model.HotelCategory
 import com.example.chillstay.domain.model.HotelListFilter
 import com.example.chillstay.ui.home.HomeIntent.ChangeHotelCategory
@@ -209,7 +209,6 @@ class HomeViewModel(
                         val room = booking.room ?: resolveRoom(booking.roomId)
                         pendingItems += PendingDisplayItem(
                             hotelName = hotel?.name,
-                            roomType = room?.detail?.name ?: room?.type,
                             dateFrom = booking.dateFrom,
                             dateTo = booking.dateTo,
                             guests = booking.guests,

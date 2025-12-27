@@ -11,6 +11,12 @@ data class User(
     val photoUrl: String = "",
     val dateOfBirth: LocalDate = LocalDate.of(2000, 1, 1),
     //val vouchersForUser: List<Voucher> = emptyList()
+    val role : UserRole = UserRole.USER
 )
+
+enum class UserRole {
+    ADMIN,
+    USER
+}
 
 

@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.chillstay.domain.model.Room
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,23 +100,22 @@ fun RoomScreen(
             
             items(uiState.rooms.size) { index ->
                 val room = uiState.rooms[index]
+                val roomId = null
                 RoomCard(
                     roomId = room.id,
-                    title = room.detail?.name ?: room.type,
-                    imageUrl = room.imageUrl,
-                    size = room.detail?.size?.let { "${it.toInt()} m²" } ?: "",
+                    name = room.name,
+                    imageUrl = room.gallery?.thisRoom[0],
+                    area = room.area.let { "${it.toInt()} m²" },
                     maxAdults = "Max ${room.capacity} adults",
-                    beds = room.type,
-                    amenities = room.facilities,
-                    breakfastInfo = "",
-                    refundable = "",
-                    paymentType = "",
-                    originalPrice = 0,
-                    discount = 0,
+                    doubleBed = room.doubleBed,
+                    singleBed = room.singleBed,
+                    amenities = room.feature,
+                    breakfastPrice = room.breakfastPrice.toInt(),
+                    originalPrice = room.price.toInt(),
+                    discount = room.discount.toInt(),
                     finalPrice = room.price.toInt(),
-                    roomsLeft = room.availableCount,
-                    isSoldOut = !room.isAvailable,
-                    imagesCount = (room.gallery?.totalCount ?: (if (room.imageUrl.isNotBlank()) 1 else 0)),
+                    roomsLeft = roomLeft(room.id, "2025-12-25", "2025-12-28"),
+                    imagesCount = (room.gallery?.totalCount ?: 1),
                     onBookNowClick = { roomId, dateFrom, dateTo, _ ->
                         onBookNowClick(hotelId, roomId, dateFrom, dateTo)
                     },
@@ -137,6 +135,10 @@ fun RoomScreen(
             }
         }
     }
+}
+
+private fun roomLeft(roomId: String, dateFrom: String, dateTo: String): Int {
+    return 4
 }
 
 @Composable
@@ -220,24 +222,22 @@ fun FilterChip(
 @Composable
 fun RoomCard(
     roomId: String,
-    title: String,
-    subtitle: String = "",
-    imageUrl: String,
-    size: String,
+    name: String,
+    imageUrl: String?,
+    area: String,
     maxAdults: String,
-    beds: String,
+    doubleBed: Int,
+    singleBed: Int,
     amenities: List<String>,
-    breakfastInfo: String,
-    refundable: String,
-    paymentType: String,
+    breakfastPrice: Int? = null,
     originalPrice: Int,
     discount: Int,
     finalPrice: Int,
     roomsLeft: Int,
     isSoldOut: Boolean = false,
-    imagesCount: Int = 0,
+    imagesCount: Int = 1,
     onBookNowClick: (String, String, String, String) -> Unit,
-    onOpenGalleryClick: (roomId: String) -> Unit
+    onOpenGalleryClick: (String) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -251,22 +251,11 @@ fun RoomCard(
             modifier = Modifier.padding(20.dp)
         ) {
             Text(
-                text = title,
+                text = name,
                 color = Color(0xFF212121),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
-            
-            if (subtitle.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                Text(
-                    text = subtitle,
-                    color = Color(0xFF212121),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -363,7 +352,7 @@ fun RoomCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = size,
+                    text = area,
                     color = Color(0xFF212121),
                     fontSize = 14.sp
                 )
@@ -375,7 +364,13 @@ fun RoomCard(
                 )
                 
                 Text(
-                    text = beds,
+                    text = doubleBed.toString(),
+                    color = Color(0xFF212121),
+                    fontSize = 14.sp
+                )
+
+                Text(
+                    text = singleBed.toString(),
                     color = Color(0xFF212121),
                     fontSize = 14.sp
                 )
@@ -412,7 +407,7 @@ fun RoomCard(
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    if (breakfastInfo.isNotEmpty()) {
+                    if (breakfastPrice != null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_check),
@@ -421,7 +416,7 @@ fun RoomCard(
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                text = breakfastInfo,
+                                text = breakfastPrice.toString(),
                                 color = Color(0xFF1AB65C),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
@@ -429,17 +424,7 @@ fun RoomCard(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                     }
-                    
-                    if (refundable.isNotEmpty()) {
-                        Text(
-                            text = refundable,
-                            color = Color(0xFF212121),
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-                    
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Row(
@@ -525,4 +510,3 @@ fun RoomCard(
         }
     }
 }
-

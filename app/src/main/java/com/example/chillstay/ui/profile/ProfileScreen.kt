@@ -16,7 +16,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -35,14 +34,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.CircularProgressIndicator
-import com.example.chillstay.ui.profile.ProfileIntent
-import com.example.chillstay.ui.profile.ProfileUiState
+import androidx.compose.material3.FloatingActionButton
+import com.example.chillstay.ui.chat.ChatDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +51,8 @@ fun ProfileScreen(
 ) {
     var isDarkTheme by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
+    var showChatDialog by remember { mutableStateOf(false) }
+
     val currentUser = state.currentUser
     val userEmail = currentUser?.email ?: "demo@chillstay.com"
     val userName = currentUser?.fullName?.takeIf { it.isNotBlank() } ?: "User"
@@ -82,6 +82,20 @@ fun ProfileScreen(
                     containerColor = Color(0xFF1AB6B6)
                 )
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showChatDialog = true },
+                containerColor = Color(0xFF1AB6B6),
+                contentColor = Color.White,
+                modifier = Modifier.padding(bottom = 40.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_chat),
+                    contentDescription = "Chat Support",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     ) { paddingValues ->
         LazyColumn(
@@ -286,7 +300,7 @@ fun ProfileScreen(
             }
         }
     }
-
+    }
     if (showEditDialog) {
         ProfileEditDialog(
             state = state,
@@ -294,6 +308,10 @@ fun ProfileScreen(
             onDismiss = { showEditDialog = false }
         )
     }
+    if (showChatDialog) {
+        ChatDialog(
+            onDismiss = { showChatDialog = false }
+        )
     }
 }
 

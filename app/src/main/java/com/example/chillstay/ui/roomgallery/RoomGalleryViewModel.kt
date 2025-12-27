@@ -3,7 +3,7 @@ package com.example.chillstay.ui.roomgallery
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
-import com.example.chillstay.domain.usecase.hotel.GetRoomByIdUseCase
+import com.example.chillstay.domain.usecase.room.GetRoomByIdUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -14,15 +14,14 @@ class RoomGalleryViewModel(
 ) : BaseViewModel<RoomGalleryUiState, RoomGalleryIntent, RoomGalleryEffect>(RoomGalleryUiState()) {
 
     override fun onEvent(event: RoomGalleryIntent) = when (event) {
-        is RoomGalleryIntent.LoadGallery -> load(event.hotelId, event.roomId)
+        is RoomGalleryIntent.LoadGallery -> load(event.roomId)
         is RoomGalleryIntent.SelectCategory -> _state.update { it.updateSelectedCategory(event.category) }
     }
 
-    private fun load(hotelId: String, roomId: String) {
+    private fun load(roomId: String) {
         _state.update { it.updateIsLoading(true).clearError() }
         viewModelScope.launch {
             try {
-                val hotelResult = getHotelById(hotelId).first()
                 val roomResult = getRoomById(roomId).first()
 
                 when (roomResult) {
@@ -31,10 +30,9 @@ class RoomGalleryViewModel(
                         val gallery = room.gallery
                         _state.update {
                             it.updateExteriorView(gallery?.exteriorView ?: emptyList())
-                                .updateFacilities(gallery?.facilities ?: emptyList())
                                 .updateDining(gallery?.dining ?: emptyList())
-                                .updateThisRoom(gallery?.thisRoom ?: listOfNotNull(room.imageUrl.takeIf { it.isNotBlank() }))
-                                .updateRoomName(room.detail?.name ?: room.type)
+                                .updateThisRoom(gallery?.thisRoom ?: emptyList())
+                                .updateRoomName(room.name)
                                 .updateIsLoading(false)
                         }
                     }

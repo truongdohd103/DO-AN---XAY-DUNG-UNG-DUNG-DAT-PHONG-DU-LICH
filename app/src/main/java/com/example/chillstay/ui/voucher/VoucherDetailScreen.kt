@@ -149,7 +149,7 @@ fun VoucherDetailScreen(
                             
                             // Conditions Card - Use actual voucher conditions
                             ConditionsCard(
-                                conditions = uiState.voucher?.conditions?.let { conditions ->
+                                conditions = uiState.voucher?.let { conditions ->
                                     buildString {
                                         if (conditions.minBookingAmount > 0) {
                                             appendLine("• Minimum booking amount: $${conditions.minBookingAmount}")

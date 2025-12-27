@@ -16,14 +16,34 @@ data class Hotel(
     val policy: List<Policy> = emptyList(),
     val propertyType: PropertyType = PropertyType.HOTEL,
     val rating: Double = 0.0,
+    val status: HotelStatus = HotelStatus.ACTIVE,
 
-    val reviews: List<Review> = emptyList(),
-    val rooms: List<Room> = emptyList()
+    val reviews: List<Review> = emptyList()
 )
 
 enum class PropertyType {
     HOTEL,
     RESORT
 }
+
+enum class HotelStatus {
+    ACTIVE,
+    INACTIVE
+}
+
+enum class HotelCategory {
+    POPULAR,
+    RECOMMENDED,
+    TRENDING,
+    ALL
+}
+
+data class HotelListFilter(
+    val category: HotelCategory = HotelCategory.POPULAR,
+    val limit: Int? = null,
+    val country: String? = null,
+    val city: String? = null,
+    val minRating: Double? = null
+)
 
 

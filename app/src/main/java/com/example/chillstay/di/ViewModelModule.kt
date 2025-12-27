@@ -17,6 +17,14 @@ import com.example.chillstay.ui.search.SearchViewModel
 import com.example.chillstay.ui.roomgallery.RoomGalleryViewModel
 import com.example.chillstay.ui.myreviews.MyReviewsViewModel
 import com.example.chillstay.ui.allreviews.AllReviewsViewModel
+import com.example.chillstay.ui.admin.home.AdminHomeViewModel
+import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageViewModel
+import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditViewModel
+import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageViewModel
+import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditViewModel
+import com.example.chillstay.ui.admin.voucher.voucher_apply.VoucherApplyViewModel
+import com.example.chillstay.ui.admin.voucher.voucher_edit.VoucherEditViewModel
+import com.example.chillstay.ui.admin.voucher.voucher_manage.VoucherManageViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
@@ -44,7 +52,7 @@ val viewModelModule = module {
     viewModel { 
         HotelDetailViewModel(
             get(),  // GetHotelByIdUseCase
-            get(),  // GetHotelRoomsUseCase
+            get(),  // GetRoomsByHotelIdUseCase
             get(),  // GetHotelReviewsUseCase
             get(),  // UserRepository
             get(),  // AddBookmarkUseCase
@@ -56,7 +64,7 @@ val viewModelModule = module {
     viewModel { RoomViewModel(get(), get()) }
     viewModel { RoomGalleryViewModel(get(), get()) }
     viewModel { BookingViewModel(get(), get(), get(), get(), get()) }
-    viewModel { VoucherViewModel(get(), get(), get(), get()) }
+    viewModel { VoucherViewModel(get()) }
     viewModel { VoucherDetailViewModel(get(), get(), get()) }
     viewModel { ReviewViewModel(
         get(), // GetUserBookingsUseCase
@@ -76,6 +84,14 @@ val viewModelModule = module {
             get()  // UpdateUserProfileUseCase
         )
     }
+    viewModel { AdminHomeViewModel() }
     viewModel { MyReviewsViewModel(get(), get(), get()) }
     viewModel { AllReviewsViewModel(get(), get()) }
+    viewModel { AccommodationManageViewModel(get()) }
+    viewModel { AccommodationEditViewModel(get(), get(), get(), get()) }
+    viewModel { RoomManageViewModel(get()) }
+    viewModel { RoomEditViewModel(get(), get(), get(), get()) }
+    viewModel { VoucherManageViewModel(get(), get(), get()) }
+    viewModel { VoucherEditViewModel(get(), get(), get(), get()) }
+    viewModel { VoucherApplyViewModel(get(), get(), get(), get()) }
 }

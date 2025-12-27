@@ -24,8 +24,8 @@ class SearchHotelsUseCase constructor(
             minRating = minRating,
             maxPrice = maxPrice
         )
-        emit(Result.success(hotels))
+        emit(Result.Companion.success(hotels))
     }.catch { throwable ->
-        emit(Result.failure(throwable))
+        emit(Result.Companion.failure(throwable))
     }
 }

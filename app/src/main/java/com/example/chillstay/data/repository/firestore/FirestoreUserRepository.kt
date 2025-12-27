@@ -1,6 +1,7 @@
 package com.example.chillstay.data.repository.firestore
 
 import com.example.chillstay.domain.model.User
+import com.example.chillstay.domain.model.UserRole
 import com.example.chillstay.domain.repository.UserRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -32,13 +33,14 @@ class FirestoreUserRepository @Inject constructor(
 
     override suspend fun createUser(user: User): User {
         return try {
+            val userMap = userToMap(user)
             if (user.id.isBlank()) {
-                val documentRef = firestore.collection("users").add(user).await()
+                val documentRef = firestore.collection("users").add(userMap).await()
                 user.copy(id = documentRef.id)
             } else {
                 firestore.collection("users")
                     .document(user.id)
-                    .set(user)
+                    .set(userMap)
                     .await()
                 user
             }
@@ -49,9 +51,10 @@ class FirestoreUserRepository @Inject constructor(
 
     override suspend fun updateUser(user: User): User {
         return try {
+            val userMap = userToMap(user)
             firestore.collection("users")
                 .document(user.id)
-                .set(user)
+                .set(userMap)
                 .await()
             user
         } catch (e: Exception) {
@@ -102,6 +105,14 @@ class FirestoreUserRepository @Inject constructor(
             }
         } ?: DEFAULT_DOB
 
+        // Map role from Firestore, default to USER if not found
+        val roleString = data["role"] as? String ?: "USER"
+        val role = try {
+            UserRole.valueOf(roleString.uppercase())
+        } catch (_: Exception) {
+            UserRole.USER
+        }
+
         return User(
             id = documentId,
             email = email,
@@ -109,8 +120,21 @@ class FirestoreUserRepository @Inject constructor(
             fullName = data["fullName"] as? String ?: "",
             gender = data["gender"] as? String ?: "",
             photoUrl = data["photoUrl"] as? String ?: "",
-            dateOfBirth = dob
+            dateOfBirth = dob,
+            role = role
         )
+    }
+
+    private fun userToMap(user: User): Map<String, Any> {
+        val map = mutableMapOf<String, Any>()
+        map["email"] = user.email
+        map["password"] = user.password
+        map["fullName"] = user.fullName
+        map["gender"] = user.gender
+        map["photoUrl"] = user.photoUrl
+        map["dateOfBirth"] = user.dateOfBirth.toString()
+        map["role"] = user.role.name // Convert enum to string
+        return map
     }
 
     companion object {

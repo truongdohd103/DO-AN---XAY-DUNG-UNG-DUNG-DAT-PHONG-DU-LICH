@@ -498,7 +498,7 @@ fun StayDetailsSection(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 OutlinedTextField(
-                    value = "${room?.detail?.name ?: room?.type ?: "Room"} - $${room?.price?.toInt() ?: 0}/night",
+                    value = "${room?.name ?: "Room"} - $${room?.price?.toInt() ?: 0}/night",
                     onValueChange = { },
                     modifier = Modifier.fillMaxWidth(),
                     readOnly = true,

@@ -79,7 +79,7 @@ fun HotelInfoSection(
             )
 
             Spacer(modifier = Modifier.width(8.dp))
-            MarqueeText(text = address, modifier = Modifier.fillMaxWidth(), 16f, "#757575")
+            MarqueeText(text = address, modifier = Modifier.fillMaxWidth(), 16.sp, Color(0xFF757575))
         }
 
         Spacer(modifier = Modifier.height(5.dp))

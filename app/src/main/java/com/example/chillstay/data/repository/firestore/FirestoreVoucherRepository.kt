@@ -3,8 +3,10 @@ package com.example.chillstay.data.repository.firestore
 import android.util.Log
 import com.example.chillstay.domain.model.Voucher
 import com.example.chillstay.domain.repository.VoucherRepository
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 import javax.inject.Inject
@@ -14,6 +16,10 @@ import javax.inject.Singleton
 class FirestoreVoucherRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) : VoucherRepository {
+
+    companion object {
+        const val ACCOM_TAG = "AccommodationSelect"
+    }
 
     override suspend fun getVouchers(): List<Voucher> {
         return try {
@@ -80,32 +86,45 @@ class FirestoreVoucherRepository @Inject constructor(
         }
     }
 
-    override suspend fun createVoucher(voucher: Voucher): Voucher {
-        return try {
-            Log.d("FirestoreVoucherRepository", "Creating voucher: ${voucher.title}")
-            val documentRef = firestore.collection("vouchers").add(voucher).await()
-            val createdVoucher = voucher.copy(id = documentRef.id)
-            Log.d("FirestoreVoucherRepository", "Successfully created voucher with ID: ${createdVoucher.id}")
-            createdVoucher
-        } catch (e: Exception) {
-            Log.e("FirestoreVoucherRepository", "Error creating voucher: ${e.message}", e)
-            voucher
-        }
+    override suspend fun createVoucher(voucher: Voucher): String {
+        val data = voucherToMap(voucher)
+        val docRef = firestore.collection("vouchers")
+            .add(data)
+            .await()
+        return docRef.id
     }
 
-    override suspend fun updateVoucher(voucher: Voucher): Voucher {
-        return try {
-            Log.d("FirestoreVoucherRepository", "Updating voucher: ${voucher.id}")
-            firestore.collection("vouchers")
-                .document(voucher.id)
-                .set(voucher)
-                .await()
-            Log.d("FirestoreVoucherRepository", "Successfully updated voucher: ${voucher.id}")
-            voucher
-        } catch (e: Exception) {
-            Log.e("FirestoreVoucherRepository", "Error updating voucher: ${e.message}", e)
-            voucher
-        }
+    override suspend fun updateVoucher(voucher: Voucher) {
+        val docRef = firestore.collection("vouchers").document(voucher.id)
+        val data = voucherToMap(voucher)
+        docRef.set(data, SetOptions.merge()).await()
+    }
+
+    private fun voucherToMap(voucher: Voucher): Map<String, Any?> {
+        val result = mapOf(
+            "name" to voucher.id,
+            "code" to voucher.code,
+            "title" to voucher.title,
+            "description" to voucher.description,
+            "type" to voucher.type.name,
+            "value" to voucher.value,
+            "imageUrl" to voucher.imageUrl,
+            "status" to voucher.status.name,
+            "validFrom" to voucher.validFrom,
+            "validTo" to voucher.validTo,
+            "isStackable" to voucher.isStackable,
+            "minBookingAmount" to voucher.minBookingAmount,
+            "maxDiscountAmount" to voucher.maxDiscountAmount,
+            "maxUsagePerUser" to voucher.maxUsagePerUser,
+            "maxTotalUsage" to voucher.maxTotalUsage,
+            "minNights" to voucher.minNights,
+            "requiredUserLevel" to voucher.requiredUserLevel,
+            "validDays" to voucher.validDays,
+            "validTimeSlots" to voucher.validTimeSlots,
+            "applyForHotel" to voucher.applyForHotel,
+            "createdAt" to voucher.createdAt
+        )
+        return result
     }
 
     // Claim methods
@@ -199,14 +218,14 @@ class FirestoreVoucherRepository @Inject constructor(
             }
             
             // Check usage limits with PERMISSION_DENIED handling
-            if (voucher.conditions.maxTotalUsage > 0) {
+            if (voucher.maxTotalUsage > 0) {
                 try {
                     val totalClaimsSnapshot = firestore.collection("voucher_claims")
                         .whereEqualTo("voucherId", voucherId)
                         .get()
                         .await()
                     
-                    if (totalClaimsSnapshot.documents.size >= voucher.conditions.maxTotalUsage) {
+                    if (totalClaimsSnapshot.documents.size >= voucher.maxTotalUsage) {
                         return Pair(false, "Voucher usage limit reached")
                     }
                 } catch (e: FirebaseFirestoreException) {
@@ -220,7 +239,7 @@ class FirestoreVoucherRepository @Inject constructor(
             }
             
             // Check per-user usage limit with PERMISSION_DENIED handling
-            if (voucher.conditions.maxUsagePerUser > 0) {
+            if (voucher.maxUsagePerUser > 0) {
                 try {
                     val userClaimsSnapshot = firestore.collection("voucher_claims")
                         .whereEqualTo("voucherId", voucherId)
@@ -228,7 +247,7 @@ class FirestoreVoucherRepository @Inject constructor(
                         .get()
                         .await()
                     
-                    if (userClaimsSnapshot.documents.size >= voucher.conditions.maxUsagePerUser) {
+                    if (userClaimsSnapshot.documents.size >= voucher.maxUsagePerUser) {
                         return Pair(false, "You have reached the usage limit for this voucher")
                     }
                 } catch (e: FirebaseFirestoreException) {
@@ -258,6 +277,95 @@ class FirestoreVoucherRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e("FirestoreVoucherRepository", "Error checking eligibility: ${e.message}", e)
             Pair(false, "Unable to check eligibility")
+        }
+    }
+
+    override suspend fun applyVoucherToHotels(voucherId: String, hotelIds: List<String>): Boolean {
+        try {
+            val docRef = firestore.collection("vouchers").document(voucherId)
+            firestore.runTransaction { tx ->
+                val snap = tx.get(docRef)
+                if (!snap.exists()) throw IllegalStateException("Voucher not found")
+
+                val current = snap.get("applyForHotel") as? List<*> ?: emptyList<Any>()
+                val currentIds = current.filterIsInstance<String>()
+                val merged = (currentIds + hotelIds).distinct()
+
+                tx.update(docRef, "applyForHotel", merged)
+                true
+            }.await()
+            Log.d("FirestoreVoucherRepository", "Voucher $voucherId updated applyForHotel -> merged ${hotelIds.size} items")
+            return true
+        } catch (e: FirebaseFirestoreException) {
+            Log.e("FirestoreVoucherRepository", "FirestoreException while applying voucher: ${e.code} ${e.message}", e)
+            return false
+        } catch (e: Exception) {
+            Log.e("FirestoreVoucherRepository", "Exception while applying voucher: ${e.message}", e)
+            return false
+        }
+    }
+
+    // Method 2: updateVoucherAppliedHotels
+    override suspend fun updateVoucherAppliedHotels(
+        voucherId: String,
+        hotelIds: List<String>
+    ): Boolean {
+        return try {
+            Log.d(ACCOM_TAG, "=== updateVoucherAppliedHotels START ===")
+            Log.d(ACCOM_TAG, "voucherId: $voucherId")
+            Log.d(ACCOM_TAG, "New hotelIds to add: $hotelIds (count: ${hotelIds.size})")
+
+            // Get current voucher
+            Log.d(ACCOM_TAG, "Fetching current voucher...")
+            val voucher = getVoucherById(voucherId)
+            if (voucher == null) {
+                Log.e(ACCOM_TAG, "❌ Voucher not found: $voucherId")
+                return false
+            }
+
+            Log.d(ACCOM_TAG, "✅ Voucher found: ${voucher.title}")
+
+            // Merge new hotel IDs with existing ones
+            val currentHotelIds = voucher.applyForHotel ?: emptyList()
+            Log.d(ACCOM_TAG, "Current applyForHotel: $currentHotelIds (count: ${currentHotelIds.size})")
+
+            val updatedHotelIds = (currentHotelIds + hotelIds).distinct()
+            Log.d(ACCOM_TAG, "Updated applyForHotel: $updatedHotelIds (count: ${updatedHotelIds.size})")
+
+            // Update voucher document
+            val updates = mapOf(
+                "applyForHotel" to updatedHotelIds
+            )
+
+            Log.d(ACCOM_TAG, "Updating voucher document in Firestore...")
+            Log.d(ACCOM_TAG, "Document path: vouchers/$voucherId")
+            Log.d(ACCOM_TAG, "Updates: $updates")
+
+            firestore.collection("vouchers")
+                .document(voucherId)
+                .set(updates, SetOptions.merge())
+                .await()
+
+            Log.d(ACCOM_TAG, "✅ Voucher document updated successfully")
+
+            // Verify update
+            Log.d(ACCOM_TAG, "Verifying update...")
+            val updatedVoucher = getVoucherById(voucherId)
+            val verifiedIds = updatedVoucher?.applyForHotel ?: emptyList()
+            Log.d(ACCOM_TAG, "Verified applyForHotel after update: $verifiedIds (count: ${verifiedIds.size})")
+
+            if (verifiedIds.size == updatedHotelIds.size) {
+                Log.d(ACCOM_TAG, "✅ Verification successful!")
+            } else {
+                Log.w(ACCOM_TAG, "⚠️ Verification mismatch: expected ${updatedHotelIds.size}, got ${verifiedIds.size}")
+            }
+
+            Log.d(ACCOM_TAG, "=== updateVoucherAppliedHotels END (SUCCESS) ===")
+            true
+        } catch (e: Exception) {
+            Log.e(ACCOM_TAG, "❌ Error in updateVoucherAppliedHotels: ${e.message}", e)
+            e.printStackTrace()
+            false
         }
     }
 }
