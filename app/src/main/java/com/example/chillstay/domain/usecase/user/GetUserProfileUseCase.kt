@@ -12,7 +12,7 @@ class GetUserProfileUseCase constructor(
     private val userRepository: UserRepository
 ) {
     operator fun invoke(userId: String): Flow<Result<User>> = flow {
-        val user = userRepository.getUser(userId) ?: throw IllegalStateException("User not found")
+        val user = userRepository.getUserById(userId) ?: throw IllegalStateException("User not found")
         emit(Result.success(user))
     }.catch { throwable ->
         emit(Result.failure(throwable))

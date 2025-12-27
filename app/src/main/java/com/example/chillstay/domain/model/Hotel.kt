@@ -46,4 +46,14 @@ data class HotelListFilter(
     val minRating: Double? = null
 )
 
+data class Policy(
+    val title: String = "",
+    val content: String = ""
+)
+
+data class Coordinate(
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0
+)
+
 

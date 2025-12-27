@@ -19,7 +19,7 @@ class UpdateUserProfileUseCase constructor(
         photoUrl: String? = null,
         dateOfBirth: LocalDate? = null
     ): Flow<Result<User>> = flow {
-        val existingUser = userRepository.getUser(userId)
+        val existingUser = userRepository.getUserById(userId)
             ?: throw IllegalStateException("User not found")
 
         if (fullName != null && fullName.isBlank()) {

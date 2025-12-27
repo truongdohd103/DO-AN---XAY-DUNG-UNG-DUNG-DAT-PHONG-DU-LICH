@@ -9,8 +9,10 @@ data class User(
     val fullName: String = "",
     val gender: String = "",
     val photoUrl: String = "",
+    val phone: String = "",
     val dateOfBirth: LocalDate = LocalDate.of(2000, 1, 1),
     //val vouchersForUser: List<Voucher> = emptyList()
+    val isActive: Boolean = true,
     val role : UserRole = UserRole.USER
 )
 

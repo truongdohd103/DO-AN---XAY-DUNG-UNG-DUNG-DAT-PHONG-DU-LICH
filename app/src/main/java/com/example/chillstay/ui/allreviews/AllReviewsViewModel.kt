@@ -3,7 +3,6 @@ package com.example.chillstay.ui.allreviews
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.common.Result
-import com.example.chillstay.domain.model.Review
 import com.example.chillstay.domain.usecase.review.GetHotelReviewsUseCase
 import com.example.chillstay.domain.repository.UserRepository
 import com.example.chillstay.ui.hoteldetail.ReviewWithUser
@@ -37,7 +36,7 @@ class AllReviewsViewModel(
                     try {
                         val tasks = reviews.map { review ->
                             async {
-                                val user = try { userRepository.getUser(review.userId) } catch (_: Exception) { null }
+                                val user = try { userRepository.getUserById(review.userId) } catch (_: Exception) { null }
                                 ReviewWithUser(review, user)
                             }
                         }

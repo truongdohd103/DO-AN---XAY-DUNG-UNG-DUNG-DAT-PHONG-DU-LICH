@@ -54,6 +54,7 @@ import com.example.chillstay.ui.admin.accommodation.accommodation_manage.Accommo
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditScreen
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageScreen
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditScreen
+import com.example.chillstay.ui.admin.customer.customer_manage.CustomerManageScreen
 import com.example.chillstay.ui.admin.voucher.voucher_apply.AccommodationSelectScreen
 import com.example.chillstay.ui.admin.voucher.voucher_edit.VoucherEditScreen
 import com.example.chillstay.ui.admin.voucher.voucher_manage.VoucherManageScreen
@@ -368,7 +369,7 @@ fun AppNavHost(
             AdminHomeScreen(
                 onNavigateToAccommodation = { navController.navigate(Routes.ADMIN_ACCOMMODATION_MANAGE) },
                 onNavigateToVoucher = { navController.navigate(Routes.ADMIN_VOUCHER_MANAGE) },
-                onNavigateToCustomer = { /* TODO: Implement navigation */ },
+                onNavigateToCustomer = { navController.navigate(Routes.ADMIN_CUSTOMER_MANAGE) },
                 onNavigateToNotification = { /* TODO: Implement navigation */ },
                 onNavigateToBooking = { /* TODO: Implement navigation */ },
                 onNavigateToStatistics = { /* TODO: Implement navigation */ },
@@ -476,6 +477,16 @@ fun AppNavHost(
                 onSaveClick = { room ->
                     navController.popBackStack()
                 }
+            )
+        }
+
+        composable(Routes.ADMIN_CUSTOMER_MANAGE) {
+            CustomerManageScreen(
+                onBack = { navController.popBackStack() },
+                onDisable = {},
+                onEnable = {},
+                onView = { userId -> },
+
             )
         }
 
