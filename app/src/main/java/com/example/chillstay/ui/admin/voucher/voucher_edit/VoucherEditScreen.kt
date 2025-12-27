@@ -62,6 +62,7 @@ import coil.compose.AsyncImage
 import com.example.chillstay.R
 import com.example.chillstay.domain.model.Voucher
 import com.example.chillstay.domain.model.VoucherType
+import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditEffect
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -110,6 +111,7 @@ fun VoucherEditScreen(
                     Toast.makeText(context, "Voucher created successfully", Toast.LENGTH_SHORT).show()
                     onCreated(effect.voucher)
                 }
+                is VoucherEditEffect.NavigateToAccommodations -> effect.voucherId.let(onSelectAccommodation)
                 is VoucherEditEffect.ShowError -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
                 }
@@ -128,10 +130,7 @@ fun VoucherEditScreen(
                 isSaving = uiState.isSaving,
                 onSaveClick = { viewModel.onEvent(VoucherEditIntent.Save) },
                 onCreateClick = { viewModel.onEvent(VoucherEditIntent.Save) },
-                onSelectAccommodationClick = {
-                    // TODO: Implement select accommodation logic
-                },
-                viewModel = viewModel,
+                onSelectAccommodationClick = { onSelectAccommodation(uiState.voucherId ?: "") },
                 uiState = uiState
             )
         }
@@ -969,7 +968,6 @@ fun BottomActionBar(
     onSaveClick: () -> Unit,
     onCreateClick: () -> Unit,
     onSelectAccommodationClick: () -> Unit,
-    viewModel: VoucherEditViewModel,
     uiState: VoucherEditUiState
 ) {
     Box(
@@ -990,7 +988,7 @@ fun BottomActionBar(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = { viewModel.onEvent(VoucherEditIntent.Save) },
+                    onClick = onSaveClick,
                     modifier = Modifier
                         .weight(1f)
                         .height(51.dp),

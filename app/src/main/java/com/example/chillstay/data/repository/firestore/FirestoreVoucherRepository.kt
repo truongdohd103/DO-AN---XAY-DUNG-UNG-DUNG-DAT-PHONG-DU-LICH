@@ -3,6 +3,7 @@ package com.example.chillstay.data.repository.firestore
 import android.util.Log
 import com.example.chillstay.domain.model.Voucher
 import com.example.chillstay.domain.repository.VoucherRepository
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.SetOptions
@@ -15,6 +16,10 @@ import javax.inject.Singleton
 class FirestoreVoucherRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) : VoucherRepository {
+
+    companion object {
+        const val ACCOM_TAG = "AccommodationSelect"
+    }
 
     override suspend fun getVouchers(): List<Voucher> {
         return try {
@@ -272,6 +277,95 @@ class FirestoreVoucherRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e("FirestoreVoucherRepository", "Error checking eligibility: ${e.message}", e)
             Pair(false, "Unable to check eligibility")
+        }
+    }
+
+    override suspend fun applyVoucherToHotels(voucherId: String, hotelIds: List<String>): Boolean {
+        try {
+            val docRef = firestore.collection("vouchers").document(voucherId)
+            firestore.runTransaction { tx ->
+                val snap = tx.get(docRef)
+                if (!snap.exists()) throw IllegalStateException("Voucher not found")
+
+                val current = snap.get("applyForHotel") as? List<*> ?: emptyList<Any>()
+                val currentIds = current.filterIsInstance<String>()
+                val merged = (currentIds + hotelIds).distinct()
+
+                tx.update(docRef, "applyForHotel", merged)
+                true
+            }.await()
+            Log.d("FirestoreVoucherRepository", "Voucher $voucherId updated applyForHotel -> merged ${hotelIds.size} items")
+            return true
+        } catch (e: FirebaseFirestoreException) {
+            Log.e("FirestoreVoucherRepository", "FirestoreException while applying voucher: ${e.code} ${e.message}", e)
+            return false
+        } catch (e: Exception) {
+            Log.e("FirestoreVoucherRepository", "Exception while applying voucher: ${e.message}", e)
+            return false
+        }
+    }
+
+    // Method 2: updateVoucherAppliedHotels
+    override suspend fun updateVoucherAppliedHotels(
+        voucherId: String,
+        hotelIds: List<String>
+    ): Boolean {
+        return try {
+            Log.d(ACCOM_TAG, "=== updateVoucherAppliedHotels START ===")
+            Log.d(ACCOM_TAG, "voucherId: $voucherId")
+            Log.d(ACCOM_TAG, "New hotelIds to add: $hotelIds (count: ${hotelIds.size})")
+
+            // Get current voucher
+            Log.d(ACCOM_TAG, "Fetching current voucher...")
+            val voucher = getVoucherById(voucherId)
+            if (voucher == null) {
+                Log.e(ACCOM_TAG, "❌ Voucher not found: $voucherId")
+                return false
+            }
+
+            Log.d(ACCOM_TAG, "✅ Voucher found: ${voucher.title}")
+
+            // Merge new hotel IDs with existing ones
+            val currentHotelIds = voucher.applyForHotel ?: emptyList()
+            Log.d(ACCOM_TAG, "Current applyForHotel: $currentHotelIds (count: ${currentHotelIds.size})")
+
+            val updatedHotelIds = (currentHotelIds + hotelIds).distinct()
+            Log.d(ACCOM_TAG, "Updated applyForHotel: $updatedHotelIds (count: ${updatedHotelIds.size})")
+
+            // Update voucher document
+            val updates = mapOf(
+                "applyForHotel" to updatedHotelIds
+            )
+
+            Log.d(ACCOM_TAG, "Updating voucher document in Firestore...")
+            Log.d(ACCOM_TAG, "Document path: vouchers/$voucherId")
+            Log.d(ACCOM_TAG, "Updates: $updates")
+
+            firestore.collection("vouchers")
+                .document(voucherId)
+                .set(updates, SetOptions.merge())
+                .await()
+
+            Log.d(ACCOM_TAG, "✅ Voucher document updated successfully")
+
+            // Verify update
+            Log.d(ACCOM_TAG, "Verifying update...")
+            val updatedVoucher = getVoucherById(voucherId)
+            val verifiedIds = updatedVoucher?.applyForHotel ?: emptyList()
+            Log.d(ACCOM_TAG, "Verified applyForHotel after update: $verifiedIds (count: ${verifiedIds.size})")
+
+            if (verifiedIds.size == updatedHotelIds.size) {
+                Log.d(ACCOM_TAG, "✅ Verification successful!")
+            } else {
+                Log.w(ACCOM_TAG, "⚠️ Verification mismatch: expected ${updatedHotelIds.size}, got ${verifiedIds.size}")
+            }
+
+            Log.d(ACCOM_TAG, "=== updateVoucherAppliedHotels END (SUCCESS) ===")
+            true
+        } catch (e: Exception) {
+            Log.e(ACCOM_TAG, "❌ Error in updateVoucherAppliedHotels: ${e.message}", e)
+            e.printStackTrace()
+            false
         }
     }
 }

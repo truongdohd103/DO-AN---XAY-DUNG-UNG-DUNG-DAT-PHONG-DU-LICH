@@ -15,4 +15,6 @@ interface VoucherRepository {
     
     // Eligibility methods
     suspend fun checkVoucherEligibility(voucherId: String, userId: String): Pair<Boolean, String>
+    suspend fun applyVoucherToHotels(voucherId: String, hotelIds: List<String>) : Boolean
+    suspend fun updateVoucherAppliedHotels(voucherId: String, hotelIds: List<String>): Boolean
 }

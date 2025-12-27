@@ -26,7 +26,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
-import com.google.gson.Gson
 
 // Navigation imports
 import com.example.chillstay.ui.hoteldetail.hotelDetailRoutes
@@ -55,6 +54,7 @@ import com.example.chillstay.ui.admin.accommodation.accommodation_manage.Accommo
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditScreen
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageScreen
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditScreen
+import com.example.chillstay.ui.admin.voucher.voucher_apply.AccommodationSelectScreen
 import com.example.chillstay.ui.admin.voucher.voucher_edit.VoucherEditScreen
 import com.example.chillstay.ui.admin.voucher.voucher_manage.VoucherManageScreen
 
@@ -204,12 +204,21 @@ fun AppNavHost(
                 initialTab = 0,
                 onBackClick = { navController.popBackStack() },
                 onHotelClick = { hotelId, fromMyTrip ->
-                    android.util.Log.d("AppNavHost", "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip")
-                    navController.navigateToHotelDetail(hotelId, fromMyTrip, OnboardingManager.getLastTab(context))
+                    android.util.Log.d(
+                        "AppNavHost",
+                        "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip"
+                    )
+                    navController.navigateToHotelDetail(
+                        hotelId,
+                        fromMyTrip,
+                        OnboardingManager.getLastTab(context)
+                    )
                 },
                 onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
                 onVipClick = {
-                    if (isSignedIn) navController.navigate(Routes.VIP_STATUS) else navController.navigate(Routes.AUTHENTICATION)
+                    if (isSignedIn) navController.navigate(Routes.VIP_STATUS) else navController.navigate(
+                        Routes.AUTHENTICATION
+                    )
                 },
                 onSearchClick = {
                     navController.navigate(Routes.SEARCH)
@@ -251,12 +260,21 @@ fun AppNavHost(
                 initialTab = tabParam,
                 onBackClick = { navController.popBackStack() },
                 onHotelClick = { hotelId, fromMyTrip ->
-                    android.util.Log.d("AppNavHost", "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip")
-                    navController.navigateToHotelDetail(hotelId, fromMyTrip, OnboardingManager.getLastTab(context))
+                    android.util.Log.d(
+                        "AppNavHost",
+                        "onHotelClick called with hotelId=$hotelId, fromMyTrip=$fromMyTrip"
+                    )
+                    navController.navigateToHotelDetail(
+                        hotelId,
+                        fromMyTrip,
+                        OnboardingManager.getLastTab(context)
+                    )
                 },
                 onRequireAuth = { navController.navigate(Routes.AUTHENTICATION) },
                 onVipClick = {
-                    if (isSignedIn) navController.navigate(Routes.VIP_STATUS) else navController.navigate(Routes.AUTHENTICATION)
+                    if (isSignedIn) navController.navigate(Routes.VIP_STATUS) else navController.navigate(
+                        Routes.AUTHENTICATION
+                    )
                 },
                 onSearchClick = { navController.navigate(Routes.SEARCH) },
                 onContinueItemClick = { hotelId, roomId, dateFrom, dateTo ->
@@ -459,7 +477,9 @@ fun AppNavHost(
                         inclusive = false
                     )
                 },
-                onSelectAccommodation = {},
+                onSelectAccommodation = { voucherId ->
+                    navController.navigate("${Routes.ADMIN_ACCOMMODATION_SELECT}?voucherId=$voucherId")
+                },
                 onCreated = { voucher ->
                     navController.popBackStack()
                     // Navigate to room manage after create
@@ -477,10 +497,19 @@ fun AppNavHost(
                         inclusive = false
                     )
                 },
-                onSelectAccommodation = {},
+                onSelectAccommodation = { voucherId -> navController.navigate("${Routes.ADMIN_ACCOMMODATION_SELECT}?voucherId=${voucherId}") },
                 onCreated = { voucher ->
                     navController.popBackStack()
                 }
+            )
+        }
+
+        composable("${Routes.ADMIN_ACCOMMODATION_SELECT}?voucherId={voucherId}") { backStackEntry ->
+            val voucherId = backStackEntry.arguments?.getString("voucherId")
+            AccommodationSelectScreen(
+                voucherId = voucherId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToConfirmation = {  navController.popBackStack() }
             )
         }
 
@@ -506,20 +535,20 @@ fun AppNavHost(
         )
         // Trip Route
         tripRoute(
-            onHotelClick = { hotelId: String, fromMyTrip: Boolean -> 
+            onHotelClick = { hotelId: String, fromMyTrip: Boolean ->
                 navController.navigateToHotelDetail(hotelId, fromMyTrip)
             },
-            onBookingClick = { bookingId: String -> 
+            onBookingClick = { bookingId: String ->
                 android.util.Log.d("AppNavHost", "onBookingClick called with bookingId=$bookingId")
                 navController.navigateToBookingDetail(bookingId)
             },
-            onWriteReview = { bookingId: String -> 
+            onWriteReview = { bookingId: String ->
                 navController.navigateToReview(bookingId)
             },
-            onViewBill = { bookingId: String -> 
+            onViewBill = { bookingId: String ->
                 navController.navigateToBill(bookingId)
             },
-            onCancelBooking = { bookingId: String -> 
+            onCancelBooking = { bookingId: String ->
                 // TODO: Handle booking cancellation
             }
         )
@@ -544,7 +573,7 @@ fun AppNavHost(
                     launchSingleTop = true
                 }
             },
-            onVoucherClick = { voucherId -> 
+            onVoucherClick = { voucherId ->
                 navController.navigateToVoucherDetail(voucherId)
             }
         )

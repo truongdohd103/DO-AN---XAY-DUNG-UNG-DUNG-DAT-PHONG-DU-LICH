@@ -22,6 +22,7 @@ import com.example.chillstay.ui.admin.accommodation.accommodation_manage.Accommo
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditViewModel
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageViewModel
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditViewModel
+import com.example.chillstay.ui.admin.voucher.voucher_apply.VoucherApplyViewModel
 import com.example.chillstay.ui.admin.voucher.voucher_edit.VoucherEditViewModel
 import com.example.chillstay.ui.admin.voucher.voucher_manage.VoucherManageViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -92,4 +93,5 @@ val viewModelModule = module {
     viewModel { RoomEditViewModel(get(), get(), get(), get()) }
     viewModel { VoucherManageViewModel(get(), get(), get()) }
     viewModel { VoucherEditViewModel(get(), get(), get(), get()) }
+    viewModel { VoucherApplyViewModel(get(), get(), get(), get()) }
 }
