@@ -5,7 +5,6 @@ import com.example.chillstay.domain.model.Coordinate
 import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.Policy
 import com.example.chillstay.domain.model.PropertyType
-import com.example.chillstay.domain.model.Room
 import com.example.chillstay.domain.repository.HotelRepository
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -22,67 +21,52 @@ class FirestoreHotelRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) : HotelRepository {
 
-    override suspend fun getHotels(): List<Hotel> {
+    override suspend fun getHotels(): List<Hotel> = try {
+        Log.d("FirestoreHotelRepository", "Fetching hotels (no room fetch)")
+
+        val snapshot = firestore.collection("hotels")
+            .orderBy("rating", Query.Direction.DESCENDING)
+            .get()
+            .await()
+
+        val hotels = snapshot.documents.mapNotNull { doc ->
+            // mapHotelDocument should now map roomIds field (or default emptyList)
+            mapHotelDocument(doc)?.copy(id = doc.id)
+        }
+
+        Log.d("FirestoreHotelRepository", "Fetched ${hotels.size} hotels")
+        hotels
+    } catch (e: Exception) {
+        Log.e("FirestoreHotelRepository", "Error fetching hotels: ${e.message}", e)
+        emptyList()
+    }
+
+    override suspend fun getHotelById(id: String): Hotel? {
         return try {
-            Log.d("FirestoreHotelRepository", "Attempting to fetch hotels from Firestore")
-            val snapshot = firestore.collection("hotels")
-                .orderBy("rating", Query.Direction.DESCENDING)
+            Log.d("FirestoreHotelRepository", "Fetching hotel from Firestore, hotelId=$id")
+            val document = firestore.collection("hotels")
+                .document(id)
                 .get()
                 .await()
 
-            Log.d(
-                "FirestoreHotelRepository",
-                "Successfully fetched ${snapshot.documents.size} hotels"
-            )
-            snapshot.documents.mapNotNull { document ->
-                val hotel = mapHotelDocument(document)
-
-                // Load rooms for this hotel
-                val roomsSnapshot = firestore.collection("rooms")
-                    .whereEqualTo("hotelId", document.id)
-                    .get()
-                    .await()
-
-                val rooms = roomsSnapshot.documents.mapNotNull { roomDoc ->
-                    roomDoc.toObject(Room::class.java)?.copy(id = roomDoc.id)
-                }
-
-                hotel?.copy(rooms = rooms)
+            if (!document.exists()) {
+                Log.w("FirestoreHotelRepository", "Hotel document not found for id=$id")
+                return null
             }
-        } catch (e: FirebaseFirestoreException) {
-            when (e.code) {
-                FirebaseFirestoreException.Code.FAILED_PRECONDITION -> {
-                    Log.w(
-                        "FirestoreHotelRepository",
-                        "Index not found for hotels query. Please create index in Firebase Console: ${e.message}"
-                    )
-                    Log.w(
-                        "FirestoreHotelRepository",
-                        "Index required: collection=hotels, fields=rating(desc)"
-                    )
-                    emptyList()
-                }
 
-                FirebaseFirestoreException.Code.PERMISSION_DENIED -> {
-                    Log.w(
-                        "FirestoreHotelRepository",
-                        "Permission denied accessing hotels: ${e.message}"
-                    )
-                    emptyList()
-                }
-
-                else -> {
-                    Log.e(
-                        "FirestoreHotelRepository",
-                        "Firestore error fetching hotels: ${e.message}",
-                        e
-                    )
-                    emptyList()
-                }
+            val hotel = mapHotelDocument(document)?.copy(id = document.id)
+            if (hotel == null) {
+                Log.w("FirestoreHotelRepository", "Failed to map hotel document id=$id to model")
+                return null
             }
+            hotel
         } catch (e: Exception) {
-            Log.e("FirestoreHotelRepository", "Unexpected error fetching hotels: ${e.message}", e)
-            emptyList()
+            Log.e(
+                "FirestoreHotelRepository",
+                "Error fetching hotelId=$id from Firestore: ${e.message}",
+                e
+            )
+            null
         }
     }
 
@@ -162,62 +146,6 @@ class FirestoreHotelRepository @Inject constructor(
         } catch (_: Exception) { emptyList() }
     }
 
-    override suspend fun getHotelById(id: String): Hotel? {
-        return try {
-            Log.d("FirestoreHotelRepository", "Fetching hotel from Firestore, hotelId=$id")
-            val document = firestore.collection("hotels")
-                .document(id)
-                .get()
-                .await()
-
-            if (document.exists()) {
-                Log.d(
-                    "FirestoreHotelRepository",
-                    "Firestore returned hotel document for id=$id. Converting to model..."
-                )
-                val hotel = mapHotelDocument(document)
-                if (hotel != null) {
-                    Log.d(
-                        "FirestoreHotelRepository",
-                        "Converted hotelId=${hotel.id}, imageCount=${hotel.imageUrl.size}, images=${hotel.imageUrl}"
-                    )
-                } else {
-                    Log.w(
-                        "FirestoreHotelRepository",
-                        "Document for hotelId=$id exists but failed to map to Hotel model"
-                    )
-                }
-
-                // Load rooms for this hotel
-                val roomsSnapshot = firestore.collection("rooms")
-                    .whereEqualTo("hotelId", id)
-                    .get()
-                    .await()
-
-                val rooms = roomsSnapshot.documents.mapNotNull { roomDoc ->
-                    roomDoc.toObject(Room::class.java)?.copy(id = roomDoc.id)
-                }
-                val hotelWithRooms = hotel?.copy(rooms = rooms)
-                if (hotelWithRooms != null) {
-                    Log.d(
-                        "FirestoreHotelRepository",
-                        "Returning hotelId=${hotelWithRooms.id} with ${hotelWithRooms.rooms.size} rooms"
-                    )
-                }
-                hotelWithRooms
-            } else {
-                Log.w("FirestoreHotelRepository", "Hotel document not found for id=$id")
-                null
-            }
-        } catch (e: Exception) {
-            Log.e(
-                "FirestoreHotelRepository",
-                "Error fetching hotelId=$id from Firestore: ${e.message}",
-                e
-            )
-            null
-        }
-    }
 
     override suspend fun getHotelsByCity(city: String): List<Hotel> {
         return try {

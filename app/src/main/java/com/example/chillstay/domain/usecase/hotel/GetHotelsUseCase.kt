@@ -22,9 +22,9 @@ class GetHotelsUseCase constructor(
                 when (filter.category) {
                     HotelCategory.RECOMMENDED -> sequence.sortedByDescending { it.numberOfReviews }
                     HotelCategory.TRENDING -> sequence.sortedByDescending {
-                        val roomMinPrice = it.rooms.minOfOrNull { room -> room.price }
-                        val baselinePrice = roomMinPrice ?: it.minPrice ?: 0.0
-                        baselinePrice
+                        // We no longer have rooms list here — use hotel's minPrice as baseline.
+                        // If minPrice is null, treat as 0.0
+                        it.minPrice ?: 0.0
                     }
                     else -> sequence.sortedByDescending { it.rating }
                 }

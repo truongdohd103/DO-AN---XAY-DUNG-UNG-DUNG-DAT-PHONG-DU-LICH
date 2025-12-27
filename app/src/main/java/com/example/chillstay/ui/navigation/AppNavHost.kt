@@ -390,6 +390,29 @@ fun AppNavHost(
                 onDelete = { /* TODO: Implement navigation */ }
             )
         }
+        composable("${Routes.ADMIN_ACCOMMODATION_EDIT}?hotelId={hotelId}") { backStackEntry ->
+            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
+            AccommodationEditScreen(
+                hotelId = hotelId,
+                onBack = { navController.popBackStack() },
+                onSaved = { hotel ->
+                    navController.popBackStack(
+                        route = Routes.ADMIN_ACCOMMODATION_MANAGE,
+                        inclusive = false
+                    )
+                },
+                onCreated = { hotel ->
+                    navController.popBackStack()
+                    // Navigate to room manage after create/edit if needed
+                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=${hotel.id}")
+                },
+                onOpenRooms = { hId ->
+                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=$hId")
+                }
+            )
+        }
+
+// Route khi tạo mới (không có hotelId)
         composable(Routes.ADMIN_ACCOMMODATION_EDIT) {
             AccommodationEditScreen(
                 hotelId = "",
@@ -405,8 +428,8 @@ fun AppNavHost(
                     // Navigate to room manage after create
                     navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=${hotel.id}")
                 },
-                onOpenRooms = { hotelId ->
-                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=$hotelId")
+                onOpenRooms = { hId ->
+                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=$hId")
                 }
             )
         }

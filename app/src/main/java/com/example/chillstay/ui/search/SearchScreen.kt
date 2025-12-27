@@ -330,19 +330,17 @@ private fun SearchResultCard(
                     color = Color(0xFF424242)
                 )
             }
-            if (hotel.rooms.isNotEmpty() || hotel.minPrice != null) {
+            if (hotel.minPrice != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = Color(0xFFE0E0E0))
                 Spacer(modifier = Modifier.height(8.dp))
-                val minPrice = hotel.rooms.minOfOrNull { it.price } ?: hotel.minPrice
-                if (minPrice != null) {
-                    Text(
-                        text = "From $${"%.0f".format(minPrice)} / night",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1AB6B6)
-                    )
-                }
+
+                Text(
+                    text = "From $${"%.0f".format(hotel.minPrice)} / night",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1AB6B6)
+                )
             }
         }
     }

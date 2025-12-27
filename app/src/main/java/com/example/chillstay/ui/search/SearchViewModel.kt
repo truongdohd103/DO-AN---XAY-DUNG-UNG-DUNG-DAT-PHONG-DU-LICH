@@ -27,7 +27,7 @@ class SearchViewModel(
                 val current = _state.value.results
                 val sorted = when (event.value) {
                     SortOption.RatingDesc -> current.sortedByDescending { it.rating }
-                    SortOption.PriceAsc -> current.sortedBy { it.minPrice ?: it.rooms.minOfOrNull { room -> room.price } ?: Double.MAX_VALUE }
+                    SortOption.PriceAsc -> current.sortedBy { it.minPrice }
                     SortOption.Relevance -> current
                 }
                 _state.update { it.copy(results = sorted) }
@@ -77,7 +77,7 @@ class SearchViewModel(
                     is Result.Success -> {
                         val hotels = when (_state.value.sortBy) {
                             SortOption.RatingDesc -> result.data.sortedByDescending { it.rating }
-                            SortOption.PriceAsc -> result.data.sortedBy { it.minPrice ?: it.rooms.minOfOrNull { room -> room.price } ?: Double.MAX_VALUE }
+                            SortOption.PriceAsc -> result.data.sortedBy { it.minPrice }
                             SortOption.Relevance -> result.data
                         }
                         val topCities = result.data

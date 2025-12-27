@@ -170,14 +170,11 @@ fun HomeScreen(
                                     items = uiState.hotels,
                                     key = { hotel -> hotel.id }
                                 ) { hotel ->
-                                    val minPrice = remember(hotel.rooms, hotel.minPrice) {
-                                        hotel.rooms.minByOrNull { it.price }?.price ?: hotel.minPrice
-                                    }
                                     val imageUrl = if (hotel.imageUrl.isNotEmpty()) hotel.imageUrl[0] else ""
                                     HotelCard(
                                         title = hotel.name,
                                         location = "${hotel.city}, ${hotel.country}",
-                                        price = minPrice?.let { "$${it.toInt()}" },
+                                        price = hotel.minPrice.toString(),
                                         rating = hotel.rating.toFloat(),
                                         reviews = hotel.numberOfReviews,
                                         imageUrl = imageUrl,
@@ -355,7 +352,7 @@ fun HotelCardsSection(
         items(hotels.size) { index ->
             val hotel = hotels[index]
             // Compute minimum room price if rooms are embedded; otherwise, omit price
-                val minPrice = hotel.rooms.minByOrNull { it.price }?.price ?: hotel.minPrice
+                val minPrice = hotel.minPrice
             val imageUrl = hotel.imageUrl.firstOrNull() ?: ""
             HotelCard(
                 title = hotel.name,
@@ -396,7 +393,7 @@ fun PopularHotelsSection(
                 HotelCard(
                     title = hotel.name,
                     location = "${hotel.city}, ${hotel.country}",
-                    price = hotel.rooms.minByOrNull { it.price }?.price?.let { "$${it.toInt()}" },
+                    price = hotel.minPrice.toString(),
                     rating = hotel.rating.toFloat(),
                     reviews = hotel.numberOfReviews,
                     imageUrl = imageUrl,

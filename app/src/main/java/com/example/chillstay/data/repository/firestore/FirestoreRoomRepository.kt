@@ -1,14 +1,15 @@
 package com.example.chillstay.data.repository.firestore
 
 import android.util.Log
-import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.Room
 import com.example.chillstay.domain.repository.RoomRepository
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
+import kotlin.math.min
 
 class FirestoreRoomRepository @Inject constructor(
     private val firestore: FirebaseFirestore
@@ -95,15 +96,91 @@ class FirestoreRoomRepository @Inject constructor(
         }
     }
 
+    // Helper: recompute minPrice by scanning rooms of a hotel
+    private suspend fun recomputeMinPriceForHotel(hotelId: String) {
+        try {
+            val roomsSnap = firestore.collection("rooms")
+                .whereEqualTo("hotelId", hotelId)
+                .get()
+                .await()
+
+            val minPrice: Double? = roomsSnap.documents
+                .mapNotNull { it.getDouble("price") }
+                .minOrNull()
+
+            val hotelRef = firestore.collection("hotels").document(hotelId)
+            if (minPrice == null) {
+                // No rooms -> remove minPrice or set null
+                hotelRef.update("minPrice", null).await()
+                Log.d(LOG_TAG, "Recomputed minPrice for hotelId=$hotelId -> null (no rooms)")
+            } else {
+                hotelRef.update("minPrice", minPrice).await()
+                Log.d(LOG_TAG, "Recomputed minPrice for hotelId=$hotelId -> $minPrice")
+            }
+        } catch (e: Exception) {
+            Log.e(LOG_TAG, "Failed to recompute minPrice for hotelId=$hotelId: ${e.message}", e)
+        }
+    }
+
     override suspend fun createRoom(room: Room): String {
         try {
-            Log.d(LOG_TAG, "Creating room in Firestore")
-            val data = roomToMap(room)
-            val docRef = firestore.collection("rooms")
-                .add(data)
-                .await()
-            Log.d(LOG_TAG, "Created room with id=${docRef.id}")
-            return docRef.id
+            Log.d(LOG_TAG, "Creating room in Firestore (with hotel update)")
+
+            // prepare new docRef with client-generated id so we can write it inside transaction
+            val docRef = firestore.collection("rooms").document()
+            val newRoomId = docRef.id
+
+            // Build data map (roomToMap should not include id, or if it does, override)
+            val data = roomToMap(room).toMutableMap()
+            // ensure id and hotelId are present
+            data["hotelId"] = room.hotelId
+            // optionally set id field in room doc if you store it there
+            data["id"] = newRoomId
+
+            // run transaction: create room doc and update hotel's roomIds + minPrice
+            firestore.runTransaction { transaction ->
+                // create room doc
+                transaction.set(docRef, data)
+
+                // update hotel doc: add room id to roomIds array and update minPrice if needed
+                val hotelRef = firestore.collection("hotels").document(room.hotelId)
+                val hotelSnap = try {
+                    transaction.get(hotelRef)
+                } catch (ex: Exception) {
+                    // hotel not found or read error; let it propagate out of transaction
+                    throw ex
+                }
+
+                if (!hotelSnap.exists()) {
+                    // If hotel doesn't exist — we could throw or just create minimal hotel fields.
+                    // Here we choose to create a minimal hotel doc with roomIds and minPrice
+                    transaction.set(hotelRef, mapOf(
+                        "roomIds" to listOf(newRoomId),
+                        "minPrice" to room.price
+                    ), SetOptions.merge())
+                } else {
+                    val currentMin = hotelSnap.getDouble("minPrice")
+                    val newPrice = room.price
+                    val computedMin = if (currentMin == null) {
+                        newPrice
+                    } else run {
+                        min(currentMin, newPrice)
+                    }
+
+                    // Add the room id into roomIds atomically
+                    transaction.update(hotelRef, "roomIds", FieldValue.arrayUnion(newRoomId))
+
+                    // If computedMin is not null, update minPrice
+                    transaction.update(hotelRef, "minPrice", computedMin)
+                }
+
+                // return the new id as transaction result
+                newRoomId
+            }.await().also {
+                Log.d(LOG_TAG, "Created room with id=$it and updated hotel=${room.hotelId}")
+            }
+
+            return newRoomId
         } catch (e: FirebaseFirestoreException) {
             Log.e(LOG_TAG, "Firestore error creating room: ${e.message}", e)
             throw e
@@ -112,6 +189,75 @@ class FirestoreRoomRepository @Inject constructor(
             throw e
         }
     }
+
+    override suspend fun updateRoom(room: Room) {
+        try {
+            Log.d(LOG_TAG, "Updating room id=${room.id} (and update hotel if needed)")
+
+            val roomRef = firestore.collection("rooms").document(room.id)
+            val hotelRef = firestore.collection("hotels").document(room.hotelId)
+
+            // Prepare map to write (similar to your previous roomToMap)
+            val data = roomToMap(room)
+
+            // We'll track whether we need to recompute minPrice after transaction
+            var needRecomputeMinAfterTxn = false
+            var hotelIdForRecompute: String? = null
+
+            // Run transaction to update room and update hotel's minPrice optimistically
+            firestore.runTransaction { transaction ->
+                // Read the existing room (may throw if not exists)
+                val oldRoomSnap = transaction.get(roomRef)
+                val oldPrice = oldRoomSnap.getDouble("price")
+
+                // Update the room (merge semantics)
+                // Transaction.set with SetOptions.merge is allowed
+                transaction.set(roomRef, data, SetOptions.merge())
+
+                // Read hotel
+                val hotelSnap = transaction.get(hotelRef)
+                val currentMin = hotelSnap.getDouble("minPrice")
+
+                val newPrice = room.price
+
+                // If no currentMin -> set it to newPrice if newPrice != null
+                if (currentMin == null) {
+                    transaction.update(hotelRef, "minPrice", newPrice)
+                } else {
+                    if (newPrice < currentMin) {
+                        // new price becomes new min
+                        transaction.update(hotelRef, "minPrice", newPrice)
+                    } else {
+                        // newPrice >= currentMin
+                        // but if oldPrice equals currentMin and newPrice > oldPrice then min may need recompute
+                        if (oldPrice != null && oldPrice == currentMin && newPrice > oldPrice) {
+                            // mark to recompute min AFTER transaction (can't query inside transaction)
+                            needRecomputeMinAfterTxn = true
+                            hotelIdForRecompute = room.hotelId
+                            // we don't change min here; we will recompute after txn completes
+                        }
+                        // otherwise nothing to do
+                    }
+                }
+                // Return something (unused)
+                null
+            }.await()
+
+            Log.d(LOG_TAG, "Updated room id=${room.id}. recomputeNeeded=$needRecomputeMinAfterTxn")
+
+            // If needed, recompute minPrice by scanning rooms
+            if (needRecomputeMinAfterTxn && hotelIdForRecompute != null) {
+                recomputeMinPriceForHotel(hotelIdForRecompute)
+            }
+        } catch (e: FirebaseFirestoreException) {
+            Log.e(LOG_TAG, "Firestore error updating room id=${room.id}: ${e.message}", e)
+            throw e
+        } catch (e: Exception) {
+            Log.e(LOG_TAG, "Unexpected error updating room id=${room.id}: ${e.message}", e)
+            throw e
+        }
+    }
+
 
     private fun roomToMap(room: Room): Map<String, Any?> {
         val gallery = mapOf(
@@ -135,23 +281,5 @@ class FirestoreRoomRepository @Inject constructor(
             "gallery" to gallery,
             "status" to room.status.name
         )
-    }
-
-    override suspend fun updateRoom(room: Room) {
-        try {
-            Log.d(LOG_TAG, "Updating hotel id=${room.id}")
-            val data = roomToMap(room)
-            firestore.collection("rooms")
-                .document(room.id)
-                .set(data, SetOptions.merge())
-                .await()
-            Log.d(LOG_TAG, "Updated room id=${room.id}")
-        } catch (e: FirebaseFirestoreException) {
-            Log.e(LOG_TAG, "Firestore error updating room id=${room.id}: ${e.message}", e)
-            throw e
-        } catch (e: Exception) {
-            Log.e(LOG_TAG, "Unexpected error updating room id=${room.id}: ${e.message}", e)
-            throw e
-        }
     }
 }
