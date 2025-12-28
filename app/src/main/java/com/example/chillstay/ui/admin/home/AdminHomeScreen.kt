@@ -26,6 +26,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.chillstay.R
 import org.koin.androidx.compose.koinViewModel
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+
+import com.example.chillstay.ui.components.ResponsiveContainer
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminHomeScreen(
     onNavigateToAccommodation: () -> Unit = {},
@@ -37,6 +43,7 @@ fun AdminHomeScreen(
     onNavigateToPrice: () -> Unit = {},
     onNavigateToCalendar: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
+    onNavigateToAuth: () -> Unit = {},
     viewModel: AdminHomeViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -55,6 +62,7 @@ fun AdminHomeScreen(
                 is AdminHomeEffect.NavigateToPrice -> onNavigateToPrice()
                 is AdminHomeEffect.NavigateToCalendar -> onNavigateToCalendar()
                 is AdminHomeEffect.NavigateToProfile -> onNavigateToProfile()
+                is AdminHomeEffect.NavigateToAuth -> onNavigateToAuth()
                 is AdminHomeEffect.ShowError -> {
                 }
             }
@@ -66,108 +74,120 @@ fun AdminHomeScreen(
             .fillMaxSize()
             .background(Color.White)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            // Header
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-                    .background(color = tealColor)
-                    .padding(horizontal = 24.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Text(
-                    text = "Chillstay",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Content
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Greeting
-                Text(
-                    text = uiState.greeting,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF212121)
-                )
-
-                // Menu Buttons
-                MenuButton(
-                    text = "Accommodation",
-                    backgroundColor = tealColor,
-                    onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToAccommodation) }
-                )
-
-                MenuButton(
-                    text = "Voucher",
-                    backgroundColor = tealColor,
-                    onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToVoucher) }
-                )
-
-                MenuButton(
-                    text = "Customer",
-                    backgroundColor = tealColor,
-                    onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToCustomer) }
-                )
-
-                MenuButton(
-                    text = "Notification",
-                    backgroundColor = tealColor,
-                    onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToNotification) }
-                )
-
-                MenuButton(
-                    text = "Booking",
-                    backgroundColor = tealColor,
-                    onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToBooking) }
-                )
-
-                StatisticsButton(
-                    text = "Statistics",
-                    backgroundColor = tealColor,
-                    isExpanded = uiState.isStatisticsExpanded,
-                    onToggle = { viewModel.onEvent(AdminHomeIntent.ToggleStatistics) }
-                )
-
-                // Secondary Buttons - chỉ hiển thị khi Statistics được mở
+        ResponsiveContainer {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = "Chillstay",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        },
+                        actions = {
+                            IconButton(onClick = { viewModel.onEvent(AdminHomeIntent.SignOut) }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                    contentDescription = "Logout",
+                                    tint = Color.White
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = tealColor
+                        )
+                    )
+                },
+                containerColor = Color.White
+            ) { paddingValues ->
                 Column(
-                    modifier = Modifier.animateContentSize()
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .verticalScroll(rememberScrollState())
                 ) {
-                    if (uiState.isStatisticsExpanded) {
-                        MenuButton(
-                            text = "Accommodation",
-                            backgroundColor = lightGray,
-                            textColor = Color.Black,
-                            onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToAccommodation) }
-                        )
+                    // Content
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                            .padding(top = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Greeting
+                    Text(
+                        text = uiState.greeting,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF212121)
+                    )
 
-                        MenuButton(
-                            text = "Customer",
-                            backgroundColor = lightGray,
-                            textColor = Color.Black,
-                            onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToCustomer) }
-                        )
+                    // Menu Buttons
+                    MenuButton(
+                        text = "Accommodation",
+                        backgroundColor = tealColor,
+                        onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToAccommodation) }
+                    )
+
+                    MenuButton(
+                        text = "Voucher",
+                        backgroundColor = tealColor,
+                        onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToVoucher) }
+                    )
+
+                    MenuButton(
+                        text = "Customer",
+                        backgroundColor = tealColor,
+                        onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToCustomer) }
+                    )
+
+                    MenuButton(
+                        text = "Notification",
+                        backgroundColor = tealColor,
+                        onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToNotification) }
+                    )
+
+                    MenuButton(
+                        text = "Booking",
+                        backgroundColor = tealColor,
+                        onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToBooking) }
+                    )
+
+                    StatisticsButton(
+                        text = "Statistics",
+                        backgroundColor = tealColor,
+                        isExpanded = uiState.isStatisticsExpanded,
+                        onToggle = { viewModel.onEvent(AdminHomeIntent.ToggleStatistics) }
+                    )
+
+                    // Secondary Buttons - chỉ hiển thị khi Statistics được mở
+                    Column(
+                        modifier = Modifier.animateContentSize()
+                    ) {
+                        if (uiState.isStatisticsExpanded) {
+                            MenuButton(
+                                text = "Accommodation",
+                                backgroundColor = lightGray,
+                                textColor = Color.Black,
+                                onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToAccommodation) }
+                            )
+
+                            MenuButton(
+                                text = "Customer",
+                                backgroundColor = lightGray,
+                                textColor = Color.Black,
+                                onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToCustomer) }
+                            )
+                        }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
+            }
         }
-
     }
 }
 
@@ -259,16 +279,18 @@ fun StatisticsButton(
     }
 }
 
+/*
 @SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun AdminHomeScreenPreview() {
     MaterialTheme {
-        AdminHomeScreen(
-            viewModel = AdminHomeViewModel()
-        )
+        // AdminHomeScreen(
+        //    viewModel = AdminHomeViewModel()
+        // )
     }
 }
+*/
 
 @Preview(showBackground = true)
 @Composable

@@ -1,21 +1,23 @@
 package com.example.chillstay.ui.bill
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.chillstay.domain.model.Booking
-import com.example.chillstay.domain.model.Hotel
-import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
+import com.example.chillstay.core.common.Result
+import com.example.chillstay.domain.usecase.booking.GetBookingByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
+import com.example.chillstay.domain.usecase.room.GetRoomByIdUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import android.util.Log
 
 class BillViewModel(
-    private val getUserBookings: GetUserBookingsUseCase,
-    private val getHotelById: GetHotelByIdUseCase
+    private val getBookingById: GetBookingByIdUseCase,
+    private val getHotelById: GetHotelByIdUseCase,
+    private val getRoomById: GetRoomByIdUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BillUiState())
@@ -38,11 +40,37 @@ class BillViewModel(
         
         viewModelScope.launch {
             try {
-                // For now, we'll simulate loading bill details
-                // In a real implementation, you'd have a GetBookingByIdUseCase
-                _state.update { 
-                    it.updateIsLoading(false)
-                        .updateError("Bill details loading not implemented yet")
+                when (val bookingResult = getBookingById(bookingId)) {
+                    is Result.Success -> {
+                        val booking = bookingResult.data
+                        if (booking != null) {
+                            // Load hotel
+                            val hotelResult = getHotelById(booking.hotelId).first()
+                            val hotel = if (hotelResult is Result.Success) hotelResult.data else null
+                            
+                            // Load room
+                            val roomResult = getRoomById(booking.roomId).first()
+                            val room = if (roomResult is Result.Success) roomResult.data else null
+                            
+                            _state.update { 
+                                it.updateBooking(booking)
+                                  .updateHotel(hotel)
+                                  .updateRoom(room)
+                                  .updateIsLoading(false)
+                            }
+                        } else {
+                            _state.update { 
+                                it.updateIsLoading(false)
+                                  .updateError("Booking not found")
+                            }
+                        }
+                    }
+                    is Result.Error -> {
+                         _state.update { 
+                            it.updateIsLoading(false)
+                              .updateError(bookingResult.throwable.message ?: "Failed to load booking")
+                        }
+                    }
                 }
             } catch (exception: Exception) {
                 Log.e("BillViewModel", "Exception loading bill details: ${exception.message}")
@@ -103,4 +131,3 @@ class BillViewModel(
         }
     }
 }
-

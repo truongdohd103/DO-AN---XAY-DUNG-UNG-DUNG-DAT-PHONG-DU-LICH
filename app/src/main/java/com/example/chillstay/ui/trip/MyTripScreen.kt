@@ -443,7 +443,6 @@ fun NewTripCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(20.dp)
                         .background(
                             color = Color(0xE6666666),
                             shape = RoundedCornerShape(12.dp)
@@ -456,7 +455,9 @@ fun NewTripCard(
                         text = status,
                         color = Color.White,
                         fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -473,7 +474,7 @@ fun NewTripCard(
                     color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
@@ -528,7 +529,7 @@ fun NewTripCard(
 
             // Action buttons section
             Column(
-                modifier = Modifier.width(120.dp),
+                modifier = Modifier.width(130.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Status badge
@@ -544,7 +545,9 @@ fun NewTripCard(
                         text = status,
                         color = Color.White,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -557,19 +560,20 @@ fun NewTripCard(
                         Button(
                             onClick = onWriteReview,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(27.dp),
+                                .fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF1AB6B6)
                             ),
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = if (hasReview) "Edit Review" else "Write Review",
                                 color = Color.Black,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
 
@@ -579,20 +583,21 @@ fun NewTripCard(
                         OutlinedButton(
                             onClick = onViewBill,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(29.dp),
+                                .fillMaxWidth(),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = Color(0xFF999999)
                             ),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF666666)),
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 7.dp)
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = "View Bill",
                                 color = Color(0xFF999999),
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
 
@@ -603,20 +608,21 @@ fun NewTripCard(
                         OutlinedButton(
                             onClick = onCancelBooking,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(27.dp),
+                                .fillMaxWidth(),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = Color(0xFFFF4444)
                             ),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF4444)),
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = "Cancel Booking",
                                 color = Color(0xFFFF4444),
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -625,19 +631,20 @@ fun NewTripCard(
                         Button(
                             onClick = onHotelClick,
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(27.dp),
+                                .fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF1AB6B6)
                             ),
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = "Rebook",
                                 color = Color.Black,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }

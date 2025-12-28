@@ -45,6 +45,8 @@ import com.example.chillstay.domain.model.decorativeEmojis
 import org.koin.androidx.compose.koinViewModel
 import androidx.core.graphics.toColorInt
 
+import com.example.chillstay.ui.components.ResponsiveContainer
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VoucherManageScreen(
@@ -76,59 +78,59 @@ fun VoucherManageScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Voucher",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+        ResponsiveContainer {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = "Voucher",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { viewModel.onEvent(VoucherManageIntent.NavigateBack) }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back"
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color(0xFF1AB6B6),
+                            navigationIconContentColor = Color.White,
+                            titleContentColor = Color.White,
+                            actionIconContentColor = Color.White
+                        )
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.onEvent(VoucherManageIntent.NavigateBack) }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                containerColor = Color.White,
+                floatingActionButton = {
+                    FloatingActionButton(
+                        onClick = { viewModel.onEvent(VoucherManageIntent.CreateNewVoucher) },
+                        containerColor = Color(0xFF1AB6B6),
+                        contentColor = Color.White,
+                        modifier = Modifier.shadow(6.dp, CircleShape)
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = "Create New Code")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1AB6B6),
-                    navigationIconContentColor = Color.White,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                )
-            )
-        },
-        containerColor = Color.White,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.onEvent(VoucherManageIntent.CreateNewVoucher) },
-                containerColor = Color(0xFF1AB6B6),
-                contentColor = Color.White,
-                modifier = Modifier.shadow(6.dp, CircleShape)
-            ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Create New Code")
-            }
-        }
-    ) { innerPadding ->
-        // FIX 1: Chỉ dùng innerPadding 1 lần
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(innerPadding)
-                    .padding(horizontal = 24.dp)
-                    .padding(top = 16.dp, bottom = 100.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+                }
+            ) { innerPadding ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(innerPadding)
+                        .padding(horizontal = 24.dp)
+                        .padding(top = 16.dp, bottom = 100.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                 // Search Bar
                 SearchBar(
                     query = uiState.searchQuery,
@@ -236,6 +238,7 @@ fun VoucherManageScreen(
             }
         }
     }
+}
 
     // Delete Confirmation Dialog
     showDeleteDialog?.let { voucherId ->

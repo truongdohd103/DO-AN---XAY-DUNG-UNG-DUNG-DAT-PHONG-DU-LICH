@@ -29,11 +29,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.PropertyType
+import com.example.chillstay.ui.components.ResponsiveContainer
 import org.koin.androidx.compose.koinViewModel
 
 @Suppress("DUPLICATE_BRANCH_CONDITION_IN_WHEN")
@@ -107,73 +114,41 @@ fun AccommodationEditScreen(
     val headerTitle =
         if (uiState.mode == Mode.Edit) "Edit Accommodation" else "Create Accommodation"
 
-    Scaffold(
-        containerColor = Color.Transparent
-    ) { innerPadding ->
-        val contentPadding = PaddingValues(
-            start = innerPadding.calculateStartPadding(LayoutDirection.Ltr),
-            top = 0.dp,
-            end = innerPadding.calculateEndPadding(LayoutDirection.Ltr),
-            bottom = innerPadding.calculateBottomPadding()
-        )
-
-        Column(
-            modifier = Modifier
-                .padding(contentPadding)
-                .fillMaxWidth()
-                .background(Color.White)
-                .shadow(
-                    40.dp,
-                    RoundedCornerShape(20.dp),
-                    spotColor = Color.Black.copy(alpha = 0.15f)
-                )
-                .clip(RoundedCornerShape(20.dp))
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-                    .background(Color(0xFF1AB5B5))
-                    .clip(RoundedCornerShape(20.dp))
-                    .border(0.5.dp, Color(0xFFF0F0F0), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    modifier = Modifier.padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { viewModel.onEvent(AccommodationEditIntent.NavigateBack) },
-                        contentAlignment = Alignment.Center
-                    ) {
+    ResponsiveContainer {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
                         Text(
-                            text = "←",
-                            fontSize = 18.sp,
+                            text = headerTitle,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
-                    }
-                    Text(
-                        text = headerTitle,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        lineHeight = 30.sp
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.onEvent(AccommodationEditIntent.NavigateBack) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color(0xFF1AB5B5)
                     )
-                }
-            }
-
+                )
+            },
+            containerColor = Color.White
+        ) { innerPadding ->
             // Scrollable Content
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
+                    .fillMaxSize()
+                    .padding(innerPadding)
                     .verticalScroll(rememberScrollState())
-                    .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 124.dp),
+                    .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 // Header

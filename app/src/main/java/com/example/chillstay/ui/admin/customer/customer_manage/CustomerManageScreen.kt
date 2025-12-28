@@ -26,6 +26,8 @@ import com.example.chillstay.domain.model.User
 import com.example.chillstay.domain.model.VipLevel
 import org.koin.androidx.compose.koinViewModel
 
+import com.example.chillstay.ui.components.ResponsiveContainer
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerManageScreen(
@@ -59,39 +61,39 @@ fun CustomerManageScreen(
             .fillMaxSize()
             .background(Color.White)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Header
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = tealColor
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(72.dp)
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
+        ResponsiveContainer {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = "Customers",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = onBack) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = tealColor
                         )
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Text(
-                        text = "Customers",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
                     )
-                }
-            }
+                },
+                containerColor = Color.White
+            ) { paddingValues ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
 
             // Content
             when {
@@ -248,6 +250,8 @@ fun CustomerManageScreen(
                     }
                 }
             }
+        }
+        }
         }
     }
 }

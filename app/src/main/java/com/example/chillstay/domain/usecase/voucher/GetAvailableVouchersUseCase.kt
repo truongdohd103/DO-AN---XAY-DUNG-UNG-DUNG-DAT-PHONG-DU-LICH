@@ -11,17 +11,24 @@ class GetAvailableVouchersUseCase constructor(
 ) {
     suspend operator fun invoke(
         userId: String? = null,
-        hotelId: String? = null
+        hotelId: String? = null,
+        ignoreDateValidation: Boolean = false
     ): Result<List<Voucher>> {
         return try {
             val now = Date()
-            val vouchers = voucherRepository.getVouchers()
+            val baseVouchers = if (userId != null) {
+                voucherRepository.getUserVouchers(userId)
+            } else {
+                voucherRepository.getVouchers()
+            }
+
+            val vouchers = baseVouchers
                 .filter { voucher ->
                     // Filter by status
                     voucher.status == VoucherStatus.ACTIVE &&
-                    // Filter by validity period
-                    voucher.validFrom.toDate().before(now) &&
-                    voucher.validTo.toDate().after(now) &&
+                    // Filter by validity period (optional)
+                    (ignoreDateValidation || (voucher.validFrom.toDate().before(now) &&
+                    voucher.validTo.toDate().after(now))) &&
                     // Filter by hotel if specified
                     (hotelId == null || voucher.applyForHotel == null || 
                      voucher.applyForHotel.contains(hotelId))

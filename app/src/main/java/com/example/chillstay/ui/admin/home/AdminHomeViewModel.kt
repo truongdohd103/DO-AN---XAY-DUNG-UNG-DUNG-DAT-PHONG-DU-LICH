@@ -2,9 +2,12 @@ package com.example.chillstay.ui.admin.home
 
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
+import com.example.chillstay.domain.usecase.user.SignOutUseCase
 import kotlinx.coroutines.launch
 
-class AdminHomeViewModel() : BaseViewModel<AdminHomeUiState, AdminHomeIntent, AdminHomeEffect>(AdminHomeUiState()) {
+class AdminHomeViewModel(
+    private val signOutUseCase: SignOutUseCase
+) : BaseViewModel<AdminHomeUiState, AdminHomeIntent, AdminHomeEffect>(AdminHomeUiState()) {
 
     val uiState = state
 
@@ -56,6 +59,12 @@ class AdminHomeViewModel() : BaseViewModel<AdminHomeUiState, AdminHomeIntent, Ad
             is AdminHomeIntent.NavigateToProfile -> {
                 viewModelScope.launch {
                     sendEffect { AdminHomeEffect.NavigateToProfile }
+                }
+            }
+            is AdminHomeIntent.SignOut -> {
+                viewModelScope.launch {
+                    signOutUseCase()
+                    sendEffect { AdminHomeEffect.NavigateToAuth }
                 }
             }
             is AdminHomeIntent.ClearError -> {

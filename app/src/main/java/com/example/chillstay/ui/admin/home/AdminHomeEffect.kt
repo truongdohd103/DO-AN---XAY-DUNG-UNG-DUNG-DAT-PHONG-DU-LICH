@@ -12,5 +12,6 @@ sealed interface AdminHomeEffect : UiEffect {
     object NavigateToPrice : AdminHomeEffect
     object NavigateToCalendar : AdminHomeEffect
     object NavigateToProfile : AdminHomeEffect
+    object NavigateToAuth : AdminHomeEffect
     data class ShowError(val message: String) : AdminHomeEffect
 }

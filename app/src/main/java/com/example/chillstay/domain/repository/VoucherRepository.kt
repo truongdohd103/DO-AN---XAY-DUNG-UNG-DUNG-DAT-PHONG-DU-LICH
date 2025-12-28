@@ -10,6 +10,7 @@ interface VoucherRepository {
     suspend fun updateVoucher(voucher: Voucher)
     
     // Claim methods
+    suspend fun getUserVouchers(userId: String): List<Voucher>
     suspend fun claimVoucher(voucherId: String, userId: String): Boolean
     suspend fun isVoucherClaimed(voucherId: String, userId: String): Boolean
     

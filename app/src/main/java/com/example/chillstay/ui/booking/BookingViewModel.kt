@@ -10,11 +10,13 @@ import com.example.chillstay.domain.usecase.booking.CreateBookingUseCase
 import com.example.chillstay.domain.usecase.booking.GetBookingByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.room.GetRoomByIdUseCase
+import com.example.chillstay.domain.usecase.voucher.GetUserVouchersUseCase
 import com.example.chillstay.domain.usecase.voucher.GetAvailableVouchersUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.google.firebase.Timestamp
 import java.time.LocalDate
+import com.google.firebase.auth.FirebaseAuth
 
 class BookingViewModel(
     private val getHotelByIdUseCase: GetHotelByIdUseCase,
@@ -81,11 +83,16 @@ class BookingViewModel(
                     is com.example.chillstay.core.common.Result.Error -> null
                 }
                 
-                // Load available vouchers
-                val vouchersResult = getAvailableVouchersUseCase()
-                val vouchers = when (vouchersResult) {
-                    is com.example.chillstay.core.common.Result.Success -> vouchersResult.data
-                    is com.example.chillstay.core.common.Result.Error -> emptyList()
+                // Load user's vouchers
+                val userId = FirebaseAuth.getInstance().currentUser?.uid
+                val vouchers = if (userId != null) {
+                    val vouchersResult = getAvailableVouchersUseCase(userId = userId, hotelId = hotelId)
+                    when (vouchersResult) {
+                        is com.example.chillstay.core.common.Result.Success -> vouchersResult.data
+                        is com.example.chillstay.core.common.Result.Error -> emptyList()
+                    }
+                } else {
+                    emptyList()
                 }
                 
                 // Calculate price breakdown
@@ -135,17 +142,25 @@ class BookingViewModel(
                                 is com.example.chillstay.core.common.Result.Error -> null
                             }
                             
-                            // Load available vouchers
-                            val vouchersResult = getAvailableVouchersUseCase()
-                            val vouchers = when (vouchersResult) {
-                                is com.example.chillstay.core.common.Result.Success -> vouchersResult.data
-                                is com.example.chillstay.core.common.Result.Error -> emptyList()
+                            // Load user's vouchers
+                            val userId = FirebaseAuth.getInstance().currentUser?.uid
+                            val vouchers = if (userId != null) {
+                                val vouchersResult = getAvailableVouchersUseCase(userId = userId, hotelId = booking.hotelId)
+                                when (vouchersResult) {
+                                    is com.example.chillstay.core.common.Result.Success -> vouchersResult.data
+                                    is com.example.chillstay.core.common.Result.Error -> emptyList()
+                                }
+                            } else {
+                                emptyList()
                             }
                             
                             // Calculate price breakdown
                             val dateFrom = java.time.LocalDate.parse(booking.dateFrom)
                             val dateTo = java.time.LocalDate.parse(booking.dateTo)
-                            val priceBreakdown = calculatePriceBreakdown(room, dateFrom, dateTo)
+                            
+                            val appliedVouchers = vouchers.filter { it.id in booking.appliedVouchers }
+                            
+                            val priceBreakdown = calculatePriceBreakdown(room, dateFrom, dateTo, booking.rooms, appliedVouchers)
                             
                             _state.value = _state.value.copy(
                                 isLoading = false,
@@ -154,6 +169,7 @@ class BookingViewModel(
                                 dateFrom = dateFrom,
                                 dateTo = dateTo,
                                 availableVouchers = vouchers,
+                                appliedVouchers = appliedVouchers,
                                 priceBreakdown = priceBreakdown,
                                 hasInitialDates = true
                             )
@@ -191,7 +207,8 @@ class BookingViewModel(
                 currentState.room,
                 currentState.dateFrom,
                 currentState.dateTo,
-                rooms
+                rooms,
+                currentState.appliedVouchers
             )
         )
     }
@@ -218,7 +235,8 @@ class BookingViewModel(
                 currentState.room,
                 dateFrom,
                 safeTo,
-                currentState.rooms
+                currentState.rooms,
+                currentState.appliedVouchers
             ),
             datesUserSelected = true
         )
@@ -228,17 +246,28 @@ class BookingViewModel(
         val currentState = _state.value
         val voucher = currentState.availableVouchers.find { it.code == voucherCode }
         
-        if (voucher != null && !currentState.appliedVouchers.any { it.id == voucher.id }) {
-            val updatedAppliedVouchers = currentState.appliedVouchers + voucher
-            val voucherDiscount = calculateVoucherDiscount(voucher, currentState.priceBreakdown.roomPrice)
-            
-            _state.value = currentState.copy(
-                appliedVouchers = updatedAppliedVouchers,
-                priceBreakdown = currentState.priceBreakdown.copy(
-                    voucherDiscount = voucherDiscount
-                )
-            )
+        if (voucher == null) {
+            _state.value = currentState.copy(error = "Voucher not found")
+            return
         }
+
+        if (currentState.appliedVouchers.any { it.id == voucher.id }) {
+            _state.value = currentState.copy(error = "Voucher already applied")
+            return
+        }
+
+        val updatedAppliedVouchers = currentState.appliedVouchers + voucher
+        val totalVoucherDiscount = updatedAppliedVouchers.sumOf { 
+            calculateVoucherDiscount(it, currentState.priceBreakdown.roomPrice) 
+        }
+        
+        _state.value = currentState.copy(
+            appliedVouchers = updatedAppliedVouchers,
+            priceBreakdown = currentState.priceBreakdown.copy(
+                voucherDiscount = totalVoucherDiscount
+            ),
+            error = null
+        )
     }
 
     private fun removeVoucher(voucherId: String) {
@@ -333,7 +362,8 @@ class BookingViewModel(
         room: com.example.chillstay.domain.model.Room?,
         dateFrom: LocalDate,
         dateTo: LocalDate,
-        rooms: Int = 1
+        rooms: Int = 1,
+        appliedVouchers: List<com.example.chillstay.domain.model.Voucher> = emptyList()
     ): PriceBreakdown {
         if (room == null) return PriceBreakdown()
         
@@ -343,13 +373,17 @@ class BookingViewModel(
         val taxes = roomPrice * 0.1 // 10% taxes
         val discount = 0.0 // TODO: Calculate based on promotions
         
+        val voucherDiscount = appliedVouchers.sumOf { 
+            calculateVoucherDiscount(it, roomPrice) 
+        }
+
         return PriceBreakdown(
             roomPrice = roomPrice,
             serviceFee = serviceFee,
             taxes = taxes,
             discount = discount,
-            voucherDiscount = 0.0,
-            totalPrice = roomPrice + serviceFee + taxes - discount
+            voucherDiscount = voucherDiscount,
+            totalPrice = roomPrice + serviceFee + taxes - discount - voucherDiscount
         )
     }
 

@@ -26,19 +26,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,6 +68,7 @@ import com.example.chillstay.R
 import com.example.chillstay.domain.model.Voucher
 import com.example.chillstay.domain.model.VoucherType
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditEffect
+import com.example.chillstay.ui.components.ResponsiveContainer
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -122,69 +128,49 @@ fun VoucherEditScreen(
 
     val headerTitle = if (uiState.mode == Mode.Edit) "Edit Voucher" else "Create Voucher"
 
-    Scaffold(
-        containerColor = Color.White,
-        bottomBar = {
-            BottomActionBar(
-                mode = uiState.mode,
-                isSaving = uiState.isSaving,
-                onSaveClick = { viewModel.onEvent(VoucherEditIntent.Save) },
-                onCreateClick = { viewModel.onEvent(VoucherEditIntent.Save) },
-                onSelectAccommodationClick = { onSelectAccommodation(uiState.voucherId ?: "") },
-                uiState = uiState
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White)
-        ) {
-            // Header - Fixed style like AccommodationEdit
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-                    .background(Color(0xFF1AB6B6))
-                    .clip(RoundedCornerShape(20.dp))
-                    .border(0.5.dp, Color(0xFFF0F0F0), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    modifier = Modifier.padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { viewModel.onEvent(VoucherEditIntent.NavigateBack) },
-                        contentAlignment = Alignment.Center
-                    ) {
+    ResponsiveContainer {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
                         Text(
-                            text = "←",
-                            fontSize = 18.sp,
+                            text = headerTitle,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
-                    }
-                    Text(
-                        text = headerTitle,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        lineHeight = 30.sp
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.onEvent(VoucherEditIntent.NavigateBack) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color(0xFF1AB6B6)
                     )
-                }
+                )
+            },
+            containerColor = Color.White,
+            bottomBar = {
+                BottomActionBar(
+                    mode = uiState.mode,
+                    isSaving = uiState.isSaving,
+                    onSaveClick = { viewModel.onEvent(VoucherEditIntent.Save) },
+                    onCreateClick = { viewModel.onEvent(VoucherEditIntent.Save) },
+                    onSelectAccommodationClick = { onSelectAccommodation(uiState.voucherId ?: "") },
+                    uiState = uiState
+                )
             }
-
-            // Content
+        ) { paddingValues ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
@@ -273,6 +259,7 @@ fun VoucherEditScreen(
         )
     }
 }
+
 
 // ==================== Section Components ====================
 @Composable
