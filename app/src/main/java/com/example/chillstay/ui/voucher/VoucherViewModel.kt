@@ -45,8 +45,10 @@ class VoucherViewModel(
             _state.value = _state.value.copy(isLoading = true, error = null)
             
             try {
-                val userId = FirebaseAuth.getInstance().currentUser?.uid
-                val result = getAvailableVouchersUseCase(userId = userId)
+                // For the main voucher list (Deals), we want to show ALL available vouchers,
+                // not just the ones claimed by the user. So we pass userId = null to fetch public vouchers.
+                // The eligibility check and claiming happens in the detail screen.
+                val result = getAvailableVouchersUseCase(userId = null)
                 
                 when (result) {
                     is com.example.chillstay.core.common.Result.Success -> {
@@ -80,7 +82,8 @@ class VoucherViewModel(
             _state.value = _state.value.copy(isRefreshing = true, error = null)
             
             try {
-                val result = getAvailableVouchersUseCase(userId = userId)
+                // Always fetch public vouchers for the list, ignoring specific user ID filtering
+                val result = getAvailableVouchersUseCase(userId = null, ignoreDateValidation = true)
                 
                 when (result) {
                     is com.example.chillstay.core.common.Result.Success -> {

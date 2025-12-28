@@ -37,7 +37,6 @@ import com.example.chillstay.ui.booking.navigateToNewBooking
 import com.example.chillstay.ui.booking.navigateToBookingDetail
 import com.example.chillstay.ui.bookmark.bookmarkRoute
 import com.example.chillstay.ui.trip.tripRoute
-import com.example.chillstay.ui.trip.navigateToTrip
 import com.example.chillstay.ui.voucher.voucherRoutes
 import com.example.chillstay.ui.voucher.navigateToVoucherDetail
 import com.example.chillstay.ui.review.reviewRoute
@@ -50,6 +49,11 @@ import com.example.chillstay.ui.myreviews.myReviewsRoute
 import com.example.chillstay.ui.myreviews.navigateToMyReviews
 import com.example.chillstay.ui.allreviews.allReviewsRoute
 import com.example.chillstay.ui.allreviews.navigateToAllReviews
+import com.example.chillstay.ui.admin.home.AdminHomeScreen
+import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageScreen
+import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditScreen
+import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageScreen
+import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditScreen
 
 @Composable
 fun AppNavHost(
@@ -66,6 +70,12 @@ fun AppNavHost(
             when (effect) {
                 AuthEffect.NavigateToMain -> {
                     navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.AUTHENTICATION) { inclusive = true }
+                    }
+                }
+
+                AuthEffect.NavigateToAdminHome -> {
+                    navController.navigate(Routes.ADMIN_HOME) {
                         popUpTo(Routes.AUTHENTICATION) { inclusive = true }
                     }
                 }
@@ -113,20 +123,9 @@ fun AppNavHost(
                 "${Routes.MAIN}?tab=$tabVal"
             } else route
             scope.launch { OnboardingManager.setLastRoute(context, last) }
-            if (route.contains("${Routes.MAIN}")) {
+            if (route.contains(Routes.MAIN)) {
                 val tabInt = arguments?.getString("tab")?.toIntOrNull() ?: 0
                 scope.launch { OnboardingManager.setLastTab(context, tabInt) }
-            }
-        }
-    }
-
-    LaunchedEffect(computedStart) {
-        if (computedStart == Routes.MAIN) {
-            val last = OnboardingManager.getLastRoute(context)
-            if (last != null && last.startsWith("${Routes.MAIN}?tab=")) {
-                navController.navigate(last) {
-                    popUpTo(Routes.MAIN) { inclusive = true }
-                }
             }
         }
     }
@@ -338,6 +337,103 @@ fun AppNavHost(
         composable(Routes.VIP_STATUS) {
             VipStatusScreen(
                 onBackClick = { navController.popBackStack() }
+            )
+        }
+        composable(Routes.ADMIN_HOME) {
+            AdminHomeScreen(
+                onNavigateToAccommodation = { navController.navigate(Routes.ADMIN_ACCOMMODATION_MANAGE) },
+                onNavigateToVoucher = { navController.navigate(Routes.VOUCHER) },
+                onNavigateToCustomer = { /* TODO: Implement navigation */ },
+                onNavigateToNotification = { /* TODO: Implement navigation */ },
+                onNavigateToBooking = { /* TODO: Implement navigation */ },
+                onNavigateToStatistics = { /* TODO: Implement navigation */ },
+                onNavigateToPrice = { /* TODO: Implement navigation */ },
+                onNavigateToCalendar = { /* TODO: Implement navigation */ },
+                onNavigateToProfile = { navController.navigate(Routes.PROFILE) },
+                onNavigateToAuth = {
+                    navController.navigate(Routes.AUTHENTICATION) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Routes.ADMIN_ACCOMMODATION_MANAGE) {
+            AccommodationManageScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onCreateNew = {
+                    navController.navigate(Routes.ADMIN_ACCOMMODATION_EDIT)
+                },
+                onEdit = { hotel ->
+                    navController.navigate("${Routes.ADMIN_ACCOMMODATION_EDIT}?hotelId=${hotel.id}")
+                },
+                onInvalidate = { /* TODO: Implement navigation */ },
+                onDelete = { /* TODO: Implement navigation */ }
+            )
+        }
+        composable("${Routes.ADMIN_ACCOMMODATION_EDIT}?hotelId={hotelId}") { backStackEntry ->
+            val hotelId = backStackEntry.arguments?.getString("hotelId")
+            AccommodationEditScreen(
+                hotelId = hotelId,
+                onBack = { navController.popBackStack() },
+                onSaved = { hotel ->
+                    navController.popBackStack(
+                        route = Routes.ADMIN_ACCOMMODATION_MANAGE,
+                        inclusive = false
+                    )
+                },
+                onCreated = { hotel ->
+                    navController.popBackStack()
+                    // Navigate to room manage after create
+                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=${hotel.id}")
+                },
+                onOpenRooms = { hotelId ->
+                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=$hotelId")
+                }
+            )
+        }
+        composable("${Routes.ADMIN_ROOM_MANAGE}?hotelId={hotelId}") { backStackEntry ->
+            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
+            RoomManageScreen(
+                hotelId = hotelId,
+                onBackClick = { navController.popBackStack() },
+                onCreateRoomClick = {
+                    navController.navigate("${Routes.ADMIN_ROOM_EDIT}?hotelId=$hotelId")
+                },
+                onDeleteRoomClick = { /* TODO: Handle delete */ },
+                onEditRoomClick = { room ->
+                    navController.navigate("${Routes.ADMIN_ROOM_EDIT}?roomId=${room.id}&hotelId=$hotelId")
+                }
+            )
+        }
+        composable("${Routes.ADMIN_ROOM_EDIT}?roomId={roomId}&hotelId={hotelId}") { backStackEntry ->
+            val roomId = backStackEntry.arguments?.getString("roomId")
+            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
+            RoomEditScreen(
+                hotelId = hotelId,
+                roomId = roomId,
+                onBackClick = { navController.popBackStack() },
+                onCreateClick = { room ->
+                    navController.popBackStack()
+                    // Reload room list
+                },
+                onSaveClick = { room ->
+                    navController.popBackStack()
+                    // Reload room list
+                }
+            )
+        }
+        composable("${Routes.ADMIN_ROOM_EDIT}?hotelId={hotelId}") { backStackEntry ->
+            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
+            RoomEditScreen(
+                hotelId = hotelId,
+                roomId = null,
+                onBackClick = { navController.popBackStack() },
+                onCreateClick = { room ->
+                    navController.popBackStack()
+                },
+                onSaveClick = { room ->
+                    navController.popBackStack()
+                }
             )
         }
         searchRoute(

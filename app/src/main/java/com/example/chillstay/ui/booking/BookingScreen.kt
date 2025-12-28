@@ -124,6 +124,12 @@ fun BookingScreen(
                 }
                 is BookingEffect.NavigateToBookingDetail -> {}
                 is BookingEffect.RequireAuthentication -> {}
+                is BookingEffect.NavigateBack -> {
+                    onBackClick()
+                }
+                is BookingEffect.NavigateToPayment -> {
+                    // TODO: Navigate to payment
+                }
             }
         }
     }
@@ -242,6 +248,27 @@ fun BookingScreen(
                 )
             }
             
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            item {
+                // Voucher Section
+                VoucherSection(
+                    voucherCode = uiState.voucherCodeInput,
+                    onVoucherCodeChange = { viewModel.onEvent(BookingIntent.UpdateVoucherCodeInput(it)) },
+                    onApplyVoucher = { code -> 
+                        viewModel.onEvent(BookingIntent.UpdateVoucherCodeInput(code))
+                        viewModel.onEvent(BookingIntent.ApplyVoucher(code)) 
+                    },
+                    isApplying = uiState.isApplyingVoucher,
+                    voucherMessage = uiState.voucherMessage,
+                    appliedVouchers = uiState.appliedVouchers,
+                    availableVouchers = uiState.availableVouchers,
+                    onRemoveVoucher = { viewModel.onEvent(BookingIntent.RemoveVoucher(it)) }
+                )
+            }
+
             item {
                 Spacer(modifier = Modifier.height(16.dp))
             }

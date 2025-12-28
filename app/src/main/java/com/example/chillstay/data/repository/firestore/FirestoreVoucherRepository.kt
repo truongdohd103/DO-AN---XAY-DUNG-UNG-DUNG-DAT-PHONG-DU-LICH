@@ -167,6 +167,49 @@ class FirestoreVoucherRepository @Inject constructor(
         }
     }
 
+    override suspend fun getClaimedVouchers(userId: String): List<Voucher> {
+        return try {
+            Log.d("FirestoreVoucherRepository", "Fetching claimed vouchers for user: $userId")
+            
+            // 1. Get all claims for user
+            val claimsSnapshot = firestore.collection("voucher_claims")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+            
+            if (claimsSnapshot.isEmpty) {
+                return emptyList()
+            }
+            
+            val voucherIds = claimsSnapshot.documents.mapNotNull { it.getString("voucherId") }
+            
+            if (voucherIds.isEmpty()) {
+                return emptyList()
+            }
+            
+            // 2. Fetch vouchers by IDs
+            val vouchers = mutableListOf<Voucher>()
+            
+            // Chunking for Firestore whereIn limit (10)
+            voucherIds.chunked(10).forEach { chunk ->
+                val vouchersSnapshot = firestore.collection("vouchers")
+                    .whereIn(com.google.firebase.firestore.FieldPath.documentId(), chunk)
+                    .get()
+                    .await()
+                
+                vouchers.addAll(vouchersSnapshot.documents.mapNotNull { document ->
+                    document.toObject(Voucher::class.java)?.copy(id = document.id)
+                })
+            }
+            
+            Log.d("FirestoreVoucherRepository", "Successfully fetched ${vouchers.size} claimed vouchers")
+            vouchers
+        } catch (e: Exception) {
+            Log.e("FirestoreVoucherRepository", "Error fetching claimed vouchers: ${e.message}", e)
+            emptyList()
+        }
+    }
+
     // Eligibility methods
     override suspend fun checkVoucherEligibility(voucherId: String, userId: String): Pair<Boolean, String> {
         return try {
@@ -257,7 +300,64 @@ class FirestoreVoucherRepository @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e("FirestoreVoucherRepository", "Error checking eligibility: ${e.message}", e)
-            Pair(false, "Unable to check eligibility")
+            Pair(false, "Error checking eligibility")
+        }
+    }
+
+    // Usage methods
+    override suspend fun markVoucherAsUsed(voucherId: String, userId: String): Boolean {
+        return try {
+            Log.d("FirestoreVoucherRepository", "Marking voucher as used: $voucherId for user: $userId")
+            
+            // Check if claim exists
+            val claimsSnapshot = firestore.collection("voucher_claims")
+                .whereEqualTo("voucherId", voucherId)
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+            
+            if (!claimsSnapshot.isEmpty) {
+                // Update existing claim
+                val documentId = claimsSnapshot.documents.first().id
+                val updates = mapOf(
+                    "used" to true,
+                    "usedAt" to Date()
+                )
+                firestore.collection("voucher_claims").document(documentId).update(updates).await()
+                Log.d("FirestoreVoucherRepository", "Updated existing claim as used")
+            } else {
+                // Create new claim as used (implicit claim)
+                val claimData = mapOf(
+                    "voucherId" to voucherId,
+                    "userId" to userId,
+                    "claimedAt" to Date(),
+                    "createdAt" to Date(),
+                    "used" to true,
+                    "usedAt" to Date()
+                )
+                firestore.collection("voucher_claims").add(claimData).await()
+                Log.d("FirestoreVoucherRepository", "Created new claim as used")
+            }
+            true
+        } catch (e: Exception) {
+            Log.e("FirestoreVoucherRepository", "Error marking voucher as used: ${e.message}", e)
+            false
+        }
+    }
+
+    override suspend fun isVoucherUsed(voucherId: String, userId: String): Boolean {
+        return try {
+            val claimsSnapshot = firestore.collection("voucher_claims")
+                .whereEqualTo("voucherId", voucherId)
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("used", true)
+                .get()
+                .await()
+            
+            !claimsSnapshot.isEmpty
+        } catch (e: Exception) {
+            Log.e("FirestoreVoucherRepository", "Error checking voucher usage: ${e.message}", e)
+            false
         }
     }
 }

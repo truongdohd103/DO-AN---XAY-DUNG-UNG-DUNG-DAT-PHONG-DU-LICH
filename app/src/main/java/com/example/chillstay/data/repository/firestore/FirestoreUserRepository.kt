@@ -109,7 +109,8 @@ class FirestoreUserRepository @Inject constructor(
             fullName = data["fullName"] as? String ?: "",
             gender = data["gender"] as? String ?: "",
             photoUrl = data["photoUrl"] as? String ?: "",
-            dateOfBirth = dob
+            dateOfBirth = dob,
+            role = data["role"] as? String ?: "user"
         )
     }
 

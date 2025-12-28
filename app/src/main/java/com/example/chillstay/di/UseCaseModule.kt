@@ -35,6 +35,10 @@ import com.example.chillstay.domain.usecase.review.GetHotelReviewsUseCase
 import com.example.chillstay.domain.usecase.review.AggregateHotelRatingForHotelUseCase
 import com.example.chillstay.domain.usecase.review.UpdateReviewUseCase
 import com.example.chillstay.domain.usecase.review.DeleteReviewUseCase
+// import com.example.chillstay.domain.usecase.image.UploadAccommodationImagesUseCase // Removed as file missing
+
+// Storage use cases
+import com.example.chillstay.domain.usecase.storage.UploadImageUseCase
 
 // Voucher use cases
 import com.example.chillstay.domain.usecase.voucher.GetAvailableVouchersUseCase
@@ -42,6 +46,8 @@ import com.example.chillstay.domain.usecase.voucher.ApplyVoucherToBookingUseCase
 import com.example.chillstay.domain.usecase.voucher.GetVoucherByIdUseCase
 import com.example.chillstay.domain.usecase.voucher.ClaimVoucherUseCase
 import com.example.chillstay.domain.usecase.voucher.CheckVoucherEligibilityUseCase
+import com.example.chillstay.domain.usecase.voucher.ValidateVoucherForBookingUseCase
+import com.example.chillstay.domain.usecase.voucher.GetUserVouchersUseCase
 
 // VIP use cases
 import com.example.chillstay.domain.usecase.vip.GetVipStatusUseCase
@@ -58,6 +64,11 @@ import com.example.chillstay.domain.repository.VipStatusRepository
 import org.koin.dsl.module
 import com.example.chillstay.domain.repository.AuthRepository
 import com.example.chillstay.domain.repository.UserRepository
+import com.example.chillstay.domain.usecase.hotel.CreateHotelUseCase
+import com.example.chillstay.domain.usecase.hotel.UpdateHotelUseCase
+import com.example.chillstay.domain.usecase.hotel.CreateRoomUseCase
+import com.example.chillstay.domain.usecase.hotel.UpdateRoomUseCase
+import com.example.chillstay.domain.usecase.hotel.DeleteRoomUseCase
 
 val useCaseModule = module {
     // Sample use cases removed
@@ -69,14 +80,19 @@ val useCaseModule = module {
     factory { GetCurrentUserIdUseCase(get<AuthRepository>()) }
     
     // Hotel use cases
+    factory { CreateHotelUseCase(get()) }
+    factory { UpdateHotelUseCase(get()) }
     factory { GetHotelsUseCase(get()) }
     factory { SearchHotelsUseCase(get()) }
     factory { GetHotelByIdUseCase(get()) }
     factory { GetHotelRoomsUseCase(get()) }
     factory { GetRoomByIdUseCase(get()) }
+    factory { CreateRoomUseCase(get()) }
+    factory { UpdateRoomUseCase(get()) }
+    factory { UploadImageUseCase(get()) }
     
     // Booking use cases
-    factory { CreateBookingUseCase(get(), get()) }
+    factory { CreateBookingUseCase(get(), get(), get()) }
     factory { GetUserBookingsUseCase(get()) }
     factory { CancelBookingUseCase(get(), get()) }
     factory { GetBookingByIdUseCase(get()) }
@@ -104,6 +120,8 @@ val useCaseModule = module {
     factory { GetVoucherByIdUseCase(get<VoucherRepository>()) }
     factory { ClaimVoucherUseCase(get<VoucherRepository>()) }
     factory { CheckVoucherEligibilityUseCase(get<VoucherRepository>()) }
+    factory { ValidateVoucherForBookingUseCase(get<VoucherRepository>()) }
+    factory { GetUserVouchersUseCase(get<VoucherRepository>()) }
     
     // VIP use cases
     factory { GetVipStatusUseCase(get<VipStatusRepository>()) }

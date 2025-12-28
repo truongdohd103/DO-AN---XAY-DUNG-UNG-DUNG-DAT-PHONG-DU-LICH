@@ -17,6 +17,12 @@ import com.example.chillstay.ui.search.SearchViewModel
 import com.example.chillstay.ui.roomgallery.RoomGalleryViewModel
 import com.example.chillstay.ui.myreviews.MyReviewsViewModel
 import com.example.chillstay.ui.allreviews.AllReviewsViewModel
+import com.example.chillstay.ui.admin.home.AdminHomeViewModel
+import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageViewModel
+import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditViewModel
+import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageViewModel
+import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditViewModel
+import com.example.chillstay.domain.usecase.user.SignOutUseCase
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
@@ -55,7 +61,18 @@ val viewModelModule = module {
     viewModel { MyTripViewModel(get(), get(), get(), get(), get()) }
     viewModel { RoomViewModel(get(), get()) }
     viewModel { RoomGalleryViewModel(get(), get()) }
-    viewModel { BookingViewModel(get(), get(), get(), get(), get()) }
+    viewModel { 
+        BookingViewModel(
+            get(), // GetHotelByIdUseCase
+            get(), // GetRoomByIdUseCase
+            get(), // GetAvailableVouchersUseCase
+            get(), // CreateBookingUseCase
+            get(), // GetBookingByIdUseCase
+            get(), // ValidateVoucherForBookingUseCase
+            get(), // GetCurrentUserIdUseCase
+            get()  // GetUserVouchersUseCase
+        ) 
+    }
     viewModel { VoucherViewModel(get(), get(), get(), get()) }
     viewModel { VoucherDetailViewModel(get(), get(), get()) }
     viewModel { ReviewViewModel(
@@ -76,6 +93,11 @@ val viewModelModule = module {
             get()  // UpdateUserProfileUseCase
         )
     }
+    viewModel { AdminHomeViewModel(get()) }
     viewModel { MyReviewsViewModel(get(), get(), get()) }
     viewModel { AllReviewsViewModel(get(), get()) }
+    viewModel { AccommodationManageViewModel(get()) }
+    viewModel { AccommodationEditViewModel(get(), get(), get(), get()) }
+    viewModel { RoomManageViewModel(get(), get(), get()) }
+    viewModel { RoomEditViewModel(get(), get(), get()) }
 }

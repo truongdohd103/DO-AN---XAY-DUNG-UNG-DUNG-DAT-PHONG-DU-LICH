@@ -288,6 +288,66 @@ class FirestoreHotelRepository @Inject constructor(
         }
     }
 
+    override suspend fun createHotel(hotel: Hotel): String {
+        return try {
+            val docRef = firestore.collection("hotels").document()
+            val newHotel = hotel.copy(id = docRef.id)
+            docRef.set(newHotel).await()
+            newHotel.id
+        } catch (e: Exception) {
+            Log.e("FirestoreHotelRepository", "Error creating hotel", e)
+            ""
+        }
+    }
+
+    override suspend fun updateHotel(hotel: Hotel): Boolean {
+        return try {
+            firestore.collection("hotels").document(hotel.id)
+                .set(hotel, SetOptions.merge())
+                .await()
+            true
+        } catch (e: Exception) {
+            Log.e("FirestoreHotelRepository", "Error updating hotel", e)
+            false
+        }
+    }
+
+    override suspend fun createRoom(room: Room): String {
+        return try {
+            val docRef = firestore.collection("rooms").document()
+            val newRoom = room.copy(id = docRef.id)
+            docRef.set(newRoom).await()
+            newRoom.id
+        } catch (e: Exception) {
+            Log.e("FirestoreHotelRepository", "Error creating room", e)
+            ""
+        }
+    }
+
+    override suspend fun updateRoom(room: Room): Boolean {
+        return try {
+            firestore.collection("rooms").document(room.id)
+                .set(room, SetOptions.merge())
+                .await()
+            true
+        } catch (e: Exception) {
+            Log.e("FirestoreHotelRepository", "Error updating room", e)
+            false
+        }
+    }
+
+    override suspend fun deleteRoom(roomId: String): Boolean {
+        return try {
+            firestore.collection("rooms").document(roomId)
+                .delete()
+                .await()
+            true
+        } catch (e: Exception) {
+            Log.e("FirestoreHotelRepository", "Error deleting room", e)
+            false
+        }
+    }
+
     suspend fun checkAndFixHotelData(): HotelDataConsistencyReport {
         val issues = mutableListOf<String>()
 

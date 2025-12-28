@@ -63,6 +63,7 @@ class AuthViewModel(
             signInUseCase(email, password).collectLatest { result ->
                 when (result) {
                     is Result.Success -> {
+                        val user = result.data
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -75,7 +76,11 @@ class AuthViewModel(
                                 preserveMessage = false
                             )
                         }
-                        sendEffect(AuthEffect.NavigateToMain)
+                        if (user.role.equals("admin", ignoreCase = true)) {
+                            sendEffect(AuthEffect.NavigateToAdminHome)
+                        } else {
+                            sendEffect(AuthEffect.NavigateToMain)
+                        }
                     }
 
                     is Result.Error -> {

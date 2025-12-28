@@ -10,7 +10,7 @@ data class User(
     val gender: String = "",
     val photoUrl: String = "",
     val dateOfBirth: LocalDate = LocalDate.of(2000, 1, 1),
-    //val vouchersForUser: List<Voucher> = emptyList()
+    val role: String = "user"
 )
 
 

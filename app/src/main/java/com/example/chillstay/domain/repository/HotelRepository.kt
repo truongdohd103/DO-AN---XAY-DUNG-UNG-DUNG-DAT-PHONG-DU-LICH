@@ -24,6 +24,11 @@ interface HotelRepository {
     suspend fun updateHotelAggregation(hotelId: String, rating: Double, numberOfReviews: Int): Boolean
     suspend fun reserveRoomUnits(roomId: String, count: Int): Boolean
     suspend fun releaseRoomUnits(roomId: String, count: Int): Boolean
+    suspend fun createHotel(hotel: Hotel): String
+    suspend fun updateHotel(hotel: Hotel): Boolean
+    suspend fun createRoom(room: Room): String
+    suspend fun updateRoom(room: Room): Boolean
+    suspend fun deleteRoom(roomId: String): Boolean
 }
 
 

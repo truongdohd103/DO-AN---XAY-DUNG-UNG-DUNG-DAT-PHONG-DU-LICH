@@ -3,12 +3,14 @@ package com.example.chillstay.domain.usecase.booking
 import com.example.chillstay.domain.model.Booking
 import com.example.chillstay.domain.repository.BookingRepository
 import com.example.chillstay.domain.repository.HotelRepository
+import com.example.chillstay.domain.repository.VoucherRepository
 import com.example.chillstay.core.common.Result
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 class CreateBookingUseCase(
     private val bookingRepository: BookingRepository,
-    private val hotelRepository: HotelRepository
+    private val hotelRepository: HotelRepository,
+    private val voucherRepository: VoucherRepository
 ) {
     suspend operator fun invoke(booking: Booking): Result<Booking> {
         return try {

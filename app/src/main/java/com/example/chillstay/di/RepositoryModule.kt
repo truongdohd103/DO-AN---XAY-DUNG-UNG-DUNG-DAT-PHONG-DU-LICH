@@ -10,6 +10,7 @@ import com.example.chillstay.data.repository.firestore.FirestoreVoucherRepositor
 import com.example.chillstay.data.repository.firestore.FirestoreBillRepository
 import com.example.chillstay.data.repository.firestore.FirestoreVipStatusRepository
 import com.example.chillstay.data.repository.firestore.FirebaseAuthRepository
+import com.example.chillstay.data.repository.storage.FirebaseStorageRepository
 // removed SampleRepository binding
 import com.example.chillstay.domain.repository.HotelRepository
 import com.example.chillstay.domain.repository.UserRepository
@@ -20,8 +21,10 @@ import com.example.chillstay.domain.repository.VoucherRepository
 import com.example.chillstay.domain.repository.BillRepository
 import com.example.chillstay.domain.repository.VipStatusRepository
 import com.example.chillstay.domain.repository.AuthRepository
+import com.example.chillstay.domain.repository.StorageRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import org.koin.dsl.module
 import com.example.chillstay.data.api.ChillStayApi
 import com.example.chillstay.data.api.FirebaseChillStayApi
@@ -31,6 +34,8 @@ val repositoryModule = module {
     single { FirebaseFirestore.getInstance() }
     // Firebase Auth instance
     single { FirebaseAuth.getInstance() }
+    // Firebase Storage instance
+    single { FirebaseStorage.getInstance() }
     
     // Sample repository removed
     
@@ -45,5 +50,6 @@ val repositoryModule = module {
     single<VoucherRepository> { FirestoreVoucherRepository(get()) }
     single<BillRepository> { FirestoreBillRepository(get()) }
     single<VipStatusRepository> { FirestoreVipStatusRepository(get()) }
+    single<StorageRepository> { FirebaseStorageRepository(get()) }
     single<ChillStayApi> { FirebaseChillStayApi(get()) }
 }

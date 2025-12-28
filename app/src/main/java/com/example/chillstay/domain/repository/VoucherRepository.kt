@@ -12,7 +12,13 @@ interface VoucherRepository {
     // Claim methods
     suspend fun claimVoucher(voucherId: String, userId: String): Boolean
     suspend fun isVoucherClaimed(voucherId: String, userId: String): Boolean
+    /** Get list of vouchers claimed by user */
+    suspend fun getClaimedVouchers(userId: String): List<Voucher>
     
     // Eligibility methods
     suspend fun checkVoucherEligibility(voucherId: String, userId: String): Pair<Boolean, String>
+
+    // Usage methods
+    suspend fun markVoucherAsUsed(voucherId: String, userId: String): Boolean
+    suspend fun isVoucherUsed(voucherId: String, userId: String): Boolean
 }
