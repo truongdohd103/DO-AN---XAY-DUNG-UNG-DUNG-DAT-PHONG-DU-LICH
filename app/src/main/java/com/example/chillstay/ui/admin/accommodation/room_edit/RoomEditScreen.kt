@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.chillstay.domain.model.Room
+import com.example.chillstay.ui.components.ResponsiveContainer
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -97,45 +98,45 @@ fun RoomEditScreen(
 
     val headerTitle = if (uiState.mode == Mode.Edit) "Edit Room" else "Create Room"
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        // Header
-        TopAppBar(
-            title = {
-                Text(
-                    text = headerTitle,
-                    style = TextStyle(
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+    ResponsiveContainer {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = headerTitle,
+                            style = TextStyle(
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.onEvent(RoomEditIntent.NavigateBack) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color(0xFF1AB6B6)
                     )
                 )
             },
-            navigationIcon = {
-                IconButton(onClick = { viewModel.onEvent(RoomEditIntent.NavigateBack) }) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF1AB6B6)
-            )
-        )
-
-        // Scrollable Content
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
+            containerColor = Color.White
+        ) { paddingValues ->
+            // Scrollable Content
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
             // Basic Information
             FormSection(title = "Basic Information") {
                 InputField(
@@ -375,6 +376,7 @@ fun RoomEditScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
 }
 
 @Composable

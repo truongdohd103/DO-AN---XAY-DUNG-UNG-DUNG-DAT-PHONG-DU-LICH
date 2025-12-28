@@ -13,5 +13,6 @@ sealed class AdminHomeIntent : UiEvent {
     object NavigateToPrice : AdminHomeIntent()
     object NavigateToCalendar : AdminHomeIntent()
     object NavigateToProfile : AdminHomeIntent()
+    object SignOut : AdminHomeIntent()
     object ClearError : AdminHomeIntent()
 }

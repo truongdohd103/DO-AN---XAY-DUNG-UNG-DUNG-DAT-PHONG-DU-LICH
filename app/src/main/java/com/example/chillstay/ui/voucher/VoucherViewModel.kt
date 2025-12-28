@@ -48,8 +48,8 @@ class VoucherViewModel(
             _state.value = _state.value.copy(isLoading = true, error = null)
 
             try {
-                val userId = FirebaseAuth.getInstance().currentUser?.uid
-                val result = getAvailableVouchersUseCase(userId = userId)
+                // Pass userId = null to fetch ALL system vouchers, not just the ones claimed by user
+                val result = getAvailableVouchersUseCase(userId = null, ignoreDateValidation = true)
 
                 when (result) {
                     is com.example.chillstay.core.common.Result.Success -> {
@@ -90,7 +90,8 @@ class VoucherViewModel(
             _state.value = _state.value.copy(isRefreshing = true, error = null)
 
             try {
-                val result = getAvailableVouchersUseCase(userId = userId)
+                // Pass userId = null to fetch ALL system vouchers
+                val result = getAvailableVouchersUseCase(userId = null, ignoreDateValidation = true)
 
                 when (result) {
                     is com.example.chillstay.core.common.Result.Success -> {

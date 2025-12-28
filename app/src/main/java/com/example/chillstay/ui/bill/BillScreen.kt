@@ -171,31 +171,190 @@ fun BillScreen(
                                 fontSize = 14.sp,
                                 color = Color.White.copy(alpha = 0.8f)
                             )
+                            if (uiState.booking != null) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Date: ${uiState.booking!!.createdAt.toDate()}",
+                                    fontSize = 14.sp,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                            }
                         }
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Hotel details
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
+
+                    // Hotel & Room Details
+                    if (uiState.hotel != null) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
                         ) {
-                            Text(
-                                text = "Hotel Details",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF333333)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Hotel details will be loaded here",
-                                fontSize = 14.sp,
-                                color = Color(0xFF666666)
-                            )
+                            Column(
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "Property Details",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF333333)
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = uiState.hotel!!.name,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = uiState.hotel!!.formattedAddress,
+                                    fontSize = 14.sp,
+                                    color = Color(0xFF666666)
+                                )
+                                
+                                if (uiState.room != null) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    HorizontalDivider(color = Color.LightGray)
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Room Type",
+                                            fontSize = 14.sp,
+                                            color = Color(0xFF666666)
+                                        )
+                                        Text(
+                                            text = uiState.room!!.name,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.Black
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    // Trip Details
+                    if (uiState.booking != null) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "Trip Details",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF333333)
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "Check-in",
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF666666)
+                                        )
+                                        Text(
+                                            text = uiState.booking!!.dateFrom,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.Black
+                                        )
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = "Check-out",
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF666666)
+                                        )
+                                        Text(
+                                            text = uiState.booking!!.dateTo,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.Black
+                                        )
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                HorizontalDivider(color = Color.LightGray)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                BillDetailRow("Guests", "${uiState.booking!!.guests} (${uiState.booking!!.adults} Adults, ${uiState.booking!!.children} Children)")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                BillDetailRow("Number of Rooms", "${uiState.booking!!.rooms}")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Payment Summary
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Text(
+                                    text = "Payment Summary",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF333333)
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                BillDetailRow("Original Price", formatCurrency(uiState.booking!!.originalPrice))
+                                if (uiState.booking!!.discount > 0) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    BillDetailRow("Discount", "-${formatCurrency(uiState.booking!!.discount)}", Color(0xFF4CAF50))
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                BillDetailRow("Service Fee", formatCurrency(uiState.booking!!.serviceFee))
+                                Spacer(modifier = Modifier.height(8.dp))
+                                BillDetailRow("Taxes", formatCurrency(uiState.booking!!.taxes))
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                HorizontalDivider(color = Color.LightGray)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Total Paid",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black
+                                    )
+                                    Text(
+                                        text = formatCurrency(uiState.booking!!.totalPrice),
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF1AB6B6)
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                BillDetailRow("Payment Method", uiState.booking!!.paymentMethod.name.replace("_", " "))
+                                Spacer(modifier = Modifier.height(8.dp))
+                                BillDetailRow("Status", uiState.booking!!.status.name, 
+                                    if (uiState.booking!!.status == com.example.chillstay.domain.model.BookingStatus.COMPLETED) Color(0xFF4CAF50) 
+                                    else Color(0xFFFF9800)
+                                )
+                            }
                         }
                     }
                     
@@ -384,4 +543,33 @@ fun BillScreen(
             }
         }
     }
+}
+
+@Composable
+private fun BillDetailRow(
+    label: String,
+    value: String,
+    valueColor: Color = Color(0xFF333333)
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            color = Color(0xFF666666)
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = valueColor
+        )
+    }
+}
+
+private fun formatCurrency(amount: Double): String {
+    val format = java.text.NumberFormat.getCurrencyInstance(java.util.Locale.US)
+    return format.format(amount)
 }

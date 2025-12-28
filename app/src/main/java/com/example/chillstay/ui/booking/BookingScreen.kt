@@ -5,6 +5,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,6 +29,7 @@ import coil.compose.AsyncImage
 import org.koin.compose.koinInject
 import java.time.format.DateTimeFormatter
 import androidx.activity.compose.BackHandler
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.Instant
@@ -64,6 +68,8 @@ fun BookingScreen(
     var cvv by remember { mutableStateOf("123") }
     var cardholderName by remember { mutableStateOf("John Doe") }
     
+    var showVoucherSheet by remember { mutableStateOf(false) }
+
     // Show loading state
     if (uiState.isLoading) {
         Box(
@@ -247,6 +253,19 @@ fun BookingScreen(
             }
             
             item {
+                // Voucher Section
+                VoucherSection(
+                    appliedVouchers = uiState.appliedVouchers,
+                    onAddVoucherClick = { showVoucherSheet = true },
+                    onRemoveVoucherClick = { id -> viewModel.onEvent(BookingIntent.RemoveVoucher(id)) }
+                )
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
+            item {
             // Price Summary
             PriceSummarySection(
                 priceBreakdown = uiState.priceBreakdown,
@@ -300,6 +319,21 @@ fun BookingScreen(
         }
     }
 
+    if (showVoucherSheet) {
+        VoucherSelectionSheet(
+            availableVouchers = uiState.availableVouchers,
+            onDismissRequest = { showVoucherSheet = false },
+            onVoucherSelected = { code ->
+                viewModel.onEvent(BookingIntent.ApplyVoucher(code))
+                showVoucherSheet = false
+            },
+            onCodeSubmitted = { code ->
+                viewModel.onEvent(BookingIntent.ApplyVoucher(code))
+                showVoucherSheet = false
+            }
+        )
+    }
+
     if (showCancelDialog) {
         AlertDialog(
             onDismissRequest = { showCancelDialog = false },
@@ -329,8 +363,8 @@ fun BookingScreen(
                             "taxes" to uiState.priceBreakdown.taxes,
                             "totalPrice" to uiState.priceBreakdown.finalTotal,
                             "status" to "PENDING",
-                            "createdAt" to Date.from(Instant.now()),
-                            "updatedAt" to Date.from(Instant.now())
+                            "createdAt" to Timestamp.now(),
+                            "updatedAt" to Timestamp.now()
                         )
                         FirebaseFirestore.getInstance().collection("bookings").add(data)
                             .addOnCompleteListener { onBackClick() }
@@ -1011,8 +1045,8 @@ fun PriceSummarySection(
             PriceRow("Taxes", "$${priceBreakdown.taxes.toInt()}")
             
             // Show applied vouchers
-            appliedVouchers.forEach { voucher ->
-                PriceRow("Voucher: ${voucher.code}", "-$${priceBreakdown.voucherDiscount.toInt()}")
+            if (priceBreakdown.voucherDiscount > 0) {
+                PriceRow("Voucher Discount", "-$${priceBreakdown.voucherDiscount.toInt()}", Color(0xFF1AB6B6))
             }
             
             Spacer(modifier = Modifier.height(13.dp))
@@ -1048,7 +1082,8 @@ fun PriceSummarySection(
 @Composable
 fun PriceRow(
     label: String,
-    price: String
+    price: String,
+    priceColor: Color = Color(0xFF212121)
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1064,9 +1099,246 @@ fun PriceRow(
         
         Text(
             text = price,
-            color = Color(0xFF212121),
+            color = priceColor,
             fontSize = 15.50.sp,
             fontWeight = FontWeight.Bold
         )
+    }
+}
+
+@Composable
+fun VoucherSection(
+    appliedVouchers: List<com.example.chillstay.domain.model.Voucher>,
+    onAddVoucherClick: () -> Unit,
+    onRemoveVoucherClick: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Voucher",
+                    color = Color(0xFF212121),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                if (appliedVouchers.isEmpty()) {
+                    TextButton(onClick = onAddVoucherClick) {
+                        Text("Add Voucher", color = Color(0xFF1AB6B6))
+                    }
+                }
+            }
+            
+            if (appliedVouchers.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                appliedVouchers.forEach { voucher ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = voucher.code,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF212121)
+                            )
+                            Text(
+                                text = voucher.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF757575)
+                            )
+                        }
+                        IconButton(onClick = { onRemoveVoucherClick(voucher.id) }) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Remove",
+                                tint = Color.Red
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                TextButton(
+                    onClick = onAddVoucherClick,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Add another voucher", color = Color(0xFF1AB6B6))
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun VoucherSelectionSheet(
+    availableVouchers: List<com.example.chillstay.domain.model.Voucher>,
+    onDismissRequest: () -> Unit,
+    onVoucherSelected: (String) -> Unit,
+    onCodeSubmitted: (String) -> Unit
+) {
+    var voucherCode by remember { mutableStateOf("") }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        containerColor = Color.White
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+        ) {
+            Text(
+                text = "Select Voucher",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Code input
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = voucherCode,
+                    onValueChange = { voucherCode = it },
+                    placeholder = { Text("Enter voucher code") },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true
+                )
+                Button(
+                    onClick = { 
+                        if (voucherCode.isNotBlank()) {
+                            onCodeSubmitted(voucherCode)
+                            onDismissRequest()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1AB6B6))
+                ) {
+                    Text("Apply")
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Text(
+                text = "Available Vouchers",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF757575)
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(availableVouchers) { voucher ->
+                    VoucherItem(voucher = voucher, onClick = {
+                        onVoucherSelected(voucher.code)
+                        onDismissRequest()
+                    })
+                }
+                
+                if (availableVouchers.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No vouchers available",
+                            color = Color(0xFF9E9E9E),
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+fun VoucherItem(
+    voucher: com.example.chillstay.domain.model.Voucher,
+    onClick: () -> Unit
+) {
+    val gradientColors = when (voucher.type) {
+        com.example.chillstay.domain.model.VoucherType.PERCENTAGE -> 
+            listOf(Color(0xFF87CEEB), Color(0xFF4169E1))
+        com.example.chillstay.domain.model.VoucherType.FIXED_AMOUNT -> 
+            listOf(Color(0xFF1AB6B6), Color(0xFF159999))
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.height(IntrinsicSize.Min)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(80.dp)
+                    .fillMaxHeight()
+                    .background(androidx.compose.ui.graphics.Brush.verticalGradient(gradientColors)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (voucher.type == com.example.chillstay.domain.model.VoucherType.PERCENTAGE) 
+                        "${voucher.value.toInt()}%" else "$${voucher.value.toInt()}",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
+            
+            Column(
+                modifier = Modifier
+                    .padding(12.dp)
+                    .weight(1f)
+            ) {
+                Text(
+                    text = voucher.title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = voucher.description,
+                    color = Color(0xFF757575),
+                    fontSize = 12.sp,
+                    maxLines = 2
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Code: ${voucher.code}",
+                    color = Color(0xFF1AB6B6),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }

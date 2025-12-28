@@ -73,12 +73,14 @@ fun AppNavHost(
         authViewModel.uiEffect.collect { effect ->
             when (effect) {
                 AuthEffect.NavigateToMain -> {
+                    OnboardingManager.setAdmin(context, false)
                     navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.AUTHENTICATION) { inclusive = true }
                     }
                 }
 
                 AuthEffect.NavigateToAdminHome -> {
+                    OnboardingManager.setAdmin(context, true)
                     navController.navigate(Routes.ADMIN_HOME) {
                         popUpTo(Routes.AUTHENTICATION) { inclusive = true }
                     }
@@ -91,6 +93,7 @@ fun AppNavHost(
                 }
 
                 AuthEffect.NavigateToAuth -> {
+                    OnboardingManager.setAdmin(context, false)
                     navController.navigate(Routes.AUTHENTICATION) {
                         popUpTo(Routes.MAIN) { inclusive = true }
                     }
@@ -107,13 +110,10 @@ fun AppNavHost(
 
     val computedStart = run {
         val ctx = context
-        val last = OnboardingManager.getLastRoute(ctx)
         when {
             OnboardingManager.isFirstLaunch(ctx) -> Routes.WELCOME
             !OnboardingManager.isOnboardingDone(ctx) -> Routes.CAROUSEL
-            // Nếu route cuối cùng là admin_* thì luôn đưa về AdminHome để tránh deep-link lạ / màn trắng
-            last == Routes.ADMIN_HOME || last?.startsWith("admin_") == true -> Routes.ADMIN_HOME
-            !last.isNullOrEmpty() -> last
+            OnboardingManager.isAdmin(ctx) -> Routes.ADMIN_HOME
             else -> Routes.MAIN
         }
     }
@@ -375,7 +375,12 @@ fun AppNavHost(
                 onNavigateToStatistics = { /* TODO: Implement navigation */ },
                 onNavigateToPrice = { /* TODO: Implement navigation */ },
                 onNavigateToCalendar = { /* TODO: Implement navigation */ },
-                onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
+                onNavigateToProfile = { navController.navigate(Routes.PROFILE) },
+                onNavigateToAuth = {
+                    navController.navigate(Routes.AUTHENTICATION) {
+                        popUpTo(Routes.ADMIN_HOME) { inclusive = true }
+                    }
+                }
             )
         }
         composable(Routes.ADMIN_ACCOMMODATION_MANAGE) {

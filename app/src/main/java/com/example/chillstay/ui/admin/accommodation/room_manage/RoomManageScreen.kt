@@ -36,6 +36,7 @@ import com.example.chillstay.R
 import com.example.chillstay.domain.model.Room
 import com.example.chillstay.domain.model.RoomStatus
 import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageIntent
+import com.example.chillstay.ui.components.ResponsiveContainer
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,44 +69,56 @@ fun RoomManageScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White)
-        ) {
-            // Header
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Room",
-                        style = TextStyle(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+    ResponsiveContainer {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Room",
+                            style = TextStyle(
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
                         )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.onEvent(RoomManageIntent.NavigateBack) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color(0xFF1AB6B6)
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.onEvent(RoomManageIntent.NavigateBack) }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1AB6B6)
                 )
-            )
-
-            // Content
-            when {
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { viewModel.onEvent(RoomManageIntent.CreateNewRoom) },
+                    containerColor = Color(0xFF1AB6B6)
+                ) {
+                    Text(
+                        text = "+",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            },
+            containerColor = Color.White
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // Content
+                when {
                 uiState.isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -185,22 +198,23 @@ fun RoomManageScreen(
                     }
                 }
             }
-        }
+            }
 
-        // Floating Action Button
-        FloatingActionButton(
-            onClick = { viewModel.onEvent(RoomManageIntent.CreateNewRoom) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(24.dp),
-            containerColor = Color(0xFF1AB6B6)
-        ) {
-            Text(
-                text = "+",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+            // Floating Action Button
+            FloatingActionButton(
+                onClick = { viewModel.onEvent(RoomManageIntent.CreateNewRoom) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp),
+                containerColor = Color(0xFF1AB6B6)
+            ) {
+                Text(
+                    text = "+",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
         }
     }
 }
