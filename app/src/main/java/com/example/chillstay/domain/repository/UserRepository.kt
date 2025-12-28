@@ -1,5 +1,6 @@
 package com.example.chillstay.domain.repository
 
+import com.example.chillstay.domain.model.CustomerStats
 import com.example.chillstay.domain.model.User
 
 interface UserRepository {
@@ -9,6 +10,7 @@ interface UserRepository {
     suspend fun updateUser(user: User): User
     suspend fun deleteUser(id: String)
     suspend fun getUserByEmail(email: String): User?
+    suspend fun getCustomerStats(userId: String): CustomerStats
 }
 
 

@@ -55,6 +55,7 @@ import com.example.chillstay.ui.admin.accommodation.accommodation_edit.Accommoda
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageScreen
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditScreen
 import com.example.chillstay.ui.admin.customer.customer_manage.CustomerManageScreen
+import com.example.chillstay.ui.admin.customer.customer_view.CustomerViewScreen
 import com.example.chillstay.ui.admin.voucher.voucher_apply.AccommodationSelectScreen
 import com.example.chillstay.ui.admin.voucher.voucher_edit.VoucherEditScreen
 import com.example.chillstay.ui.admin.voucher.voucher_manage.VoucherManageScreen
@@ -485,8 +486,24 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() },
                 onDisable = {},
                 onEnable = {},
-                onView = { userId -> },
+                onView = { userId -> navController.navigate("${Routes.ADMIN_CUSTOMER_VIEW}/$userId") },
 
+            )
+        }
+
+        composable("${Routes.ADMIN_CUSTOMER_VIEW}/{userId}") { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: ""
+            CustomerViewScreen(
+                userId = userId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToBooking = { bookingId ->
+                    // TODO: Navigate to booking detail when implemented
+                    Toast.makeText(context, "Booking: $bookingId", Toast.LENGTH_SHORT).show()
+                },
+                onNavigateToReview = { reviewId ->
+                    // TODO: Navigate to review detail when implemented
+                    Toast.makeText(context, "Review: $reviewId", Toast.LENGTH_SHORT).show()
+                }
             )
         }
 

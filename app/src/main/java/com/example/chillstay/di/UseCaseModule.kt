@@ -68,6 +68,8 @@ import com.example.chillstay.domain.usecase.image.UploadVoucherImageUseCase
 import com.example.chillstay.domain.usecase.room.CreateRoomUseCase
 import com.example.chillstay.domain.usecase.room.UpdateRoomUseCase
 import com.example.chillstay.domain.usecase.user.GetAllUsersUseCase
+import com.example.chillstay.domain.usecase.user.GetCustomerActivitiesUseCase
+import com.example.chillstay.domain.usecase.user.GetCustomerDetailsUseCase
 import com.example.chillstay.domain.usecase.user.UpdateUserStatusUseCase
 import com.example.chillstay.domain.usecase.voucher.ApplyVoucherToHotelsUseCase
 import com.example.chillstay.domain.usecase.voucher.CreateVoucherUseCase
@@ -113,6 +115,8 @@ val useCaseModule = module {
     factory { UpdateUserProfileUseCase(get()) }
     factory { UpdateUserStatusUseCase(get()) }
     factory { GetAllUsersUseCase(get()) }
+    factory { GetCustomerActivitiesUseCase(get()) }
+    factory { GetCustomerDetailsUseCase(get()) }
     
     // Bookmark use cases
     factory { AddBookmarkUseCase(get()) }
@@ -132,6 +136,7 @@ val useCaseModule = module {
     factory { GetVoucherByIdUseCase(get<VoucherRepository>()) }
     factory { ClaimVoucherUseCase(get<VoucherRepository>()) }
     factory { CheckVoucherEligibilityUseCase(get<VoucherRepository>()) }
+
     //Admin Voucher use cases
     factory { GetAllVouchersUseCase(get<VoucherRepository>()) }
     factory { CreateVoucherUseCase(get<VoucherRepository>()) }

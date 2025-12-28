@@ -167,9 +167,7 @@ class CustomerManageViewModel(
             withContext(Dispatchers.Main) {
                 _state.value = _state.value.updateFilteredCustomers(filtered).copy(
                     totalCustomers = totalCustomers,
-                    activeCustomers = activeCustomers,
-                    inactiveCustomers = inactiveCustomers
-                )
+                    activeCustomers = activeCustomers)
             }
         }
     }

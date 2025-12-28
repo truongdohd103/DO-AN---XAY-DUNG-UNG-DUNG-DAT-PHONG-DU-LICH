@@ -1,8 +1,11 @@
 package com.example.chillstay.data.repository.firestore
 
+import android.util.Log
+import com.example.chillstay.domain.model.CustomerStats
 import com.example.chillstay.domain.model.User
 import com.example.chillstay.domain.model.UserRole
 import com.example.chillstay.domain.repository.UserRepository
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
@@ -81,8 +84,7 @@ class FirestoreUserRepository @Inject constructor(
                 .document(id)
                 .delete()
                 .await()
-        } catch (e: Exception) {
-            // Handle error silently
+        } catch (_: Exception) {
         }
     }
 
@@ -133,11 +135,54 @@ class FirestoreUserRepository @Inject constructor(
             fullName = data["fullName"] as? String ?: "",
             gender = data["gender"] as? String ?: "",
             photoUrl = data["photoUrl"] as? String ?: "",
-            phone = data["phone"] as? String ?: "",
+            phoneNumber = data["phoneNumber"] as? String ?: "",
             dateOfBirth = dob,
             isActive = data["isActive"] as? Boolean ?: true,
-            role = role
+            role = role,
+            memberSince = data["memberSince"] as? Timestamp ?: Timestamp.now()
         )
+    }
+
+    override suspend fun getCustomerStats(userId: String): CustomerStats {
+        return try {
+            Log.d("FirestoreUserRepository", "Getting stats for user $userId")
+
+            // Get user to check memberSince
+            val user = getUserById(userId)
+            val memberSince = user?.memberSince?.toDate()?.let { date ->
+                val formatter = java.text.SimpleDateFormat("MMM dd, yyyy", java.util.Locale.US)
+                formatter.format(date)
+            } ?: "Unknown"
+
+            // Get total bookings
+            val bookingsSnapshot = firestore.collection("bookings")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+            val totalBookings = bookingsSnapshot.documents.size
+
+            // Calculate total spent
+            val totalSpent = bookingsSnapshot.documents.sumOf { doc ->
+                doc.getDouble("totalPrice") ?: 0.0
+            }
+
+            // Get total reviews
+            val reviewsSnapshot = firestore.collection("reviews")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+            val totalReviews = reviewsSnapshot.documents.size
+
+            CustomerStats(
+                totalBookings = totalBookings,
+                totalSpent = totalSpent,
+                totalReviews = totalReviews,
+                memberSince = memberSince
+            )
+        } catch (e: Exception) {
+            Log.e("FirestoreUserRepository", "Error getting customer stats: ${e.message}")
+            CustomerStats()
+        }
     }
 
     private fun userToMap(user: User): Map<String, Any> {
@@ -148,7 +193,10 @@ class FirestoreUserRepository @Inject constructor(
         map["gender"] = user.gender
         map["photoUrl"] = user.photoUrl
         map["dateOfBirth"] = user.dateOfBirth.toString()
-        map["role"] = user.role.name // Convert enum to string
+        map["role"] = user.role.name
+        map["phoneNumber"] = user.phoneNumber
+        map["isActive"] = user.isActive
+        user.memberSince?.let { map["memberSince"] = it }
         return map
     }
 
