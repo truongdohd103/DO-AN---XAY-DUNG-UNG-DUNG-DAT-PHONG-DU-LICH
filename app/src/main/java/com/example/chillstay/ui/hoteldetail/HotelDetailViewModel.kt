@@ -171,7 +171,7 @@ class HotelDetailViewModel(
                 val reviewsWithUser = reviews.map { review ->
                     async {
                         val user = try {
-                            val user = userRepository.getUser(review.userId)
+                            val user = userRepository.getUserById(review.userId)
                             if (user != null) {
                                 Log.d("HotelDetailViewModel", "Loaded user: id=${user.id}, fullName=${user.fullName}, email=${user.email}")
                             } else {

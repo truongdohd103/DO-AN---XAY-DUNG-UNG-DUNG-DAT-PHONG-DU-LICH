@@ -67,6 +67,8 @@ import com.example.chillstay.domain.usecase.image.UploadRoomImagesUseCase
 import com.example.chillstay.domain.usecase.image.UploadVoucherImageUseCase
 import com.example.chillstay.domain.usecase.room.CreateRoomUseCase
 import com.example.chillstay.domain.usecase.room.UpdateRoomUseCase
+import com.example.chillstay.domain.usecase.user.GetAllUsersUseCase
+import com.example.chillstay.domain.usecase.user.UpdateUserStatusUseCase
 import com.example.chillstay.domain.usecase.voucher.ApplyVoucherToHotelsUseCase
 import com.example.chillstay.domain.usecase.voucher.CreateVoucherUseCase
 import com.example.chillstay.domain.usecase.voucher.DeleteVoucherUseCase
@@ -109,6 +111,8 @@ val useCaseModule = module {
     // User use cases
     factory { GetUserProfileUseCase(get()) }
     factory { UpdateUserProfileUseCase(get()) }
+    factory { UpdateUserStatusUseCase(get()) }
+    factory { GetAllUsersUseCase(get()) }
     
     // Bookmark use cases
     factory { AddBookmarkUseCase(get()) }

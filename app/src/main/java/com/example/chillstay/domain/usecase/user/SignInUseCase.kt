@@ -22,7 +22,7 @@ class SignInUseCase(
     }
 
     private suspend fun ensureProfile(userId: String, email: String): User {
-        val existingById = userRepository.getUser(userId)
+        val existingById = userRepository.getUserById(userId)
         if (existingById != null) {
             return existingById
         }

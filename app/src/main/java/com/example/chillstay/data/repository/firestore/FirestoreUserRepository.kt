@@ -13,8 +13,21 @@ import javax.inject.Singleton
 class FirestoreUserRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) : UserRepository {
+    override suspend fun getAllUsers(): List<User> {
+        return try {
+            val snapshot = firestore.collection("users")
+                .get()
+                .await()
 
-    override suspend fun getUser(id: String): User? {
+            snapshot.documents.mapNotNull { document ->
+                mapUser(document.data, document.id)
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    override suspend fun getUserById(id: String): User? {
         return try {
             val document = firestore.collection("users")
                 .document(id)
@@ -120,7 +133,9 @@ class FirestoreUserRepository @Inject constructor(
             fullName = data["fullName"] as? String ?: "",
             gender = data["gender"] as? String ?: "",
             photoUrl = data["photoUrl"] as? String ?: "",
+            phone = data["phone"] as? String ?: "",
             dateOfBirth = dob,
+            isActive = data["isActive"] as? Boolean ?: true,
             role = role
         )
     }
