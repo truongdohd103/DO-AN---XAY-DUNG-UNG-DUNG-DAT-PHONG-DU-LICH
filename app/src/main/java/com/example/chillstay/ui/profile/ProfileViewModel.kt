@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.usecase.user.GetCurrentUserIdUseCase
-import com.example.chillstay.domain.usecase.user.GetUserProfileUseCase
+import com.example.chillstay.domain.usecase.user.GetUserByIdUseCase
 import com.example.chillstay.domain.usecase.user.UpdateUserProfileUseCase
 import java.time.LocalDate
 import kotlinx.coroutines.Job
@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 
 class ProfileViewModel(
     private val getCurrentUserIdUseCase: GetCurrentUserIdUseCase,
-    private val getUserProfileUseCase: GetUserProfileUseCase,
+    private val getUserByIdUseCase: GetUserByIdUseCase,
     private val updateUserProfileUseCase: UpdateUserProfileUseCase
 ) : ViewModel() {
 
@@ -127,7 +127,7 @@ class ProfileViewModel(
         loadProfileJob?.cancel()
         loadProfileJob = viewModelScope.launch {
             _uiState.update { it.copy(isProfileLoading = true) }
-            getUserProfileUseCase(userId).collectLatest { result ->
+            getUserByIdUseCase(userId).collectLatest { result ->
                 when (result) {
                     is Result.Success -> {
                         val user = result.data

@@ -3,6 +3,8 @@ package com.example.chillstay.data.repository.firestore
 import android.util.Log
 import com.example.chillstay.domain.model.Review
 import com.example.chillstay.domain.repository.ReviewRepository
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -13,12 +15,33 @@ class FirestoreReviewRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) : ReviewRepository {
 
+
+
     override suspend fun createReview(review: Review): Review {
         return try {
             val documentRef = firestore.collection("reviews").add(review).await()
             review.copy(id = documentRef.id)
         } catch (_: Exception) {
             review
+        }
+    }
+
+    override suspend fun getReviewById(id: String): Review? {
+        return try {
+            val document = firestore.collection("reviews")
+                .document(id)
+                .get()
+                .await()
+
+            val review = mapReviewDocument(document)?.copy(id = document.id)
+            review
+        } catch (e: Exception) {
+            Log.e(
+                "FirestoreReviewRepository",
+                "Error fetching hotelId=$id from Firestore: ${e.message}",
+                e
+            )
+            null
         }
     }
 
@@ -112,5 +135,20 @@ class FirestoreReviewRepository @Inject constructor(
         } catch (_: Exception) {
             false
         }
+    }
+    private fun mapReviewDocument(document: DocumentSnapshot): Review? {
+        val data = document.data ?: run {
+            Log.w("FirestoreReviewRepository", "Document ${document.id} has no data")
+            return null
+        }
+
+        return Review(
+            id = document.id,
+            userId = data["userId"] as? String ?: "",
+            hotelId = data["hotelId"] as? String ?: "",
+            comment = data["comment"] as? String ?: "",
+            rating = (data["rating"] as? Number)?.toInt() ?: 0,
+            createdAt = data["createdAt"] as? Timestamp ?: Timestamp.now()
+        )
     }
 }

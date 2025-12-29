@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 
 
-class GetUserProfileUseCase constructor(
+class GetUserByIdUseCase constructor(
     private val userRepository: UserRepository
 ) {
     operator fun invoke(userId: String): Flow<Result<User>> = flow {
