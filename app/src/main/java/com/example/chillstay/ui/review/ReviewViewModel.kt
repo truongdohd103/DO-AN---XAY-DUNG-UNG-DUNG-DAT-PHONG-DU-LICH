@@ -1,21 +1,19 @@
 package com.example.chillstay.ui.review
 
+import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.example.chillstay.core.base.BaseViewModel
-import com.example.chillstay.domain.model.Booking
-import com.example.chillstay.domain.model.Hotel
-import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
+import com.example.chillstay.core.common.Result
+import com.example.chillstay.domain.repository.ReviewRepository
 import com.example.chillstay.domain.usecase.booking.GetBookingByIdUseCase
+import com.example.chillstay.domain.usecase.booking.GetUserBookingsUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.review.CreateReviewUseCase
 import com.example.chillstay.domain.usecase.review.UpdateReviewUseCase
-import com.example.chillstay.domain.repository.ReviewRepository
 import com.example.chillstay.domain.usecase.user.GetCurrentUserIdUseCase
-import com.example.chillstay.core.common.Result
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import android.util.Log
 
 class ReviewViewModel(
     private val getUserBookings: GetUserBookingsUseCase,
@@ -45,14 +43,10 @@ class ReviewViewModel(
         
         viewModelScope.launch {
             try {
-                val bookingResult = getBookingById(bookingId)
+                val bookingResult = getBookingById(bookingId).first()
                 when (bookingResult) {
                     is Result.Success -> {
-                        val booking = bookingResult.data ?: run {
-                            _state.update { it.updateIsLoading(false).updateError("Booking not found") }
-                            sendEffect { ReviewEffect.ShowError("Booking not found") }
-                            return@launch
-                        }
+                        val booking = bookingResult.data
                         _state.update { it.updateBooking(booking) }
                         getHotelById(booking.hotelId).collect { hotelRes ->
                             when (hotelRes) {

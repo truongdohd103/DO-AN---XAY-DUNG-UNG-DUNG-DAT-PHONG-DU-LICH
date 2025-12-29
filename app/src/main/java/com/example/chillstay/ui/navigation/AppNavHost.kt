@@ -54,6 +54,7 @@ import com.example.chillstay.ui.admin.accommodation.accommodation_manage.Accommo
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditScreen
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageScreen
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditScreen
+import com.example.chillstay.ui.admin.booking.booking_view.BookingViewScreen
 import com.example.chillstay.ui.admin.customer.customer_manage.CustomerManageScreen
 import com.example.chillstay.ui.admin.customer.customer_view.CustomerViewScreen
 import com.example.chillstay.ui.admin.customer.review_view.ReviewViewScreen
@@ -497,8 +498,7 @@ fun AppNavHost(
             CustomerViewScreen(
                 userId = userId,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToBooking = { bookingId ->
-                    // TODO: Navigate to booking detail when implemented
+                onNavigateToBooking = { bookingId -> navController.navigate("${Routes.ADMIN_BOOKING_VIEW}/$bookingId")
                     },
                 onNavigateToReview = { reviewId -> navController.navigate("${Routes.ADMIN_REVIEW_VIEW}/$reviewId") }
             )
@@ -508,6 +508,14 @@ fun AppNavHost(
             val reviewId = backStackEntry.arguments?.getString("reviewId") ?: ""
             ReviewViewScreen(
                 reviewId = reviewId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable("${Routes.ADMIN_BOOKING_VIEW}/{bookingId}") { backStackEntry ->
+            val bookingId = backStackEntry.arguments?.getString("bookingId") ?: ""
+            BookingViewScreen(
+                bookingId = bookingId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

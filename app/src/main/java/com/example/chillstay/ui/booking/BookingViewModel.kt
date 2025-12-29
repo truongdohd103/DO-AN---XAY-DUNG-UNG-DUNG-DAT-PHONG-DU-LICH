@@ -116,53 +116,46 @@ class BookingViewModel(
             
             try {
                 // Get booking from database
-                val bookingResult = getBookingByIdUseCase(bookingId)
+                val bookingResult = getBookingByIdUseCase(bookingId).first()
                 when (bookingResult) {
                     is com.example.chillstay.core.common.Result.Success -> {
                         val booking = bookingResult.data
-                        if (booking != null) {
-                            // Load hotel and room data
-                            val hotelResult = getHotelByIdUseCase(booking.hotelId).first()
-                            val roomResult = getRoomByIdUseCase(booking.roomId).first()
-                            
-                            val hotel = when (hotelResult) {
-                                is com.example.chillstay.core.common.Result.Success -> hotelResult.data
-                                is com.example.chillstay.core.common.Result.Error -> null
-                            }
-                            
-                            val room = when (roomResult) {
-                                is com.example.chillstay.core.common.Result.Success -> roomResult.data
-                                is com.example.chillstay.core.common.Result.Error -> null
-                            }
-                            
-                            // Load available vouchers
-                            val vouchersResult = getAvailableVouchersUseCase()
-                            val vouchers = when (vouchersResult) {
-                                is com.example.chillstay.core.common.Result.Success -> vouchersResult.data
-                                is com.example.chillstay.core.common.Result.Error -> emptyList()
-                            }
-                            
-                            // Calculate price breakdown
-                            val dateFrom = java.time.LocalDate.parse(booking.dateFrom)
-                            val dateTo = java.time.LocalDate.parse(booking.dateTo)
-                            val priceBreakdown = calculatePriceBreakdown(room, dateFrom, dateTo)
-                            
-                            _state.value = _state.value.copy(
-                                isLoading = false,
-                                hotel = hotel,
-                                room = room,
-                                dateFrom = dateFrom,
-                                dateTo = dateTo,
-                                availableVouchers = vouchers,
-                                priceBreakdown = priceBreakdown,
-                                hasInitialDates = true
-                            )
-                        } else {
-                            _state.value = _state.value.copy(
-                                isLoading = false,
-                                error = "Booking not found"
-                            )
+                        // Load hotel and room data
+                        val hotelResult = getHotelByIdUseCase(booking.hotelId).first()
+                        val roomResult = getRoomByIdUseCase(booking.roomId).first()
+
+                        val hotel = when (hotelResult) {
+                            is com.example.chillstay.core.common.Result.Success -> hotelResult.data
+                            is com.example.chillstay.core.common.Result.Error -> null
                         }
+
+                        val room = when (roomResult) {
+                            is com.example.chillstay.core.common.Result.Success -> roomResult.data
+                            is com.example.chillstay.core.common.Result.Error -> null
+                        }
+
+                        // Load available vouchers
+                        val vouchersResult = getAvailableVouchersUseCase()
+                        val vouchers = when (vouchersResult) {
+                            is com.example.chillstay.core.common.Result.Success -> vouchersResult.data
+                            is com.example.chillstay.core.common.Result.Error -> emptyList()
+                        }
+
+                        // Calculate price breakdown
+                        val dateFrom = java.time.LocalDate.parse(booking.dateFrom)
+                        val dateTo = java.time.LocalDate.parse(booking.dateTo)
+                        val priceBreakdown = calculatePriceBreakdown(room, dateFrom, dateTo)
+
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            hotel = hotel,
+                            room = room,
+                            dateFrom = dateFrom,
+                            dateTo = dateTo,
+                            availableVouchers = vouchers,
+                            priceBreakdown = priceBreakdown,
+                            hasInitialDates = true
+                        )
                     }
                     is com.example.chillstay.core.common.Result.Error -> {
                         _state.value = _state.value.copy(
