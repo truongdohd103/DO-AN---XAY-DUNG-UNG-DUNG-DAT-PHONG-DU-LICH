@@ -23,3 +23,26 @@ enum class UserRole {
 }
 
 
+data class CustomerStats(
+    val totalBookings: Int = 0,
+    val totalSpent: Double = 0.0,
+    val totalReviews: Int = 0,
+    val memberSince: String = ""
+)
+
+data class CustomerActivity(
+    val id: String = "",
+    val userId: String = "",
+    val type: ActivityType = ActivityType.BOOKING,
+    val title: String = "",
+    val description: String = "",
+    val relatedId: String = "", // bookingId or reviewId
+    val createdAt: Timestamp = Timestamp.now()
+)
+
+enum class ActivityType {
+    BOOKING,
+    REVIEW,
+    BOOKING_COMPLETED,
+    BOOKING_CANCELLED
+}

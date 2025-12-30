@@ -176,16 +176,6 @@ class FirestoreHotelRepository @Inject constructor(
 
         val coordinate = when (val coord = data["coordinate"]) {
             is GeoPoint -> Coordinate(coord.latitude, coord.longitude)
-            is Map<*, *> -> {
-                val lat = (coord["latitude"] as? Number)?.toDouble()
-                    ?: (coord["lat"] as? Number)?.toDouble()
-                    ?: 0.0
-                val lng = (coord["longitude"] as? Number)?.toDouble()
-                    ?: (coord["lng"] as? Number)?.toDouble()
-                    ?: 0.0
-                Coordinate(lat, lng)
-            }
-
             else -> Coordinate()
         }
 
