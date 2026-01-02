@@ -14,6 +14,10 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.update
 import android.util.Log
+import kotlinx.coroutines.flow.first
+import com.example.chillstay.core.common.Result
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 class VipStatusViewModel(
     private val getVipStatusUseCase: GetVipStatusUseCase,
@@ -48,78 +52,77 @@ class VipStatusViewModel(
         viewModelScope.launch {
             try {
                 Log.d("VipStatusViewModel", "Loading VIP status for user: $currentUserId")
-                
-                // Load VIP status
-                val vipStatusResult = getVipStatusUseCase(currentUserId)
+
+                // Lấy kết quả VIP status (flow -> lấy emission đầu)
+                val vipStatusResult = getVipStatusUseCase(currentUserId).first()
+
                 when (vipStatusResult) {
-                    is com.example.chillstay.core.common.Result.Success -> {
+                    is Result.Success -> {
                         val vipStatus = vipStatusResult.data
                         if (vipStatus != null) {
                             Log.d("VipStatusViewModel", "VIP status loaded: ${vipStatus.level}")
-                            
-                            // Load benefits for current level
-                            val benefitsResult = getVipBenefitsUseCase(vipStatus.level)
+
+                            // Lấy benefits cho level hiện tại (flow -> lấy emission đầu)
+                            val benefitsResult = getVipBenefitsUseCase(vipStatus.level).first()
                             val benefits = when (benefitsResult) {
-                                is com.example.chillstay.core.common.Result.Success -> benefitsResult.data
-                                is com.example.chillstay.core.common.Result.Error -> emptyList()
+                                is Result.Success -> benefitsResult.data
+                                is Result.Error -> emptyList()
                             }
-                            
-                            // Load history
-                            val historyResult = getVipStatusHistoryUseCase(currentUserId)
+
+                            // Lấy lịch sử (flow -> lấy emission đầu)
+                            val historyResult = getVipStatusHistoryUseCase(currentUserId).first()
                             val history = when (historyResult) {
-                                is com.example.chillstay.core.common.Result.Success -> historyResult.data
-                                is com.example.chillstay.core.common.Result.Error -> emptyList()
+                                is Result.Success -> historyResult.data
+                                is Result.Error -> emptyList()
                             }
-                            
-                            // Recompute totals from bookings and update if mismatched
+
+                            // Recompute totals nếu cần (giữ nguyên suspend function)
                             val recomputed = recomputeTotalsIfNeeded(currentUserId, vipStatus)
 
-                            _state.update { 
+                            _state.update {
                                 it.copy(
                                     isLoading = false,
                                     vipStatus = recomputed,
                                     benefits = benefits,
-                                    history = history
+                                    history = history,
+                                    error = null
                                 )
                             }
-                            
-                            viewModelScope.launch {
-                                sendEffect { VipStatusEffect.ShowVipStatusLoaded }
-                            }
+
+                            // Phát effect báo đã load xong
+                            sendEffect { VipStatusEffect.ShowVipStatusLoaded }
                         } else {
-                            // Create new VIP status if doesn't exist
+                            // Nếu chưa có VIP status -> tạo mới
                             Log.d("VipStatusViewModel", "No VIP status found, creating new one")
                             createVipStatus(currentUserId)
                         }
                     }
-                    is com.example.chillstay.core.common.Result.Error -> {
-                        Log.e("VipStatusViewModel", "Error loading VIP status: ${vipStatusResult.throwable.message}")
-                        _state.update { 
+
+                    is Result.Error -> {
+                        val msg = vipStatusResult.throwable.message ?: "Failed to load VIP status"
+                        Log.e("VipStatusViewModel", "Error loading VIP status: $msg")
+                        _state.update {
                             it.copy(
                                 isLoading = false,
-                                error = vipStatusResult.throwable.message ?: "Failed to load VIP status"
+                                error = msg
                             )
                         }
-                        viewModelScope.launch {
-                            sendEffect { VipStatusEffect.ShowError(vipStatusResult.throwable.message ?: "Failed to load VIP status") }
-                        }
+                        sendEffect { VipStatusEffect.ShowError(msg) }
                     }
                 }
             } catch (e: Exception) {
-                Log.e("VipStatusViewModel", "Exception loading VIP status: ${e.message}", e)
-                _state.update { 
+                val msg = e.message ?: "Unknown error occurred"
+                Log.e("VipStatusViewModel", "Exception loading VIP status: $msg", e)
+                _state.update {
                     it.copy(
                         isLoading = false,
-                        error = e.message ?: "Unknown error occurred"
+                        error = msg
                     )
                 }
-                viewModelScope.launch {
-                    sendEffect { VipStatusEffect.ShowError(e.message ?: "Unknown error occurred") }
-                }
+                sendEffect { VipStatusEffect.ShowError(msg) }
             }
         }
     }
-
     private fun createVipStatus(userId: String) {
         viewModelScope.launch {
             try {
@@ -127,15 +130,16 @@ class VipStatusViewModel(
                 val createResult = createVipStatusUseCase(userId)
                 
                 when (createResult) {
-                    is com.example.chillstay.core.common.Result.Success -> {
+                    is Result.Success -> {
                         val vipStatus = createResult.data
                         Log.d("VipStatusViewModel", "VIP status created successfully")
                         
                         // Load benefits for new level
-                        val benefitsResult = getVipBenefitsUseCase(vipStatus.level)
+                        val benefitsResult = getVipBenefitsUseCase(vipStatus.level).first()
+
                         val benefits = when (benefitsResult) {
-                            is com.example.chillstay.core.common.Result.Success -> benefitsResult.data
-                            is com.example.chillstay.core.common.Result.Error -> emptyList()
+                            is Result.Success -> benefitsResult.data
+                            is Result.Error -> emptyList()
                         }
                         
                         _state.update { 
@@ -178,7 +182,6 @@ class VipStatusViewModel(
             }
         }
     }
-
     private fun refreshVipStatus() {
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
         if (currentUserId == null) {
@@ -191,59 +194,75 @@ class VipStatusViewModel(
         viewModelScope.launch {
             try {
                 Log.d("VipStatusViewModel", "Refreshing VIP status for user: $currentUserId")
-                
-                // Load VIP status
-                val vipStatusResult = getVipStatusUseCase(currentUserId)
+
+                // 1️⃣ Lấy VIP status (Flow -> first)
+                val vipStatusResult = getVipStatusUseCase(currentUserId).first()
+
                 when (vipStatusResult) {
-                    is com.example.chillstay.core.common.Result.Success -> {
+                    is Result.Success -> {
                         val vipStatus = vipStatusResult.data
-                        if (vipStatus != null) {
-                            Log.d("VipStatusViewModel", "VIP status refreshed: ${vipStatus.level}")
-                            
-                            // Load benefits for current level
-                            val benefitsResult = getVipBenefitsUseCase(vipStatus.level)
-                            val benefits = when (benefitsResult) {
-                                is com.example.chillstay.core.common.Result.Success -> benefitsResult.data
-                                is com.example.chillstay.core.common.Result.Error -> emptyList()
+                        if (vipStatus == null) {
+                            _state.update { it.copy(isRefreshing = false) }
+                            return@launch
+                        }
+
+                        Log.d(
+                            "VipStatusViewModel",
+                            "VIP status refreshed: ${vipStatus.level}"
+                        )
+
+                        coroutineScope {
+                            val benefitsDeferred = async {
+                                getVipBenefitsUseCase(vipStatus.level).first()
                             }
-                            
-                            // Load history
-                            val historyResult = getVipStatusHistoryUseCase(currentUserId)
-                            val history = when (historyResult) {
-                                is com.example.chillstay.core.common.Result.Success -> historyResult.data
-                                is com.example.chillstay.core.common.Result.Error -> emptyList()
+                            val historyDeferred = async {
+                                getVipStatusHistoryUseCase(currentUserId).first()
                             }
-                            
+
+                            val benefits = when (val result = benefitsDeferred.await()) {
+                                is Result.Success -> result.data
+                                is Result.Error -> emptyList()
+                            }
+
+                            val history = when (val result = historyDeferred.await()) {
+                                is Result.Success -> result.data
+                                is Result.Error -> emptyList()
+                            }
+
+                            // 3️⃣ Recompute totals nếu cần
                             val recomputed = recomputeTotalsIfNeeded(currentUserId, vipStatus)
 
-                            _state.update { 
+                            _state.update {
                                 it.copy(
                                     isRefreshing = false,
                                     vipStatus = recomputed,
                                     benefits = benefits,
-                                    history = history
+                                    history = history,
+                                    error = null
                                 )
                             }
-                        } else {
-                            _state.update { it.copy(isRefreshing = false) }
                         }
                     }
-                    is com.example.chillstay.core.common.Result.Error -> {
-                        Log.e("VipStatusViewModel", "Error refreshing VIP status: ${vipStatusResult.throwable.message}")
-                        _state.update { 
+
+                    is Result.Error -> {
+                        val msg =
+                            vipStatusResult.throwable.message ?: "Failed to refresh VIP status"
+                        Log.e("VipStatusViewModel", msg)
+                        _state.update {
                             it.copy(
                                 isRefreshing = false,
-                                error = vipStatusResult.throwable.message ?: "Failed to refresh VIP status"
+                                error = msg
                             )
                         }
                     }
                 }
             } catch (e: Exception) {
-                Log.e("VipStatusViewModel", "Exception refreshing VIP status: ${e.message}", e)
-                _state.update { 
+                val msg = e.message ?: "Unknown error occurred"
+                Log.e("VipStatusViewModel", "Exception refreshing VIP status: $msg", e)
+                _state.update {
                     it.copy(
                         isRefreshing = false,
-                        error = e.message ?: "Unknown error occurred"
+                        error = msg
                     )
                 }
             }
@@ -267,10 +286,10 @@ class VipStatusViewModel(
     ): com.example.chillstay.domain.model.VipStatus {
         return try {
             // Query history và tổng điểm
-            val historyResult = getVipStatusHistoryUseCase(userId)
+            val historyResult = getVipStatusHistoryUseCase(userId).first()
             val history = when (historyResult) {
-                is com.example.chillstay.core.common.Result.Success -> historyResult.data
-                is com.example.chillstay.core.common.Result.Error -> emptyList()
+                is Result.Success -> historyResult.data
+                is Result.Error -> emptyList()
             }
             val pointsFromHistory = history.sumOf { it.pointsChange }
             // Do not downgrade user if stored points are higher than history sum
@@ -279,8 +298,8 @@ class VipStatusViewModel(
             // Query bookings
             val bookingsResult = getUserBookingsUseCase(userId, BookingStatus.COMPLETED.name)
             val completedBookings = when (bookingsResult) {
-                is com.example.chillstay.core.common.Result.Success -> bookingsResult.data
-                is com.example.chillstay.core.common.Result.Error -> emptyList()
+                is Result.Success -> bookingsResult.data
+                is Result.Error -> emptyList()
             }
             val totalSpent = completedBookings.sumOf { it.totalPrice }
             val totalBookings = completedBookings.size
@@ -295,7 +314,6 @@ class VipStatusViewModel(
             }
             val isLevelUp = newLevel.ordinal > current.level.ordinal
 
-            val currentMin = newLevel.minPoints
             val nextMin = when (newLevel) {
                 com.example.chillstay.domain.model.VipLevel.BRONZE -> com.example.chillstay.domain.model.VipLevel.SILVER.minPoints
                 com.example.chillstay.domain.model.VipLevel.SILVER -> com.example.chillstay.domain.model.VipLevel.GOLD.minPoints
@@ -344,7 +362,7 @@ class VipStatusViewModel(
                     }
                 }
             } else current
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             current
         }
     }

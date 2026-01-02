@@ -22,7 +22,11 @@ import com.example.chillstay.ui.admin.accommodation.accommodation_manage.Accommo
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditViewModel
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageViewModel
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditViewModel
+import com.example.chillstay.ui.admin.booking.booking_manage.BookingManageViewModel
+import com.example.chillstay.ui.admin.booking.booking_view.BookingViewViewModel
 import com.example.chillstay.ui.admin.customer.customer_manage.CustomerManageViewModel
+import com.example.chillstay.ui.admin.customer.customer_view.CustomerViewViewModel
+import com.example.chillstay.ui.admin.customer.review_view.ReviewViewViewModel
 import com.example.chillstay.ui.admin.voucher.voucher_apply.VoucherApplyViewModel
 import com.example.chillstay.ui.admin.voucher.voucher_edit.VoucherEditViewModel
 import com.example.chillstay.ui.admin.voucher.voucher_manage.VoucherManageViewModel
@@ -81,7 +85,7 @@ val viewModelModule = module {
     viewModel {
         ProfileViewModel(
             get(), // GetCurrentUserIdUseCase
-            get(), // GetUserProfileUseCase
+            get(), // GetUserByIdUseCase
             get()  // UpdateUserProfileUseCase
         )
     }
@@ -96,6 +100,11 @@ val viewModelModule = module {
     viewModel { RoomEditViewModel(get(), get(), get(), get()) }
 
     viewModel { CustomerManageViewModel(get(), get()) }
+    viewModel { CustomerViewViewModel(get(), get(), get()) }
+    viewModel { ReviewViewViewModel(get(), get(), get(), get()) }
+
+    viewModel { BookingManageViewModel(get()) }
+    viewModel { BookingViewViewModel(get(), get(), get(), get()) }
 
     viewModel { VoucherManageViewModel(get(), get(), get()) }
     viewModel { VoucherEditViewModel(get(), get(), get(), get()) }

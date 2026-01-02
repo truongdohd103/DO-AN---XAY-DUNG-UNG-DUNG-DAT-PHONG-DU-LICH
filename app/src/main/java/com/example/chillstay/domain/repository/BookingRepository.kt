@@ -3,6 +3,7 @@ package com.example.chillstay.domain.repository
 import com.example.chillstay.domain.model.Booking
 
 interface BookingRepository {
+    suspend fun getAllBookings(): List<Booking>
     suspend fun getBookingById(id: String): Booking?
     suspend fun getUserBookings(userId: String, status: String? = null): List<Booking>
     suspend fun createBooking(booking: Booking): Booking

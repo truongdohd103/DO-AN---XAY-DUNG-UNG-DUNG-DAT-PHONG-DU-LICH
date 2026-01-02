@@ -59,3 +59,17 @@ data class BookingPreferences(
 )
 
 
+data class BookingSummary(
+    val id: String,
+    val userId: String,
+    val userName: String?,
+    val hotelId: String,
+    val hotelName: String?,
+    val roomId: String,
+    val roomName: String?,
+    val createdAt: Timestamp,
+    val dateFrom: String,
+    val dateTo: String,
+    val totalPrice: Double,
+    val status: BookingStatus = BookingStatus.PENDING
+)

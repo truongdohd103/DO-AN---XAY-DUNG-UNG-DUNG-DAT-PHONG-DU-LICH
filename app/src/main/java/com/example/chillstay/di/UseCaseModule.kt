@@ -21,7 +21,7 @@ import com.example.chillstay.domain.usecase.booking.GetBookingByIdUseCase
 import com.example.chillstay.domain.usecase.booking.DeleteBookingUseCase
 
 // User use cases
-import com.example.chillstay.domain.usecase.user.GetUserProfileUseCase
+import com.example.chillstay.domain.usecase.user.GetUserByIdUseCase
 import com.example.chillstay.domain.usecase.user.UpdateUserProfileUseCase
 
 // Bookmark use cases
@@ -61,14 +61,19 @@ import org.koin.dsl.module
 import com.example.chillstay.domain.repository.AuthRepository
 import com.example.chillstay.domain.repository.HotelRepository
 import com.example.chillstay.domain.repository.ImageUploadRepository
+import com.example.chillstay.domain.repository.ReviewRepository
 import com.example.chillstay.domain.repository.UserRepository
+import com.example.chillstay.domain.usecase.booking.GetAllBookingSummariesUseCase
 import com.example.chillstay.domain.usecase.hotel.CreateHotelUseCase
 import com.example.chillstay.domain.usecase.hotel.UpdateHotelUseCase
 import com.example.chillstay.domain.usecase.image.UploadRoomImagesUseCase
 import com.example.chillstay.domain.usecase.image.UploadVoucherImageUseCase
+import com.example.chillstay.domain.usecase.review.GetReviewByIdUseCase
 import com.example.chillstay.domain.usecase.room.CreateRoomUseCase
 import com.example.chillstay.domain.usecase.room.UpdateRoomUseCase
 import com.example.chillstay.domain.usecase.user.GetAllUsersUseCase
+import com.example.chillstay.domain.usecase.user.GetCustomerActivitiesUseCase
+import com.example.chillstay.domain.usecase.user.GetCustomerDetailsUseCase
 import com.example.chillstay.domain.usecase.user.UpdateUserStatusUseCase
 import com.example.chillstay.domain.usecase.voucher.ApplyVoucherToHotelsUseCase
 import com.example.chillstay.domain.usecase.voucher.CreateVoucherUseCase
@@ -108,12 +113,15 @@ val useCaseModule = module {
     factory { CancelBookingUseCase(get(), get()) }
     factory { GetBookingByIdUseCase(get()) }
     factory { DeleteBookingUseCase(get(), get()) }
+    factory { GetAllBookingSummariesUseCase(get()) }
     
     // User use cases
-    factory { GetUserProfileUseCase(get()) }
+    factory { GetUserByIdUseCase(get()) }
     factory { UpdateUserProfileUseCase(get()) }
     factory { UpdateUserStatusUseCase(get()) }
     factory { GetAllUsersUseCase(get()) }
+    factory { GetCustomerActivitiesUseCase(get()) }
+    factory { GetCustomerDetailsUseCase(get()) }
     
     // Bookmark use cases
     factory { AddBookmarkUseCase(get()) }
@@ -126,7 +134,8 @@ val useCaseModule = module {
     factory { GetHotelReviewsUseCase(get()) }
     factory { UpdateReviewUseCase(get(), get()) }
     factory { DeleteReviewUseCase(get(), get()) }
-    
+    factory { GetReviewByIdUseCase(get<ReviewRepository>()) }
+
     // Voucher use cases
     factory { GetAvailableVouchersUseCase(get<VoucherRepository>()) }
     factory { GetUserVouchersUseCase(get<VoucherRepository>()) }
@@ -134,6 +143,7 @@ val useCaseModule = module {
     factory { GetVoucherByIdUseCase(get<VoucherRepository>()) }
     factory { ClaimVoucherUseCase(get<VoucherRepository>()) }
     factory { CheckVoucherEligibilityUseCase(get<VoucherRepository>()) }
+
     //Admin Voucher use cases
     factory { GetAllVouchersUseCase(get<VoucherRepository>()) }
     factory { CreateVoucherUseCase(get<VoucherRepository>()) }

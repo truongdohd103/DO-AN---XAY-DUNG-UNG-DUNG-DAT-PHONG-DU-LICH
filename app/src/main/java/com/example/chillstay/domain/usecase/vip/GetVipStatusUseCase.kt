@@ -1,19 +1,24 @@
 package com.example.chillstay.domain.usecase.vip
 
+import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.VipStatus
 import com.example.chillstay.domain.repository.VipStatusRepository
-import com.example.chillstay.core.common.Result
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import javax.inject.Inject
 
-class GetVipStatusUseCase constructor(
+class GetVipStatusUseCase @Inject constructor(
     private val vipStatusRepository: VipStatusRepository
 ) {
-    suspend operator fun invoke(userId: String): Result<VipStatus?> {
-        return try {
+    operator fun invoke(userId: String): Flow<Result<VipStatus?>> = flow {
+        try {
             val vipStatus = vipStatusRepository.getVipStatus(userId)
-            Result.success(vipStatus)
+            emit(Result.Success(vipStatus))
         } catch (e: Exception) {
-            Result.failure(e)
+            emit(Result.Error(e))
         }
-    }
+    }.flowOn(Dispatchers.IO)
 }
 
