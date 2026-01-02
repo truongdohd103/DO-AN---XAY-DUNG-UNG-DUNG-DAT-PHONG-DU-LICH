@@ -10,7 +10,7 @@ import com.example.chillstay.domain.usecase.booking.CreateBookingUseCase
 import com.example.chillstay.domain.usecase.booking.GetBookingByIdUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.room.GetRoomByIdUseCase
-import com.example.chillstay.domain.usecase.voucher.GetUserVouchersUseCase
+import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.usecase.voucher.GetAvailableVouchersUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -72,15 +72,15 @@ class BookingViewModel(
                 // Load hotel data
                 val hotelResult = getHotelByIdUseCase(hotelId).first()
                 val hotel = when (hotelResult) {
-                    is com.example.chillstay.core.common.Result.Success -> hotelResult.data
-                    is com.example.chillstay.core.common.Result.Error -> null
+                    is Result.Success -> hotelResult.data
+                    is Result.Error -> null
                 }
                 
                 // Load room data
                 val roomResult = getRoomByIdUseCase(roomId).first()
                 val room = when (roomResult) {
-                    is com.example.chillstay.core.common.Result.Success -> roomResult.data
-                    is com.example.chillstay.core.common.Result.Error -> null
+                    is Result.Success -> roomResult.data
+                    is Result.Error -> null
                 }
                 
                 // Load user's vouchers
@@ -88,8 +88,8 @@ class BookingViewModel(
                 val vouchers = if (userId != null) {
                     val vouchersResult = getAvailableVouchersUseCase(userId = userId, hotelId = hotelId)
                     when (vouchersResult) {
-                        is com.example.chillstay.core.common.Result.Success -> vouchersResult.data
-                        is com.example.chillstay.core.common.Result.Error -> emptyList()
+                        is Result.Success -> vouchersResult.data
+                        is Result.Error -> emptyList()
                     }
                 } else {
                     emptyList()
@@ -123,64 +123,57 @@ class BookingViewModel(
             
             try {
                 // Get booking from database
-                val bookingResult = getBookingByIdUseCase(bookingId)
+                val bookingResult = getBookingByIdUseCase(bookingId).first()
                 when (bookingResult) {
-                    is com.example.chillstay.core.common.Result.Success -> {
+                    is Result.Success -> {
                         val booking = bookingResult.data
-                        if (booking != null) {
-                            // Load hotel and room data
-                            val hotelResult = getHotelByIdUseCase(booking.hotelId).first()
-                            val roomResult = getRoomByIdUseCase(booking.roomId).first()
-                            
-                            val hotel = when (hotelResult) {
-                                is com.example.chillstay.core.common.Result.Success -> hotelResult.data
-                                is com.example.chillstay.core.common.Result.Error -> null
-                            }
-                            
-                            val room = when (roomResult) {
-                                is com.example.chillstay.core.common.Result.Success -> roomResult.data
-                                is com.example.chillstay.core.common.Result.Error -> null
-                            }
-                            
-                            // Load user's vouchers
-                            val userId = FirebaseAuth.getInstance().currentUser?.uid
-                            val vouchers = if (userId != null) {
-                                val vouchersResult = getAvailableVouchersUseCase(userId = userId, hotelId = booking.hotelId)
-                                when (vouchersResult) {
-                                    is com.example.chillstay.core.common.Result.Success -> vouchersResult.data
-                                    is com.example.chillstay.core.common.Result.Error -> emptyList()
-                                }
-                            } else {
-                                emptyList()
-                            }
-                            
-                            // Calculate price breakdown
-                            val dateFrom = java.time.LocalDate.parse(booking.dateFrom)
-                            val dateTo = java.time.LocalDate.parse(booking.dateTo)
-                            
-                            val appliedVouchers = vouchers.filter { it.id in booking.appliedVouchers }
-                            
-                            val priceBreakdown = calculatePriceBreakdown(room, dateFrom, dateTo, booking.rooms, appliedVouchers)
-                            
-                            _state.value = _state.value.copy(
-                                isLoading = false,
-                                hotel = hotel,
-                                room = room,
-                                dateFrom = dateFrom,
-                                dateTo = dateTo,
-                                availableVouchers = vouchers,
-                                appliedVouchers = appliedVouchers,
-                                priceBreakdown = priceBreakdown,
-                                hasInitialDates = true
-                            )
-                        } else {
-                            _state.value = _state.value.copy(
-                                isLoading = false,
-                                error = "Booking not found"
-                            )
+                        // Load hotel and room data
+                        val hotelResult = getHotelByIdUseCase(booking.hotelId).first()
+                        val roomResult = getRoomByIdUseCase(booking.roomId).first()
+
+                        val hotel = when (hotelResult) {
+                            is Result.Success -> hotelResult.data
+                            is Result.Error -> null
                         }
+
+                        val room = when (roomResult) {
+                            is Result.Success -> roomResult.data
+                            is Result.Error -> null
+                        }
+
+                        // Load user's vouchers
+                        val userId = FirebaseAuth.getInstance().currentUser?.uid
+                        val vouchers = if (userId != null) {
+                            val vouchersResult = getAvailableVouchersUseCase(userId = userId, hotelId = booking.hotelId)
+                            when (vouchersResult) {
+                                is Result.Success -> vouchersResult.data
+                                is Result.Error -> emptyList()
+                            }
+                        } else {
+                            emptyList()
+                        }
+
+                        // Calculate price breakdown
+                        val dateFrom = LocalDate.parse(booking.dateFrom)
+                        val dateTo = LocalDate.parse(booking.dateTo)
+
+                        val appliedVouchers = vouchers.filter { it.id in booking.appliedVouchers }
+
+                        val priceBreakdown = calculatePriceBreakdown(room, dateFrom, dateTo, booking.rooms, appliedVouchers)
+
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            hotel = hotel,
+                            room = room,
+                            dateFrom = dateFrom,
+                            dateTo = dateTo,
+                            availableVouchers = vouchers,
+                            appliedVouchers = appliedVouchers,
+                            priceBreakdown = priceBreakdown,
+                            hasInitialDates = true
+                        )
                     }
-                    is com.example.chillstay.core.common.Result.Error -> {
+                    is Result.Error -> {
                         _state.value = _state.value.copy(
                             isLoading = false,
                             error = bookingResult.throwable.message ?: "Failed to load booking"
@@ -301,7 +294,7 @@ class BookingViewModel(
             try {
                 val booking = Booking(
                     id = "", // Will be generated by Firestore
-                    userId = (try { com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid } catch (_: Exception) { null }) ?: "",
+                    userId = (try { FirebaseAuth.getInstance().currentUser?.uid } catch (_: Exception) { null }) ?: "",
                     hotelId = currentState.hotel.id,
                     roomId = currentState.room.id,
                     dateFrom = currentState.dateFrom.toString(),
@@ -329,7 +322,7 @@ class BookingViewModel(
                 
                 val result = createBookingUseCase(booking)
                 when (result) {
-                    is com.example.chillstay.core.common.Result.Success -> {
+                    is Result.Success -> {
                         _state.value = currentState.copy(
                             isCreatingBooking = false,
                             bookingCreated = true
@@ -338,7 +331,7 @@ class BookingViewModel(
                             sendEffect { BookingEffect.ShowBookingCreated }
                         }
                     }
-                    is com.example.chillstay.core.common.Result.Error -> {
+                    is Result.Error -> {
                         _state.value = currentState.copy(
                             isCreatingBooking = false,
                             error = result.throwable.message ?: "Failed to create booking"
