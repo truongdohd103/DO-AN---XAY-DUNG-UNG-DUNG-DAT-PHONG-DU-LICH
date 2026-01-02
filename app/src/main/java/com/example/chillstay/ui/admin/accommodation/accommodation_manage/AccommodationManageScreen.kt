@@ -33,6 +33,8 @@ import org.koin.androidx.compose.koinViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
 
+import com.example.chillstay.ui.components.ResponsiveContainer
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccommodationManageScreen(
@@ -69,39 +71,52 @@ fun AccommodationManageScreen(
             .fillMaxSize()
             .background(Color.White)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Header
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = tealColor
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(72.dp)
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
+        ResponsiveContainer {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = "Accommodation",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = tealColor
+                        )
+                    )
+                },
+                floatingActionButton = {
+                    FloatingActionButton(
+                        onClick = { viewModel.onEvent(AccommodationManageIntent.CreateNew) },
+                        containerColor = tealColor
+                    ) {
+                        Text(
+                            text = "+",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                     }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Text(
-                        text = "Accommodation",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
-            }
+                },
+                containerColor = Color.White
+            ) { paddingValues ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
 
             // Content
             when {
@@ -206,7 +221,7 @@ fun AccommodationManageScreen(
                                         onValueChange = {},
                                         readOnly = true,
                                         modifier = Modifier
-                                            .menuAnchor()
+                                            .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
                                             .fillMaxWidth()
                                             .height(56.dp),
                                         trailingIcon = {
@@ -273,7 +288,7 @@ fun AccommodationManageScreen(
                                         onValueChange = {},
                                         readOnly = true,
                                         modifier = Modifier
-                                            .menuAnchor()
+                                            .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
                                             .fillMaxWidth()
                                             .height(56.dp),
                                         trailingIcon = {
@@ -364,25 +379,12 @@ fun AccommodationManageScreen(
                                 tealColor = tealColor
                             )
                         }
+                        }
                     }
                 }
             }
-        }
 
-        // Floating Action Button
-        FloatingActionButton(
-            onClick = { viewModel.onEvent(AccommodationManageIntent.CreateNew) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(24.dp),
-            containerColor = tealColor
-        ) {
-            Text(
-                text = "+",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+                }
         }
     }
 }

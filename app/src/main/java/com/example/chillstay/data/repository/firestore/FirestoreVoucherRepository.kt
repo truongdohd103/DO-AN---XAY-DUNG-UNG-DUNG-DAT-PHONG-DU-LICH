@@ -128,6 +128,38 @@ class FirestoreVoucherRepository @Inject constructor(
     }
 
     // Claim methods
+    override suspend fun getUserVouchers(userId: String): List<Voucher> {
+        return try {
+            Log.d("FirestoreVoucherRepository", "Fetching vouchers for user: $userId")
+            
+            // 1. Get claimed voucher IDs
+            val claimsSnapshot = firestore.collection("voucher_claims")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+            
+            val claimedVoucherIds = claimsSnapshot.documents.mapNotNull { it.getString("voucherId") }
+            
+            if (claimedVoucherIds.isEmpty()) {
+                Log.d("FirestoreVoucherRepository", "No vouchers claimed by user")
+                return emptyList()
+            }
+            
+            // 2. Fetch vouchers
+            // Note: Firestore 'in' query limit is 10. For scalability, we might need to batch 
+            // or fetch all active vouchers and filter. 
+            // Here we'll fetch all active vouchers and filter in memory as it's safer for now.
+            val allVouchers = getVouchers() // Reusing existing method which filters by ACTIVE
+            
+            val userVouchers = allVouchers.filter { it.id in claimedVoucherIds }
+            Log.d("FirestoreVoucherRepository", "Found ${userVouchers.size} vouchers for user")
+            userVouchers
+        } catch (e: Exception) {
+            Log.e("FirestoreVoucherRepository", "Error fetching user vouchers: ${e.message}", e)
+            emptyList()
+        }
+    }
+
     override suspend fun claimVoucher(voucherId: String, userId: String): Boolean {
         return try {
             Log.d("FirestoreVoucherRepository", "Claiming voucher: $voucherId for user: $userId")

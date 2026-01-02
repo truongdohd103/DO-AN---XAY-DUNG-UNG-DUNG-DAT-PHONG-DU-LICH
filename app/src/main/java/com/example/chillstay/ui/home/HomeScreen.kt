@@ -51,6 +51,7 @@ import androidx.compose.animation.togetherWith
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.chillstay.R
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
@@ -476,7 +477,9 @@ fun HotelCard(
                     text = title,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF212121)
+                    color = Color(0xFF212121),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -484,7 +487,9 @@ fun HotelCard(
                 Text(
                     text = location,
                     fontSize = 14.sp,
-                    color = Color(0xFF757575)
+                    color = Color(0xFF757575),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -925,7 +930,9 @@ fun RecentlyBookedCard(
                             text = title,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF212121)
+                            color = Color(0xFF212121),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         
                         Spacer(modifier = Modifier.height(4.dp))
@@ -933,7 +940,9 @@ fun RecentlyBookedCard(
                         Text(
                             text = location,
                             fontSize = 14.sp,
-                            color = Color(0xFF757575)
+                            color = Color(0xFF757575),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         
                         Spacer(modifier = Modifier.height(8.dp))

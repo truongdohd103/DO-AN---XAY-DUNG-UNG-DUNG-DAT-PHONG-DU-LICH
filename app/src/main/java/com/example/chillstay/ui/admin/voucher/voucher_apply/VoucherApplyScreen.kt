@@ -34,6 +34,8 @@ import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.Voucher
 import org.koin.androidx.compose.koinViewModel
 
+import com.example.chillstay.ui.components.ResponsiveContainer
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccommodationSelectScreen(
@@ -63,42 +65,44 @@ fun AccommodationSelectScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Apply Voucher Code",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.onEvent(VoucherApplyIntent.NavigateBack) }) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
+    ResponsiveContainer {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Apply Voucher Code",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1AB6B6),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.onEvent(VoucherApplyIntent.NavigateBack) }) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color(0xFF1AB6B6),
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    )
                 )
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 140.dp)
+            },
+            containerColor = Color.White
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
             ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 140.dp)
+                ) {
                 // Voucher Card
                 item {
                     uiState.voucher?.let { voucher ->
@@ -367,6 +371,7 @@ fun AccommodationSelectScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
+            }
         }
     }
 }
@@ -488,7 +493,7 @@ private fun CountryDropdown(
                 readOnly = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(),
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
                 trailingIcon = {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
@@ -559,7 +564,7 @@ private fun CityDropdown(
                 readOnly = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(),
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
                 trailingIcon = {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,

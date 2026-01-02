@@ -80,7 +80,7 @@ val viewModelModule = module {
         get(), // GetCurrentUserIdUseCase
         get()  // ReviewRepository
     ) }
-    viewModel { BillViewModel(get(), get()) }
+    viewModel { BillViewModel(get(), get(), get()) }
     viewModel { VipStatusViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel {
         ProfileViewModel(
@@ -92,7 +92,7 @@ val viewModelModule = module {
     viewModel { MyReviewsViewModel(get(), get(), get()) }
     viewModel { AllReviewsViewModel(get(), get()) }
 
-    viewModel { AdminHomeViewModel() }
+    viewModel { AdminHomeViewModel(get()) }
 
     viewModel { AccommodationManageViewModel(get()) }
     viewModel { AccommodationEditViewModel(get(), get(), get(), get()) }

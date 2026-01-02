@@ -43,6 +43,7 @@ import com.example.chillstay.domain.usecase.voucher.ApplyVoucherToBookingUseCase
 import com.example.chillstay.domain.usecase.voucher.GetVoucherByIdUseCase
 import com.example.chillstay.domain.usecase.voucher.ClaimVoucherUseCase
 import com.example.chillstay.domain.usecase.voucher.CheckVoucherEligibilityUseCase
+import com.example.chillstay.domain.usecase.voucher.GetUserVouchersUseCase
 
 // VIP use cases
 import com.example.chillstay.domain.usecase.vip.GetVipStatusUseCase
@@ -137,6 +138,7 @@ val useCaseModule = module {
 
     // Voucher use cases
     factory { GetAvailableVouchersUseCase(get<VoucherRepository>()) }
+    factory { GetUserVouchersUseCase(get<VoucherRepository>()) }
     factory { ApplyVoucherToBookingUseCase(get<VoucherRepository>(), get<BookingRepository>()) }
     factory { GetVoucherByIdUseCase(get<VoucherRepository>()) }
     factory { ClaimVoucherUseCase(get<VoucherRepository>()) }

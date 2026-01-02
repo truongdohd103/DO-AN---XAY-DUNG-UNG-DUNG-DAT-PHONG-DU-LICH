@@ -28,6 +28,7 @@ data class CustomerManageUiState(
     // Statistics
     val totalCustomers: Int = 0,
     val activeCustomers: Int = 0,
+    val inactiveCustomers: Int = 0,
 
     // Pagination
     val currentPage: Int = 1,

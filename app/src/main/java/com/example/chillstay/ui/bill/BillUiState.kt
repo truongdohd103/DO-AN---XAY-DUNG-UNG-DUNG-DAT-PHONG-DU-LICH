@@ -7,6 +7,7 @@ data class BillUiState(
     val bookingId: String = "",
     val booking: Booking? = null,
     val hotel: Hotel? = null,
+    val room: com.example.chillstay.domain.model.Room? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
     val isDownloading: Boolean = false,
@@ -17,6 +18,8 @@ data class BillUiState(
     fun updateBooking(booking: Booking?) = copy(booking = booking)
     
     fun updateHotel(hotel: Hotel?) = copy(hotel = hotel)
+    
+    fun updateRoom(room: com.example.chillstay.domain.model.Room?) = copy(room = room)
     
     fun updateIsLoading(isLoading: Boolean) = copy(isLoading = isLoading)
     
