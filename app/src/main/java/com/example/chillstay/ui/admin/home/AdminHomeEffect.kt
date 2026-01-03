@@ -8,7 +8,8 @@ sealed interface AdminHomeEffect : UiEffect {
     object NavigateToCustomer : AdminHomeEffect
     object NavigateToNotification : AdminHomeEffect
     object NavigateToBooking : AdminHomeEffect
-    object NavigateToStatistics : AdminHomeEffect
+    object NavigateToAccommodationStatistics : AdminHomeEffect
+    object NavigateToCustomerStatistics : AdminHomeEffect
     object NavigateToPrice : AdminHomeEffect
     object NavigateToCalendar : AdminHomeEffect
     object NavigateToProfile : AdminHomeEffect

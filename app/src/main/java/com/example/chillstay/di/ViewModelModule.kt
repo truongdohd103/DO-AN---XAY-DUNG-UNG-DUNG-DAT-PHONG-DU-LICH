@@ -20,6 +20,7 @@ import com.example.chillstay.ui.allreviews.AllReviewsViewModel
 import com.example.chillstay.ui.admin.home.AdminHomeViewModel
 import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageViewModel
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditViewModel
+import com.example.chillstay.ui.admin.statistics.accommodation_statistics.AccommodationStatisticsViewModel
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageViewModel
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditViewModel
 import com.example.chillstay.ui.admin.booking.booking_manage.BookingManageViewModel
@@ -109,4 +110,6 @@ val viewModelModule = module {
     viewModel { VoucherManageViewModel(get(), get(), get()) }
     viewModel { VoucherEditViewModel(get(), get(), get(), get()) }
     viewModel { VoucherApplyViewModel(get(), get(), get(), get()) }
+
+    viewModel { AccommodationStatisticsViewModel(get(), get()) }
 }

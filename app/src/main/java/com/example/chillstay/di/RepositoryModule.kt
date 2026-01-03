@@ -1,7 +1,6 @@
 package com.example.chillstay.di
 
 // Updated to use firestore package structure
-import android.util.Log
 import com.example.chillstay.data.api.ChillStayApi
 import com.example.chillstay.data.api.FirebaseChillStayApi
 import com.example.chillstay.data.repository.firestore.FirebaseAuthRepository
@@ -16,11 +15,13 @@ import com.example.chillstay.data.repository.firestore.FirestoreRoomRepository
 import com.example.chillstay.data.repository.firestore.FirestoreUserRepository
 import com.example.chillstay.data.repository.firestore.FirestoreVipStatusRepository
 import com.example.chillstay.data.repository.firestore.FirestoreVoucherRepository
+import com.example.chillstay.data.repository.firestore.FirestoreBookingStatisticsRepository
 import com.example.chillstay.data.repository.image.ImageUploadRepositoryImpl
 import com.example.chillstay.domain.repository.ActivityRepository
 import com.example.chillstay.domain.repository.AuthRepository
 import com.example.chillstay.domain.repository.BillRepository
 import com.example.chillstay.domain.repository.BookingRepository
+import com.example.chillstay.domain.repository.BookingStatisticsRepository
 import com.example.chillstay.domain.repository.BookingSummaryRepository
 import com.example.chillstay.domain.repository.BookmarkRepository
 import com.example.chillstay.domain.repository.HotelRepository
@@ -32,8 +33,6 @@ import com.example.chillstay.domain.repository.VipStatusRepository
 import com.example.chillstay.domain.repository.VoucherRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FirebaseFirestoreSettings
-import com.google.firebase.firestore.firestoreSettings
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.HttpTimeout
@@ -66,6 +65,7 @@ val repositoryModule = module {
     single<VipStatusRepository> { FirestoreVipStatusRepository(get()) }
     single<ActivityRepository> { FirestoreActivityRepository(get()) }
     single<BookingSummaryRepository> { FirestoreBookingSummaryRepository(get()) }
+    single<BookingStatisticsRepository> { FirestoreBookingStatisticsRepository(get()) }
     single<ChillStayApi> { FirebaseChillStayApi(get()) }
 
     // Shared Ktor HttpClient (dùng cho image-service và các repository khác nếu cần)

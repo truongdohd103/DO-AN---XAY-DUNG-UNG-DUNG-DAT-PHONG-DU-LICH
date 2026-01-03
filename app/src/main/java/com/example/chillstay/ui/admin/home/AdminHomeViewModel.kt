@@ -38,9 +38,14 @@ class AdminHomeViewModel(
                     sendEffect { AdminHomeEffect.NavigateToBooking }
                 }
             }
-            is AdminHomeIntent.NavigateToStatistics -> {
+            is AdminHomeIntent.NavigateToAccommodationStatistics -> {
                 viewModelScope.launch {
-                    sendEffect { AdminHomeEffect.NavigateToStatistics }
+                    sendEffect { AdminHomeEffect.NavigateToAccommodationStatistics }
+                }
+            }
+            is AdminHomeIntent.NavigateToCustomerStatistics -> {
+                viewModelScope.launch {
+                    sendEffect { AdminHomeEffect.NavigateToCustomerStatistics }
                 }
             }
             is AdminHomeIntent.ToggleStatistics -> {

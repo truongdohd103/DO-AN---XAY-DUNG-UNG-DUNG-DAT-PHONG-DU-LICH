@@ -40,29 +40,22 @@ class BillViewModel(
         
         viewModelScope.launch {
             try {
-                when (val bookingResult = getBookingById(bookingId)) {
+                when (val bookingResult = getBookingById(bookingId).first()) {
                     is Result.Success -> {
                         val booking = bookingResult.data
-                        if (booking != null) {
-                            // Load hotel
-                            val hotelResult = getHotelById(booking.hotelId).first()
-                            val hotel = if (hotelResult is Result.Success) hotelResult.data else null
-                            
-                            // Load room
-                            val roomResult = getRoomById(booking.roomId).first()
-                            val room = if (roomResult is Result.Success) roomResult.data else null
-                            
-                            _state.update { 
-                                it.updateBooking(booking)
-                                  .updateHotel(hotel)
-                                  .updateRoom(room)
-                                  .updateIsLoading(false)
-                            }
-                        } else {
-                            _state.update { 
-                                it.updateIsLoading(false)
-                                  .updateError("Booking not found")
-                            }
+                        // Load hotel
+                        val hotelResult = getHotelById(booking.hotelId).first()
+                        val hotel = if (hotelResult is Result.Success) hotelResult.data else null
+
+                        // Load room
+                        val roomResult = getRoomById(booking.roomId).first()
+                        val room = if (roomResult is Result.Success) roomResult.data else null
+
+                        _state.update {
+                            it.updateBooking(booking)
+                              .updateHotel(hotel)
+                              .updateRoom(room)
+                              .updateIsLoading(false)
                         }
                     }
                     is Result.Error -> {

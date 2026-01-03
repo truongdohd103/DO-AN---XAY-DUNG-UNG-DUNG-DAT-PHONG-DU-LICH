@@ -59,6 +59,7 @@ import com.example.chillstay.ui.admin.booking.booking_view.BookingViewScreen
 import com.example.chillstay.ui.admin.customer.customer_manage.CustomerManageScreen
 import com.example.chillstay.ui.admin.customer.customer_view.CustomerViewScreen
 import com.example.chillstay.ui.admin.customer.review_view.ReviewViewScreen
+import com.example.chillstay.ui.admin.statistics.accommodation_statistics.AccommodationStatisticsScreen
 import com.example.chillstay.ui.admin.voucher.voucher_apply.AccommodationSelectScreen
 import com.example.chillstay.ui.admin.voucher.voucher_edit.VoucherEditScreen
 import com.example.chillstay.ui.admin.voucher.voucher_manage.VoucherManageScreen
@@ -376,7 +377,8 @@ fun AppNavHost(
                 onNavigateToCustomer = { navController.navigate(Routes.ADMIN_CUSTOMER_MANAGE) },
                 onNavigateToNotification = { /* TODO: Implement navigation */ },
                 onNavigateToBooking = { navController.navigate(Routes.ADMIN_BOOKING_MANAGE) },
-                onNavigateToStatistics = { /* TODO: Implement navigation */ },
+                onNavigateToAccommodationStatistics = { navController.navigate(Routes.ADMIN_ACCOMMODATION_STATISTICS) },
+                onNavigateToCustomerStatistics = { navController.navigate(Routes.ADMIN_CUSTOMER_STATISTICS) },
                 onNavigateToPrice = { /* TODO: Implement navigation */ },
                 onNavigateToCalendar = { /* TODO: Implement navigation */ },
                 onNavigateToProfile = { navController.navigate(Routes.PROFILE) },
@@ -587,6 +589,11 @@ fun AppNavHost(
                 voucherId = voucherId,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToConfirmation = {  navController.popBackStack() }
+            )
+        }
+        composable(Routes.ADMIN_ACCOMMODATION_STATISTICS) {
+            AccommodationStatisticsScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

@@ -1,17 +1,40 @@
 package com.example.chillstay.ui.admin.home
 
-import android.annotation.SuppressLint
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -24,12 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.chillstay.R
-import org.koin.androidx.compose.koinViewModel
-
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-
 import com.example.chillstay.ui.components.ResponsiveContainer
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +58,8 @@ fun AdminHomeScreen(
     onNavigateToCustomer: () -> Unit = {},
     onNavigateToNotification: () -> Unit = {},
     onNavigateToBooking: () -> Unit = {},
-    onNavigateToStatistics: () -> Unit = {},
+    onNavigateToAccommodationStatistics: () -> Unit = {},
+    onNavigateToCustomerStatistics: () -> Unit = {},
     onNavigateToPrice: () -> Unit = {},
     onNavigateToCalendar: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
@@ -58,7 +78,8 @@ fun AdminHomeScreen(
                 is AdminHomeEffect.NavigateToCustomer -> onNavigateToCustomer()
                 is AdminHomeEffect.NavigateToNotification -> onNavigateToNotification()
                 is AdminHomeEffect.NavigateToBooking -> onNavigateToBooking()
-                is AdminHomeEffect.NavigateToStatistics -> onNavigateToStatistics()
+                is AdminHomeEffect.NavigateToAccommodationStatistics -> onNavigateToAccommodationStatistics()
+                is AdminHomeEffect.NavigateToCustomerStatistics -> onNavigateToCustomerStatistics()
                 is AdminHomeEffect.NavigateToPrice -> onNavigateToPrice()
                 is AdminHomeEffect.NavigateToCalendar -> onNavigateToCalendar()
                 is AdminHomeEffect.NavigateToProfile -> onNavigateToProfile()
@@ -164,21 +185,22 @@ fun AdminHomeScreen(
 
                     // Secondary Buttons - chỉ hiển thị khi Statistics được mở
                     Column(
-                        modifier = Modifier.animateContentSize()
+                        modifier = Modifier.animateContentSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         if (uiState.isStatisticsExpanded) {
                             MenuButton(
                                 text = "Accommodation",
                                 backgroundColor = lightGray,
                                 textColor = Color.Black,
-                                onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToAccommodation) }
+                                onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToAccommodationStatistics) }
                             )
 
                             MenuButton(
                                 text = "Customer",
                                 backgroundColor = lightGray,
                                 textColor = Color.Black,
-                                onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToCustomer) }
+                                onClick = { viewModel.onEvent(AdminHomeIntent.NavigateToCustomerStatistics) }
                             )
                         }
                     }

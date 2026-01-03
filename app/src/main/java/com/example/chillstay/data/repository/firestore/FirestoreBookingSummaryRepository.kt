@@ -28,17 +28,18 @@ class FirestoreBookingSummaryRepository @Inject constructor(
     companion object {
         private const val TAG = "BookingSummaryRepository"
         private const val WHERE_IN_MAX = 10
+        private const val CONCURRENT_CHUNK_LIMIT = 6
     }
 
     override suspend fun getAllBookingSummaries(): List<BookingSummary> =
         withContext(Dispatchers.IO) {
+            val pageSize: Int = 10
             try {
                 Log.d(TAG, "Starting to load booking summaries...")
                 val startTime = System.currentTimeMillis()
 
                 // BƯỚC 1: Load tất cả bookings trước
                 val bookingsSnapshot = firestore.collection("bookings").get().await()
-
                 val bookings = bookingsSnapshot.documents.mapNotNull { doc ->
                     try {
                         doc.toObject(Booking::class.java)?.copy(id = doc.id)

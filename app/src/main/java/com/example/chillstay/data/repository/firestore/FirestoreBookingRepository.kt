@@ -8,34 +8,167 @@ import com.example.chillstay.domain.model.PaymentMethod
 import com.example.chillstay.domain.repository.BookingRepository
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class FirestoreBookingRepository @Inject constructor(private val firestore: FirebaseFirestore) : BookingRepository {
+class FirestoreBookingRepository @Inject constructor(
+    private val firestore: FirebaseFirestore
+) : BookingRepository {
+
+    // Caches để tránh query trùng lặp
+    private val hotelCache = mutableMapOf<String, Map<String, Any?>>()
+    private val roomCache = mutableMapOf<String, Map<String, Any?>>()
+
+    companion object {
+        private const val TAG = "FirestoreBookingRepo"
+        private const val WHERE_IN_MAX = 10
+    }
 
     override suspend fun getAllBookings(): List<Booking> = withContext(Dispatchers.IO) {
         try {
+            Log.d(TAG, "Starting to load all bookings...")
+            val startTime = System.currentTimeMillis()
+
+            // BƯỚC 1: Load tất cả bookings
             val snapshot = firestore.collection("bookings")
                 .orderBy("dateFrom", Query.Direction.DESCENDING)
                 .get()
                 .await()
 
-            // mapping off-main
-            withContext(Dispatchers.Default) {
-                snapshot.documents.mapNotNull { doc -> mapBookingDocument(doc) }
+            val bookingDocs = snapshot.documents
+            Log.d(TAG, "Loaded ${bookingDocs.size} booking documents")
+
+            if (bookingDocs.isEmpty()) {
+                return@withContext emptyList()
             }
+
+            // BƯỚC 2: Collect unique IDs
+            val hotelIds = bookingDocs.mapNotNull { it.getString("hotelId") }.distinct()
+            val roomIds = bookingDocs.mapNotNull { it.getString("roomId") }.distinct()
+
+            Log.d(TAG, "Unique IDs - Hotels: ${hotelIds.size}, Rooms: ${roomIds.size}")
+
+            // BƯỚC 3: Load related data SONG SONG
+            coroutineScope {
+                val hotelLoad = async { loadHotelData(hotelIds) }
+                val roomLoad = async { loadRoomData(roomIds) }
+
+                hotelLoad.await()
+                roomLoad.await()
+            }
+
+            Log.d(TAG, "Loaded all related data")
+
+            // BƯỚC 4: Map sang Booking với data đã cache
+            val bookings = withContext(Dispatchers.Default) {
+                bookingDocs.mapNotNull { doc ->
+                    mapBookingDocumentWithCache(doc)
+                }
+            }
+
+            val endTime = System.currentTimeMillis()
+            Log.d(TAG, "Completed in ${endTime - startTime}ms - Total: ${bookings.size} bookings")
+
+            bookings
         } catch (e: Exception) {
-            Log.e("FirestoreBookingRepository", "Error fetching bookings: ${e.message}", e)
+            Log.e(TAG, "Error fetching bookings: ${e.message}", e)
             emptyList()
         }
     }
-    private fun mapBookingDocument(doc: DocumentSnapshot): Booking? {
+
+    private suspend fun loadHotelData(hotelIds: List<String>) {
+        if (hotelIds.isEmpty()) return
+
+        val idsToFetch = hotelIds.filterNot { hotelCache.containsKey(it) }
+        if (idsToFetch.isEmpty()) return
+
+        val chunks = idsToFetch.chunked(WHERE_IN_MAX)
+
+        supervisorScope {
+            chunks.map { chunk ->
+                async {
+                    try {
+                        val querySnapshot = firestore.collection("hotels")
+                            .whereIn(FieldPath.documentId(), chunk)
+                            .get()
+                            .await()
+
+                        for (doc in querySnapshot.documents) {
+                            hotelCache[doc.id] = doc.data ?: emptyMap()
+                        }
+
+                        // Mark missing docs
+                        val returnedIds = querySnapshot.documents.map { it.id }.toSet()
+                        chunk.forEach { id ->
+                            if (!returnedIds.contains(id) && !hotelCache.containsKey(id)) {
+                                hotelCache[id] = emptyMap()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error loading hotels for chunk: ${e.message}")
+                        chunk.forEach { id ->
+                            if (!hotelCache.containsKey(id)) {
+                                hotelCache[id] = emptyMap()
+                            }
+                        }
+                    }
+                }
+            }.forEach { it.await() }
+        }
+    }
+
+    private suspend fun loadRoomData(roomIds: List<String>) {
+        if (roomIds.isEmpty()) return
+
+        val idsToFetch = roomIds.filterNot { roomCache.containsKey(it) }
+        if (idsToFetch.isEmpty()) return
+
+        val chunks = idsToFetch.chunked(WHERE_IN_MAX)
+
+        supervisorScope {
+            chunks.map { chunk ->
+                async {
+                    try {
+                        val querySnapshot = firestore.collection("rooms")
+                            .whereIn(FieldPath.documentId(), chunk)
+                            .get()
+                            .await()
+
+                        for (doc in querySnapshot.documents) {
+                            roomCache[doc.id] = doc.data ?: emptyMap()
+                        }
+
+                        // Mark missing docs
+                        val returnedIds = querySnapshot.documents.map { it.id }.toSet()
+                        chunk.forEach { id ->
+                            if (!returnedIds.contains(id) && !roomCache.containsKey(id)) {
+                                roomCache[id] = emptyMap()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error loading rooms for chunk: ${e.message}")
+                        chunk.forEach { id ->
+                            if (!roomCache.containsKey(id)) {
+                                roomCache[id] = emptyMap()
+                            }
+                        }
+                    }
+                }
+            }.forEach { it.await() }
+        }
+    }
+
+    private fun mapBookingDocumentWithCache(doc: DocumentSnapshot): Booking? {
         val data = doc.data ?: return null
 
         fun Any?.toDoubleSafe(): Double = when (this) {
@@ -70,9 +203,8 @@ class FirestoreBookingRepository @Inject constructor(private val firestore: Fire
 
         val appliedVouchers = (data["appliedVouchers"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
 
-        // Nếu dateFrom/dateTo ở Firestore là Timestamp, handle cả 2 trường hợp:
         val dateFrom = when (val v = data["dateFrom"]) {
-            is Timestamp -> v.toDate().toString() // hoặc chuyển theo format bạn muốn
+            is Timestamp -> v.toDate().toString()
             is String -> v
             else -> ""
         }
@@ -112,8 +244,6 @@ class FirestoreBookingRepository @Inject constructor(private val firestore: Fire
         )
     }
 
-
-
     override suspend fun createBooking(booking: Booking): Booking {
         return try {
             val documentRef = firestore.collection("bookings").add(booking).await()
@@ -125,31 +255,30 @@ class FirestoreBookingRepository @Inject constructor(private val firestore: Fire
 
     override suspend fun getUserBookings(userId: String, status: String?): List<Booking> {
         return try {
-            Log.d("FirestoreBookingRepository", "Getting bookings for user: $userId, status: $status")
-            
+            Log.d(TAG, "Getting bookings for user: $userId, status: $status")
+
             var query = firestore.collection("bookings")
                 .whereEqualTo("userId", userId)
-            
+
             status?.let { query = query.whereEqualTo("status", it) }
-            
+
             val snapshot = query.get().await()
-            
-            Log.d("FirestoreBookingRepository", "Found ${snapshot.documents.size} booking documents")
-            
-            // Sort in memory instead of using orderBy to avoid index requirement
+
+            Log.d(TAG, "Found ${snapshot.documents.size} booking documents")
+
             val bookings = snapshot.documents.mapNotNull { document ->
                 try {
                     document.toObject(Booking::class.java)?.copy(id = document.id)
                 } catch (e: Exception) {
-                    Log.e("FirestoreBookingRepository", "Error parsing booking ${document.id}: ${e.message}")
+                    Log.e(TAG, "Error parsing booking ${document.id}: ${e.message}")
                     null
                 }
             }.sortedByDescending { it.createdAt }
-            
-            Log.d("FirestoreBookingRepository", "Returning ${bookings.size} bookings")
+
+            Log.d(TAG, "Returning ${bookings.size} bookings")
             bookings
         } catch (e: Exception) {
-            Log.e("FirestoreBookingRepository", "Error getting user bookings: ${e.message}")
+            Log.e(TAG, "Error getting user bookings: ${e.message}")
             emptyList()
         }
     }
@@ -160,7 +289,7 @@ class FirestoreBookingRepository @Inject constructor(private val firestore: Fire
                 .document(id)
                 .get()
                 .await()
-            
+
             if (document.exists()) {
                 document.toObject(Booking::class.java)?.copy(id = document.id)
             } else {
@@ -189,7 +318,7 @@ class FirestoreBookingRepository @Inject constructor(private val firestore: Fire
                 .document(bookingId)
                 .get()
                 .await()
-            
+
             if (document.exists()) {
                 document.getString("hotelId")
             } else {
@@ -202,9 +331,8 @@ class FirestoreBookingRepository @Inject constructor(private val firestore: Fire
 
     override suspend fun cancelBooking(bookingId: String): Boolean {
         return try {
-            Log.d("FirestoreBookingRepository", "Cancelling booking: $bookingId")
-            
-            // Update booking status to CANCELLED
+            Log.d(TAG, "Cancelling booking: $bookingId")
+
             firestore.collection("bookings")
                 .document(bookingId)
                 .update(
@@ -212,11 +340,11 @@ class FirestoreBookingRepository @Inject constructor(private val firestore: Fire
                     "updatedAt", Timestamp.now()
                 )
                 .await()
-            
-            Log.d("FirestoreBookingRepository", "Successfully cancelled booking: $bookingId")
+
+            Log.d(TAG, "Successfully cancelled booking: $bookingId")
             true
         } catch (e: Exception) {
-            Log.e("FirestoreBookingRepository", "Error cancelling booking: ${e.message}")
+            Log.e(TAG, "Error cancelling booking: ${e.message}")
             false
         }
     }
