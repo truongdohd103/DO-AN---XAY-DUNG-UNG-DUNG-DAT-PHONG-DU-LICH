@@ -68,6 +68,7 @@ data class RoomTypeRevenue(
 )
 
 data class RoomStats(
+    val roomId: String,
     val roomType: String,
     val bookings: Int,
     val revenue: Double,

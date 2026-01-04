@@ -20,4 +20,5 @@ sealed interface AccommodationViewIntent : UiEvent {
 
     // Navigation
     data object NavigateBack : AccommodationViewIntent
+    data class NavigateToRoom(val roomId: String) : AccommodationViewIntent
 }

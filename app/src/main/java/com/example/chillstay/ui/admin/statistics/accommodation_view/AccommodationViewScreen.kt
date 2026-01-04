@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,7 +45,7 @@ import kotlin.math.sin
 fun AccommodationViewScreen(
     hotelId: String,
     onNavigateBack: () -> Unit = {},
-    onNavigateToRoom: (roomId : String) -> Unit = {},
+    onNavigateToRoom: (String) -> Unit = {},
     viewModel: AccommodationViewViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -58,6 +60,7 @@ fun AccommodationViewScreen(
         viewModel.effect.collect { effect ->
             when (effect) {
                 is AccommodationViewEffect.NavigateBack -> onNavigateBack()
+                is AccommodationViewEffect.NavigateToRoom -> onNavigateToRoom(effect.roomId)
                 is AccommodationViewEffect.ShowError -> {
                     Log.e("AccommodationView", "Error: ${effect.message}")
                 }
@@ -840,7 +843,9 @@ fun RevenueByRoomSection(
 
         // Table
         RoomStatsTable(
-            stats = uiState.paginatedRoomStats
+            stats = uiState.paginatedRoomStats,
+            onRoomClick = { roomId -> onEvent(AccommodationViewIntent.NavigateToRoom(roomId)) }
+
         )
 
         // Pagination
@@ -861,7 +866,8 @@ fun RevenueByRoomSection(
 @SuppressLint("DefaultLocale")
 @Composable
 fun RoomStatsTable(
-    stats: List<RoomStats>
+    stats: List<RoomStats>,
+    onRoomClick: (String) -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // Table Header
@@ -892,9 +898,11 @@ fun RoomStatsTable(
             }
         } else {
             stats.forEach { stat ->
+                Log.d("RoomID", stat.roomId)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable {onRoomClick(stat.roomId)}
                         .background(Color.White)
                 ) {
                     TableCell(stat.roomType, Modifier.weight(2f), isBold = true)
@@ -902,7 +910,7 @@ fun RoomStatsTable(
                     TableCell("$${String.format("%,.0f", stat.revenue)}", Modifier.weight(1f), isBold = true)
                     TableCell("$${String.format("%.0f", stat.avgRate)}", Modifier.weight(1f))
                 }
-                Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                HorizontalDivider(thickness = 1.dp, color = Color(0xFFF0F0F0))
             }
         }
     }

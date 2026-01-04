@@ -7,14 +7,12 @@ import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.HotelBookingStats
 import com.example.chillstay.domain.model.Room
 import com.example.chillstay.domain.usecase.booking.GetBookingStatisticsByDateRangeUseCase
-import com.example.chillstay.domain.usecase.booking.GetBookingStatisticsByYearQuarterMonthUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelByIdUseCase
 import com.example.chillstay.domain.usecase.room.GetRoomsByHotelIdUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Calendar
 
 class AccommodationViewViewModel(
     private val getHotelByIdUseCase: GetHotelByIdUseCase,
@@ -95,6 +93,11 @@ class AccommodationViewViewModel(
             is AccommodationViewIntent.NavigateBack -> {
                 viewModelScope.launch {
                     sendEffect { AccommodationViewEffect.NavigateBack }
+                }
+            }
+            is AccommodationViewIntent.NavigateToRoom -> {
+                viewModelScope.launch {
+                    sendEffect { AccommodationViewEffect.NavigateToRoom(event.roomId) }
                 }
             }
         }
@@ -396,43 +399,29 @@ class AccommodationViewViewModel(
         hotelStats: HotelBookingStats
     ): List<RoomStats> {
         if (rooms.isEmpty()) {
-            Log.w(TAG, "⚠️ No rooms to process for stats")
+            Log.w(TAG, "No rooms to process for stats")
             return emptyList()
         }
-
-        Log.d(TAG, "📊 Room Stats calculation:")
-        Log.d(TAG, "   - Total rooms: ${rooms.size}")
-        Log.d(TAG, "   - Total hotel bookings: ${hotelStats.bookings}")
-        Log.d(TAG, "   - Total hotel revenue: \$${hotelStats.revenue}")
 
         // Calculate total price for proportional distribution
         val totalPrice = rooms.sumOf { it.price }
 
         if (totalPrice == 0.0) {
-            Log.w(TAG, "⚠️ Total price is 0")
+            Log.w(TAG, "Total price is 0")
             return emptyList()
         }
 
         return rooms.mapIndexed { index, room ->
-            // ✅ FIX #2: Handle empty room name
-            val displayName = if (room.name.isBlank()) {
+            val displayName = room.name.ifBlank {
                 "Unknown Room ${index + 1}"
-            } else {
-                room.name
             }
 
-            // ✅ FIX #1: Allocate bookings based on price, not quantity
             val bookings = (hotelStats.bookings * (room.price / totalPrice)).toInt()
 
-            // ✅ Allocate revenue based on price
             val revenue = hotelStats.revenue * (room.price / totalPrice)
 
-            Log.d(TAG, "   ${index + 1}. $displayName:")
-            Log.d(TAG, "      - Price: \$${String.format("%.2f", room.price)}")
-            Log.d(TAG, "      - Bookings: $bookings")
-            Log.d(TAG, "      - Revenue: \$${String.format("%.2f", revenue)}")
-
             RoomStats(
+                roomId = room.id,
                 roomType = displayName,
                 bookings = bookings,
                 revenue = revenue,
