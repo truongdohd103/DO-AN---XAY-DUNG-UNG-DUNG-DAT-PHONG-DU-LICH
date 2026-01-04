@@ -39,5 +39,6 @@ object Routes {
     const val ADMIN_VOUCHER_EDIT = "admin_voucher_edit"
     const val ADMIN_ACCOMMODATION_SELECT = "admin_accommodation_select"
     const val ADMIN_ACCOMMODATION_STATISTICS = "admin_accommodation_statistics"
+    const val ADMIN_ACCOMMODATION_VIEW = "admin_accommodation_view"
     const val ADMIN_CUSTOMER_STATISTICS = "admin_customer_statistics"
 }

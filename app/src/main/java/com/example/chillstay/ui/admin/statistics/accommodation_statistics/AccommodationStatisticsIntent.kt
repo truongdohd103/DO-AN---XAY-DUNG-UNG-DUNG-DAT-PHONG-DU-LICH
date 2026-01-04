@@ -21,7 +21,7 @@ sealed interface AccommodationStatisticsIntent : UiEvent {
     data class CityChanged(val city: String) : AccommodationStatisticsIntent
     data object ToggleCountryDropdown : AccommodationStatisticsIntent
     data object ToggleCityDropdown : AccommodationStatisticsIntent
-
+    data class ViewHotel(val hotelId: String) : AccommodationStatisticsIntent
     // Pagination operations
     data class GoToPage(val page: Int) : AccommodationStatisticsIntent
     data object NextPage : AccommodationStatisticsIntent

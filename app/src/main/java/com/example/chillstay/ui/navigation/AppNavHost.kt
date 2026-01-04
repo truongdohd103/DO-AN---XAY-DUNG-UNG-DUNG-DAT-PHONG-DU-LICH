@@ -52,6 +52,7 @@ import com.example.chillstay.ui.allreviews.navigateToAllReviews
 import com.example.chillstay.ui.admin.home.AdminHomeScreen
 import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageScreen
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditScreen
+// import com.example.chillstay.ui.admin.accommodation.accommodation_view.AccommodationViewScreen // Uncomment khi đã tạo screen
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageScreen
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditScreen
 import com.example.chillstay.ui.admin.booking.booking_manage.BookingManageScreen
@@ -60,6 +61,7 @@ import com.example.chillstay.ui.admin.customer.customer_manage.CustomerManageScr
 import com.example.chillstay.ui.admin.customer.customer_view.CustomerViewScreen
 import com.example.chillstay.ui.admin.customer.review_view.ReviewViewScreen
 import com.example.chillstay.ui.admin.statistics.accommodation_statistics.AccommodationStatisticsScreen
+import com.example.chillstay.ui.admin.statistics.accommodation_view.AccommodationViewScreen
 import com.example.chillstay.ui.admin.voucher.voucher_apply.AccommodationSelectScreen
 import com.example.chillstay.ui.admin.voucher.voucher_edit.VoucherEditScreen
 import com.example.chillstay.ui.admin.voucher.voucher_manage.VoucherManageScreen
@@ -445,6 +447,20 @@ fun AppNavHost(
                 }
             )
         }
+
+        // THÊM: Route cho AccommodationViewScreen
+        composable("${Routes.ADMIN_ACCOMMODATION_VIEW}/{hotelId}") { backStackEntry ->
+            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
+            AccommodationViewScreen(
+                hotelId = hotelId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToRoom = { roomId ->
+                    navController.navigate("${Routes.ADMIN_ROOM_MANAGE}?hotelId=$roomId")
+                }
+            )
+
+        }
+
         composable("${Routes.ADMIN_ROOM_MANAGE}?hotelId={hotelId}") { backStackEntry ->
             val hotelId = backStackEntry.arguments?.getString("hotelId") ?: ""
             RoomManageScreen(
@@ -498,7 +514,7 @@ fun AppNavHost(
                 onEnable = {},
                 onView = { userId -> navController.navigate("${Routes.ADMIN_CUSTOMER_VIEW}/$userId") },
 
-            )
+                )
         }
 
         composable("${Routes.ADMIN_CUSTOMER_VIEW}/{userId}") { backStackEntry ->
@@ -507,7 +523,7 @@ fun AppNavHost(
                 userId = userId,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToBooking = { bookingId -> navController.navigate("${Routes.ADMIN_BOOKING_VIEW}/$bookingId")
-                    },
+                },
                 onNavigateToReview = { reviewId -> navController.navigate("${Routes.ADMIN_REVIEW_VIEW}/$reviewId") }
             )
         }
@@ -591,9 +607,14 @@ fun AppNavHost(
                 onNavigateToConfirmation = {  navController.popBackStack() }
             )
         }
+
+        // THAY ĐỔI: Thêm callback onViewHotel
         composable(Routes.ADMIN_ACCOMMODATION_STATISTICS) {
             AccommodationStatisticsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onViewHotel = { hotelId ->
+                    navController.navigate("${Routes.ADMIN_ACCOMMODATION_VIEW}/$hotelId")
+                }
             )
         }
 

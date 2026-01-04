@@ -3,6 +3,7 @@ package com.example.chillstay.ui.admin.statistics.accommodation_statistics
 import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +35,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun AccommodationStatisticsScreen(
     onNavigateBack: () -> Unit = {},
+    onViewHotel: (String) -> Unit = {},
     viewModel: AccommodationStatisticsViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -43,6 +46,7 @@ fun AccommodationStatisticsScreen(
         viewModel.effect.collect { effect ->
             when (effect) {
                 is AccommodationStatisticsEffect.NavigateBack -> onNavigateBack()
+                is AccommodationStatisticsEffect.NavigateToView -> onViewHotel(effect.hotelId)
                 is AccommodationStatisticsEffect.ShowError -> {
                     Log.e("AccommodationStats", "Error: ${effect.message}")
                 }
@@ -210,7 +214,6 @@ fun FiltersSection(
                     onEvent(AccommodationStatisticsIntent.ToggleQuarterDropdown)
                 },
                 lightGray = lightGray,
-                enabled = uiState.selectedYear != null,
                 modifier = Modifier.weight(1f)
             )
 
@@ -222,23 +225,21 @@ fun FiltersSection(
                 onExpandedChange = { onEvent(AccommodationStatisticsIntent.ToggleMonthDropdown) },
                 options = listOf("All") + uiState.availableMonths.map { getMonthShortName(it) },
                 onOptionSelected = { selected ->
-                    val month = if (selected == "All") null else getMonthNumber(selected)
+                    val month = if (selected == "All") null else getMonthFromShortName(selected)
                     onEvent(AccommodationStatisticsIntent.MonthChanged(month))
                     onEvent(AccommodationStatisticsIntent.ToggleMonthDropdown)
                 },
                 lightGray = lightGray,
-                enabled = uiState.selectedYear != null && uiState.selectedQuarter == null,
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // Location Filters
+        // Location filters
         Text(
             text = "Location",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF212121),
-            modifier = Modifier.padding(top = 8.dp)
+            color = Color(0xFF212121)
         )
 
         Row(
@@ -246,14 +247,14 @@ fun FiltersSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Country Dropdown
-            DropdownField(
+            LocationFilterDropdown(
                 label = "Country",
-                value = uiState.selectedCountry.ifEmpty { "All Countries" },
+                value = uiState.selectedCountry.ifBlank { "All" },
                 isExpanded = uiState.isCountryExpanded,
                 onExpandedChange = { onEvent(AccommodationStatisticsIntent.ToggleCountryDropdown) },
-                options = listOf("All Countries") + uiState.availableCountries,
-                onOptionSelected = {
-                    val country = if (it == "All Countries") "" else it
+                options = listOf("All") + uiState.availableCountries,
+                onOptionSelected = { selected ->
+                    val country = if (selected == "All") "" else selected
                     onEvent(AccommodationStatisticsIntent.CountryChanged(country))
                     onEvent(AccommodationStatisticsIntent.ToggleCountryDropdown)
                 },
@@ -262,18 +263,19 @@ fun FiltersSection(
             )
 
             // City Dropdown
-            DropdownField(
+            LocationFilterDropdown(
                 label = "City",
-                value = uiState.selectedCity.ifEmpty { "All Cities" },
+                value = uiState.selectedCity.ifBlank { "All" },
                 isExpanded = uiState.isCityExpanded,
                 onExpandedChange = { onEvent(AccommodationStatisticsIntent.ToggleCityDropdown) },
-                options = listOf("All Cities") + uiState.availableCities,
-                onOptionSelected = {
-                    val city = if (it == "All Cities") "" else it
+                options = listOf("All") + uiState.availableCities,
+                onOptionSelected = { selected ->
+                    val city = if (selected == "All") "" else selected
                     onEvent(AccommodationStatisticsIntent.CityChanged(city))
                     onEvent(AccommodationStatisticsIntent.ToggleCityDropdown)
                 },
                 lightGray = lightGray,
+                enabled = uiState.selectedCountry.isNotBlank(),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -284,21 +286,86 @@ fun FiltersSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = tealColor),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = tealColor
+            ),
             shape = RoundedCornerShape(8.dp)
         ) {
             Text(
                 text = "Apply Filters",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimeFilterDropdown(
+    label: String,
+    value: String,
+    isExpanded: Boolean,
+    onExpandedChange: () -> Unit,
+    options: List<String>,
+    onOptionSelected: (String) -> Unit,
+    lightGray: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier) {
+        Column {
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF757575),
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(lightGray, RoundedCornerShape(8.dp))
+                    .clickable { onExpandedChange() }
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = value,
+                        fontSize = 14.sp,
+                        color = Color(0xFF212121)
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        modifier = Modifier.rotate(if (isExpanded) 180f else 0f),
+                        tint = Color(0xFF757575)
+                    )
+                }
+            }
+
+            DropdownMenu(
+                expanded = isExpanded,
+                onDismissRequest = { onExpandedChange() },
+                modifier = Modifier.fillMaxWidth(0.3f)
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option) },
+                        onClick = { onOptionSelected(option) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LocationFilterDropdown(
     label: String,
     value: String,
     isExpanded: Boolean,
@@ -309,115 +376,49 @@ fun TimeFilterDropdown(
     enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier) {
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            color = if (enabled) Color(0xFF757575) else Color(0xFFBDBDBD),
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
+    Box(modifier = modifier) {
+        Column {
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF757575),
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
 
-        ExposedDropdownMenuBox(
-            expanded = isExpanded && enabled,
-            onExpandedChange = { if (enabled) onExpandedChange() }
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = {},
-                readOnly = true,
-                enabled = enabled,
+            Box(
                 modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth(),
-                trailingIcon = {
+                    .fillMaxWidth()
+                    .background(
+                        if (enabled) lightGray else Color(0xFFE0E0E0),
+                        RoundedCornerShape(8.dp)
+                    )
+                    .clickable(enabled = enabled) { if (enabled) onExpandedChange() }
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = value,
+                        fontSize = 14.sp,
+                        color = if (enabled) Color(0xFF212121) else Color(0xFF9E9E9E)
+                    )
                     Icon(
                         imageVector = Icons.Default.ArrowDropDown,
                         contentDescription = null,
                         modifier = Modifier.rotate(if (isExpanded) 180f else 0f),
-                        tint = if (enabled) Color(0xFF757575) else Color(0xFFBDBDBD)
-                    )
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = lightGray,
-                    unfocusedContainerColor = lightGray,
-                    disabledContainerColor = Color(0xFFF0F0F0),
-                    focusedBorderColor = Color(0xFF1AB5B5),
-                    unfocusedBorderColor = Color.Transparent,
-                    disabledBorderColor = Color.Transparent
-                )
-            )
-
-            ExposedDropdownMenu(
-                expanded = isExpanded && enabled,
-                onDismissRequest = { onExpandedChange() }
-            ) {
-                options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option) },
-                        onClick = { onOptionSelected(option) }
+                        tint = if (enabled) Color(0xFF757575) else Color(0xFF9E9E9E)
                     )
                 }
             }
-        }
-    }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DropdownField(
-    label: String,
-    value: String,
-    isExpanded: Boolean,
-    onExpandedChange: () -> Unit,
-    options: List<String>,
-    onOptionSelected: (String) -> Unit,
-    lightGray: Color,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF757575),
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-
-        ExposedDropdownMenuBox(
-            expanded = isExpanded,
-            onExpandedChange = { onExpandedChange() }
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = {},
-                readOnly = true,
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth(),
-                trailingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = null,
-                        modifier = Modifier.rotate(if (isExpanded) 180f else 0f),
-                        tint = Color(0xFF757575)
-                    )
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = lightGray,
-                    unfocusedContainerColor = lightGray,
-                    focusedBorderColor = Color(0xFF1AB5B5),
-                    unfocusedBorderColor = Color.Transparent
-                )
-            )
-
-            ExposedDropdownMenu(
+            DropdownMenu(
                 expanded = isExpanded,
-                onDismissRequest = { onExpandedChange() }
+                onDismissRequest = { onExpandedChange() },
+                modifier = Modifier.fillMaxWidth(0.3f)
             ) {
                 options.forEach { option ->
                     DropdownMenuItem(
@@ -430,21 +431,125 @@ fun DropdownField(
     }
 }
 
-private fun getMonthShortName(month: Int): String {
+fun getMonthShortName(month: Int): String {
     return when (month) {
-        1 -> "Jan"; 2 -> "Feb"; 3 -> "Mar"; 4 -> "Apr"
-        5 -> "May"; 6 -> "Jun"; 7 -> "Jul"; 8 -> "Aug"
-        9 -> "Sep"; 10 -> "Oct"; 11 -> "Nov"; 12 -> "Dec"
+        1 -> "Jan"
+        2 -> "Feb"
+        3 -> "Mar"
+        4 -> "Apr"
+        5 -> "May"
+        6 -> "Jun"
+        7 -> "Jul"
+        8 -> "Aug"
+        9 -> "Sep"
+        10 -> "Oct"
+        11 -> "Nov"
+        12 -> "Dec"
         else -> "Unknown"
     }
 }
 
-private fun getMonthNumber(shortName: String): Int {
+fun getMonthFromShortName(shortName: String): Int {
     return when (shortName) {
-        "Jan" -> 1; "Feb" -> 2; "Mar" -> 3; "Apr" -> 4
-        "May" -> 5; "Jun" -> 6; "Jul" -> 7; "Aug" -> 8
-        "Sep" -> 9; "Oct" -> 10; "Nov" -> 11; "Dec" -> 12
+        "Jan" -> 1
+        "Feb" -> 2
+        "Mar" -> 3
+        "Apr" -> 4
+        "May" -> 5
+        "Jun" -> 6
+        "Jul" -> 7
+        "Aug" -> 8
+        "Sep" -> 9
+        "Oct" -> 10
+        "Nov" -> 11
+        "Dec" -> 12
         else -> 1
+    }
+}
+
+@Composable
+fun StatisticsSection(
+    uiState: AccommodationStatisticsUiState,
+    tealColor: Color,
+    lightGray: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        StatCard(
+            title = "Total Revenue",
+            value = "$${String.format("%,.0f", uiState.totalRevenue)}",
+            icon = Icons.Default.Star,
+            tealColor = tealColor,
+            lightGray = lightGray,
+            modifier = Modifier.weight(1f)
+        )
+
+        StatCard(
+            title = "Total Bookings",
+            value = "${uiState.totalBookings}",
+            icon = Icons.Default.Favorite,
+            tealColor = tealColor,
+            lightGray = lightGray,
+            modifier = Modifier.weight(1f)
+        )
+
+        StatCard(
+            title = "Cancel Rate",
+            value = "${String.format("%.1f", uiState.cancellationRate)}%",
+            icon = Icons.Default.ArrowDropDown,
+            tealColor = tealColor,
+            lightGray = lightGray,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+fun StatCard(
+    title: String,
+    value: String,
+    icon: ImageVector,
+    tealColor: Color,
+    lightGray: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = lightGray),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tealColor,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                color = Color(0xFF757575),
+                fontWeight = FontWeight.Medium
+            )
+
+            Text(
+                text = value,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121)
+            )
+        }
     }
 }
 
@@ -457,55 +562,38 @@ fun TopPerformersSection(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
-            .padding(horizontal = 24.dp, vertical = 20.dp)
     ) {
         Text(
             text = "Top Performers",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF212121),
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)
         )
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Top by Bookings
-            uiState.topByBookings?.let { topBookings ->
-                TopPerformerCard(
-                    title = "Most Bookings",
-                    hotelName = topBookings.hotelName,
-                    value = "${topBookings.bookings} bookings",
-                    icon = Icons.Default.Favorite,
-                    tealColor = tealColor,
-                    modifier = Modifier.weight(1f)
-                )
-            } ?: run {
-                EmptyTopPerformerCard(
-                    title = "Most Bookings",
-                    icon = Icons.Default.Favorite,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            // Most Bookings
+            TopPerformerCard(
+                title = "Most Bookings",
+                hotelName = uiState.topByBookings?.hotelName ?: "N/A",
+                value = "${uiState.topByBookings?.bookings ?: 0} bookings",
+                tealColor = tealColor,
+                modifier = Modifier.weight(1f)
+            )
 
-            // Top by Revenue
-            uiState.topByRevenue?.let { topRevenue ->
-                TopPerformerCard(
-                    title = "Highest Revenue",
-                    hotelName = topRevenue.hotelName,
-                    value = "$${String.format("%,.0f", topRevenue.revenue)}",
-                    icon = Icons.Default.Star,
-                    tealColor = tealColor,
-                    modifier = Modifier.weight(1f)
-                )
-            } ?: run {
-                EmptyTopPerformerCard(
-                    title = "Highest Revenue",
-                    icon = Icons.Default.Star,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            // Highest Revenue
+            TopPerformerCard(
+                title = "Highest Revenue",
+                hotelName = uiState.topByRevenue?.hotelName ?: "N/A",
+                value = "$${String.format("%,.0f", uiState.topByRevenue?.revenue ?: 0.0)}",
+                tealColor = tealColor,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -515,173 +603,14 @@ fun TopPerformerCard(
     title: String,
     hotelName: String,
     value: String,
-    icon: ImageVector,
     tealColor: Color,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF5F7F8)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = tealColor,
-                    modifier = Modifier.size(24.dp)
-                )
-                Text(
-                    text = title,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF757575)
-                )
-            }
-
-            Text(
-                text = hotelName,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF212121),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Text(
-                text = value,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = tealColor
-            )
-        }
-    }
-}
-
-@Composable
-fun EmptyTopPerformerCard(
-    title: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF5F7F8)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color(0xFF757575),
-                    modifier = Modifier.size(24.dp)
-                )
-                Text(
-                    text = title,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF757575)
-                )
-            }
-
-            Text(
-                text = "No data",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                color = Color(0xFF757575)
-            )
-        }
-    }
-}
-
-@Composable
-fun StatisticsSection(
-    uiState: AccommodationStatisticsUiState,
-    tealColor: Color,
-    lightGray: Color
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(horizontal = 24.dp, vertical = 20.dp)
-    ) {
-        Text(
-            text = "Overview",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF212121),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            StatCard(
-                title = "Total Revenue",
-                value = "$${String.format("%,.0f", uiState.totalRevenue)}",
-                tealColor = tealColor,
-                lightGray = lightGray,
-                modifier = Modifier.weight(1f)
-            )
-
-            StatCard(
-                title = "Total Bookings",
-                value = "${uiState.totalBookings}",
-                tealColor = tealColor,
-                lightGray = lightGray,
-                modifier = Modifier.weight(1f)
-            )
-
-            StatCard(
-                title = "Cancel Rate",
-                value = "${String.format("%.1f", uiState.cancellationRate)}%",
-                tealColor = tealColor,
-                lightGray = lightGray,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-fun StatCard(
-    title: String,
-    value: String,
-    tealColor: Color,
-    lightGray: Color,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = lightGray),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F7F8)),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -692,12 +621,22 @@ fun StatCard(
             Text(
                 text = title,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF757575)
+                color = Color(0xFF757575),
+                fontWeight = FontWeight.Medium
             )
+
+            Text(
+                text = hotelName,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF212121),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
             Text(
                 text = value,
-                fontSize = 20.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = tealColor
             )
@@ -710,84 +649,50 @@ fun RevenueTrendSection(
     uiState: AccommodationStatisticsUiState,
     tealColor: Color
 ) {
-    // Debug logging
-    LaunchedEffect(uiState.chartData, uiState.maxRevenueValue) {
-        Log.d("AccommodationStats", "Chart data size: ${uiState.chartData.size}")
-        Log.d("AccommodationStats", "Max revenue: ${uiState.maxRevenueValue}")
-        Log.d("AccommodationStats", "Period labels: ${uiState.periodLabels}")
-        Log.d("AccommodationStats", "Period revenue: ${uiState.periodRevenue}")
-        uiState.chartData.forEach { (label, revenue) ->
-            Log.d("AccommodationStats", "Chart point: $label = $revenue")
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
-            .padding(horizontal = 24.dp, vertical = 20.dp)
     ) {
         Text(
             text = uiState.chartTypeDisplayName,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF212121),
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)
         )
 
         // Chart
-        Card(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(280.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F7F8)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                .height(220.dp)
         ) {
-            if (uiState.chartData.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "No data available for this period",
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-                        Text(
-                            text = "Try adjusting your filters",
-                            fontSize = 12.sp,
-                            color = Color.Gray
-                        )
-                    }
-                }
-            } else {
-                RevenueChart(
-                    data = uiState.chartData,
-                    maxValue = uiState.maxRevenueValue,
-                    tealColor = tealColor
-                )
-            }
+            BarChart(
+                data = uiState.chartData,
+                maxValue = uiState.maxRevenueValue,
+                tealColor = tealColor
+            )
         }
     }
 }
 
 @Composable
-fun RevenueChart(
+fun BarChart(
     data: List<Pair<String, Double>>,
     maxValue: Double,
     tealColor: Color
 ) {
-    if (data.isEmpty() || maxValue == 0.0) {
+    if (data.isEmpty() || maxValue <= 0) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("No revenue data available", color = Color.Gray)
+            Text(
+                text = "No data available",
+                color = Color(0xFF757575),
+                fontSize = 14.sp
+            )
         }
         return
     }
@@ -892,7 +797,10 @@ fun RevenueByHotelSection(
 
         // Table
         HotelStatsTable(
-            stats = uiState.paginatedHotelStats
+            stats = uiState.paginatedHotelStats,
+            onHotelClick = { hotelId ->
+                onEvent(AccommodationStatisticsIntent.ViewHotel(hotelId))
+            }
         )
 
         // Pagination
@@ -900,7 +808,6 @@ fun RevenueByHotelSection(
             PaginationControls(
                 currentPage = uiState.currentPage,
                 totalPages = uiState.totalPages,
-                onPageChange = { onEvent(AccommodationStatisticsIntent.GoToPage(it)) },
                 onPreviousPage = { onEvent(AccommodationStatisticsIntent.PreviousPage) },
                 onNextPage = { onEvent(AccommodationStatisticsIntent.NextPage) },
                 tealColor = tealColor,
@@ -913,7 +820,8 @@ fun RevenueByHotelSection(
 @SuppressLint("DefaultLocale")
 @Composable
 fun HotelStatsTable(
-    stats: List<HotelBookingStats>
+    stats: List<HotelBookingStats>,
+    onHotelClick: (String) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // Table Header
@@ -933,6 +841,7 @@ fun HotelStatsTable(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clickable { onHotelClick(stat.hotelId) }
                     .background(Color.White)
             ) {
                 TableCell(stat.hotelName, Modifier.weight(2f), isBold = true)
@@ -940,7 +849,7 @@ fun HotelStatsTable(
                 TableCell("$${String.format("%,.0f", stat.revenue)}", Modifier.weight(1f), isBold = true)
                 TableCell(String.format("%.1f%%", stat.cancellationRate), Modifier.weight(1f))
             }
-            Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+            HorizontalDivider(thickness = 1.dp, color = Color(0xFFF0F0F0))
         }
     }
 }
@@ -971,7 +880,6 @@ fun TableCell(text: String, modifier: Modifier = Modifier, isBold: Boolean = fal
 fun PaginationControls(
     currentPage: Int,
     totalPages: Int,
-    onPageChange: (Int) -> Unit,
     onPreviousPage: () -> Unit,
     onNextPage: () -> Unit,
     tealColor: Color,

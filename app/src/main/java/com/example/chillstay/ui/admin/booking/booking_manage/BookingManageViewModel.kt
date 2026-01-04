@@ -106,10 +106,6 @@ class BookingManageViewModel(
         }
     }
 
-    /**
-     * OPTIMIZE: Load bookings một lần, dùng suspend function thay vì Flow.collectLatest
-     * Giống như AccommodationManageViewModel
-     */
     private fun loadBookings() {
         viewModelScope.launch {
             _state.value = _state.value.updateIsLoading(true).clearError()

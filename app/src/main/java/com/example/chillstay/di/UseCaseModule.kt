@@ -64,7 +64,8 @@ import com.example.chillstay.domain.repository.ImageUploadRepository
 import com.example.chillstay.domain.repository.ReviewRepository
 import com.example.chillstay.domain.repository.UserRepository
 import com.example.chillstay.domain.usecase.booking.GetAllBookingSummariesUseCase
-import com.example.chillstay.domain.usecase.booking.GetBookingStatisticsUseCase
+import com.example.chillstay.domain.usecase.booking.GetBookingStatisticsByDateRangeUseCase
+import com.example.chillstay.domain.usecase.booking.GetBookingStatisticsByYearQuarterMonthUseCase
 import com.example.chillstay.domain.usecase.hotel.CreateHotelUseCase
 import com.example.chillstay.domain.usecase.hotel.UpdateHotelUseCase
 import com.example.chillstay.domain.usecase.image.UploadRoomImagesUseCase
@@ -115,7 +116,8 @@ val useCaseModule = module {
     factory { GetBookingByIdUseCase(get()) }
     factory { DeleteBookingUseCase(get(), get()) }
     factory { GetAllBookingSummariesUseCase(get()) }
-    factory { GetBookingStatisticsUseCase(get()) }
+    factory { GetBookingStatisticsByYearQuarterMonthUseCase(get()) }
+    factory { GetBookingStatisticsByDateRangeUseCase(get()) }
     
     // User use cases
     factory { GetUserByIdUseCase(get()) }

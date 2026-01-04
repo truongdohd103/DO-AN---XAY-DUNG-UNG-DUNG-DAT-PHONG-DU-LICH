@@ -576,4 +576,199 @@ class FirestoreBookingStatisticsRepository @Inject constructor(
             periodLabels = labels
         )
     }
+
+    // FirestoreBookingStatisticsRepository.kt - THÊM method implementation
+    override suspend fun getBookingStatisticsByDateRange(
+        country: String?,
+        city: String?,
+        dateFrom: Long?,
+        dateTo: Long?
+    ): BookingStatistics = withContext(Dispatchers.Default) {
+        try {
+            Log.d(TAG, "Loading statistics by date range: country=$country, city=$city, dateFrom=$dateFrom, dateTo=$dateTo")
+            val startTime = System.currentTimeMillis()
+
+            // BƯỚC 1: Load tất cả bookings
+            val bookings = withContext(Dispatchers.IO) { loadAllBookings() }
+            Log.d(TAG, "Loaded ${bookings.size} bookings")
+
+            if (bookings.isEmpty()) {
+                return@withContext createEmptyStatisticsByDateRange(dateFrom, dateTo)
+            }
+
+            // BƯỚC 2: Lấy unique hotelIds
+            val hotelIds = bookings.map { it.hotelId }.distinct()
+            Log.d(TAG, "Need to load ${hotelIds.size} unique hotels")
+
+            // BƯỚC 3: Load hotels
+            val hotels = withContext(Dispatchers.IO) {
+                loadHotelsOnDemand(hotelIds)
+            }
+            Log.d(TAG, "Loaded ${hotels.size} hotels")
+
+            // BƯỚC 4: Filter bookings by date range and location
+            val filteredBookings = filterBookingsByDateRange(
+                bookings, hotels, country, city, dateFrom, dateTo
+            )
+            Log.d(TAG, "Filtered to ${filteredBookings.size} bookings")
+
+            if (filteredBookings.isEmpty()) {
+                return@withContext createEmptyStatisticsByDateRange(dateFrom, dateTo)
+            }
+
+            // BƯỚC 5: Calculate metrics
+            val metrics = calculateMetricsOptimized(filteredBookings, hotels)
+
+            // BƯỚC 6: Generate period revenue (daily breakdown)
+            val (revenueMap, labels) = generateDailyRevenue(
+                filteredBookings, dateFrom, dateTo
+            )
+
+            val endTime = System.currentTimeMillis()
+            Log.d(TAG, "Completed in ${endTime - startTime}ms")
+
+            BookingStatistics(
+                totalRevenue = metrics.totalRevenue,
+                totalBookings = metrics.totalBookings,
+                cancellationRate = metrics.cancellationRate,
+                bookingsByHotel = metrics.hotelStats,
+                periodRevenue = revenueMap,
+                periodLabels = labels
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading statistics by date range", e)
+            createEmptyStatisticsByDateRange(dateFrom, dateTo)
+        }
+    }
+
+    private fun filterBookingsByDateRange(
+        bookings: List<Booking>,
+        hotels: Map<String, Hotel>,
+        country: String?,
+        city: String?,
+        dateFrom: Long?,
+        dateTo: Long?
+    ): List<Booking> {
+        if (bookings.isEmpty()) return emptyList()
+
+        return bookings.filter { booking ->
+            val bookingTime = booking.createdAt.seconds * 1000
+
+            // ✅ Date range filter
+            if (dateFrom != null && bookingTime < dateFrom) {
+                return@filter false
+            }
+            if (dateTo != null && bookingTime > dateTo) {
+                return@filter false
+            }
+
+            // Location filters
+            if (!country.isNullOrBlank() || !city.isNullOrBlank()) {
+                val hotel = hotels[booking.hotelId] ?: return@filter false
+
+                if (!country.isNullOrBlank() && !hotel.country.equals(country, ignoreCase = true)) {
+                    return@filter false
+                }
+
+                if (!city.isNullOrBlank() && !hotel.city.equals(city, ignoreCase = true)) {
+                    return@filter false
+                }
+            }
+
+            true
+        }
+    }
+
+    /**
+     * Generate daily revenue breakdown for date range
+     */
+    private fun generateDailyRevenue(
+        bookings: List<Booking>,
+        dateFrom: Long?,
+        dateTo: Long?
+    ): Pair<Map<String, Double>, List<String>> {
+        if (dateFrom == null || dateTo == null) {
+            // No date range specified, return empty
+            return emptyMap<String, Double>() to emptyList()
+        }
+
+        val dayFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
+        val map = mutableMapOf<String, Double>()
+        val labels = mutableListOf<String>()
+
+        // Generate all days in range
+        val calendar = Calendar.getInstance()
+        calendar.timeInMillis = dateFrom
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+
+        val endCalendar = Calendar.getInstance()
+        endCalendar.timeInMillis = dateTo
+        endCalendar.set(Calendar.HOUR_OF_DAY, 23)
+        endCalendar.set(Calendar.MINUTE, 59)
+        endCalendar.set(Calendar.SECOND, 59)
+
+        while (calendar.timeInMillis <= endCalendar.timeInMillis) {
+            val label = dayFormat.format(calendar.time)
+            map[label] = 0.0
+            labels.add(label)
+            calendar.add(Calendar.DAY_OF_MONTH, 1)
+        }
+
+        // ✅ Aggregate bookings by day
+        bookings.filter { it.status != BookingStatus.CANCELLED }.forEach { booking ->
+            try {
+                val bookingDate = Date(booking.createdAt.seconds * 1000)
+                val label = dayFormat.format(bookingDate)
+                if (label in map) {
+                    map[label] = (map[label] ?: 0.0) + booking.totalPrice
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error processing booking date: ${e.message}")
+            }
+        }
+
+        return map to labels
+    }
+
+    private fun createEmptyStatisticsByDateRange(
+        dateFrom: Long?,
+        dateTo: Long?
+    ): BookingStatistics {
+        // khai báo rõ ràng để tránh inference / shadowing lỗi
+        val periodRevenueMap: Map<String, Double>
+        val labels: List<String>
+
+        if (dateFrom != null && dateTo != null) {
+            val dayFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
+            val tempLabels = mutableListOf<String>()
+
+            val calendar = Calendar.getInstance().apply { timeInMillis = dateFrom }
+            val endCalendar = Calendar.getInstance().apply { timeInMillis = dateTo }
+
+            // dùng calendar.after() để tránh vòng lặp vô hạn nếu timeInMillis bằng
+            while (!calendar.after(endCalendar)) {
+                tempLabels.add(dayFormat.format(calendar.time))
+                calendar.add(Calendar.DAY_OF_MONTH, 1)
+            }
+
+            periodRevenueMap = tempLabels.associateWith { 0.0 } // Map<String, Double>
+            labels = tempLabels
+        } else {
+            periodRevenueMap = emptyMap() // emptyMap<String, Double>() nếu muốn rõ kiểu
+            labels = emptyList()
+        }
+
+        return BookingStatistics(
+            totalRevenue = 0.0,
+            totalBookings = 0,
+            cancellationRate = 0.0,
+            bookingsByHotel = emptyMap(),     // <-- CHÚ Ý: đảm bảo kiểu này khớp với BookingStatistics
+            periodRevenue = periodRevenueMap,
+            periodLabels = labels
+        )
+    }
+
 }

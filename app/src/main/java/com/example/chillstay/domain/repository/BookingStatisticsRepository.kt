@@ -14,4 +14,11 @@ interface BookingStatisticsRepository {
         quarter: Int? = null,
         month: Int? = null
     ): BookingStatistics
+
+    suspend fun getBookingStatisticsByDateRange(
+        country: String?,
+        city: String?,
+        dateFrom: Long?,
+        dateTo: Long?
+    ): BookingStatistics
 }

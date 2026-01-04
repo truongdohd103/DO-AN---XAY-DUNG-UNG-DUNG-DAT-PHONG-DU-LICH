@@ -6,7 +6,7 @@ import com.example.chillstay.core.base.BaseViewModel
 import com.example.chillstay.core.common.Result
 import com.example.chillstay.domain.model.HotelCategory
 import com.example.chillstay.domain.model.HotelListFilter
-import com.example.chillstay.domain.usecase.booking.GetBookingStatisticsUseCase
+import com.example.chillstay.domain.usecase.booking.GetBookingStatisticsByYearQuarterMonthUseCase
 import com.example.chillstay.domain.usecase.hotel.GetHotelsUseCase
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -14,7 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class AccommodationStatisticsViewModel(
-    private val getBookingStatisticsUseCase: GetBookingStatisticsUseCase,
+    private val getBookingStatisticsByYearQuarterMonthUseCase: GetBookingStatisticsByYearQuarterMonthUseCase,
     private val getHotelsUseCase: GetHotelsUseCase
 ) : BaseViewModel<AccommodationStatisticsUiState, AccommodationStatisticsIntent, AccommodationStatisticsEffect>(
     AccommodationStatisticsUiState()
@@ -114,6 +114,13 @@ class AccommodationStatisticsViewModel(
                     isMonthExpanded = false,
                     isCountryExpanded = false
                 )
+            }
+            is AccommodationStatisticsIntent.ViewHotel -> {
+                viewModelScope.launch {
+                    sendEffect {
+                        AccommodationStatisticsEffect.NavigateToView(event.hotelId)
+                    }
+                }
             }
             is AccommodationStatisticsIntent.GoToPage -> {
                 val maxPage = _state.value.totalPages
@@ -216,7 +223,7 @@ class AccommodationStatisticsViewModel(
                         "country=${currentState.selectedCountry}, " +
                         "city=${currentState.selectedCity}")
 
-                getBookingStatisticsUseCase(
+                getBookingStatisticsByYearQuarterMonthUseCase(
                     country = currentState.selectedCountry.ifBlank { null },
                     city = currentState.selectedCity.ifBlank { null },
                     year = currentState.selectedYear,
