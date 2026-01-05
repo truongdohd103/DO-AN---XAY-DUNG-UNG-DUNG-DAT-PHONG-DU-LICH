@@ -67,6 +67,7 @@ import com.example.chillstay.domain.usecase.booking.GetAllBookingSummariesUseCas
 import com.example.chillstay.domain.usecase.booking.GetBookingStatisticsByDateRangeUseCase
 import com.example.chillstay.domain.usecase.booking.GetBookingStatisticsByYearQuarterMonthUseCase
 import com.example.chillstay.domain.usecase.booking.GetBookingsByRoomIdUseCase
+import com.example.chillstay.domain.usecase.booking.GetCustomerStatisticsUseCase
 import com.example.chillstay.domain.usecase.hotel.CreateHotelUseCase
 import com.example.chillstay.domain.usecase.hotel.UpdateHotelUseCase
 import com.example.chillstay.domain.usecase.image.UploadRoomImagesUseCase
@@ -117,9 +118,12 @@ val useCaseModule = module {
     factory { GetBookingByIdUseCase(get()) }
     factory { DeleteBookingUseCase(get(), get()) }
     factory { GetAllBookingSummariesUseCase(get()) }
+    factory { GetBookingsByRoomIdUseCase(get()) }
+
+    //Statistics
     factory { GetBookingStatisticsByYearQuarterMonthUseCase(get()) }
     factory { GetBookingStatisticsByDateRangeUseCase(get()) }
-    factory { GetBookingsByRoomIdUseCase(get()) }
+    factory { GetCustomerStatisticsUseCase(get()) }
     
     // User use cases
     factory { GetUserByIdUseCase(get()) }

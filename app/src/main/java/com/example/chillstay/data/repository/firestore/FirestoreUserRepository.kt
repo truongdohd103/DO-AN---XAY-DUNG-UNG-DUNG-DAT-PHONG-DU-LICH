@@ -9,6 +9,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -112,13 +113,9 @@ class FirestoreUserRepository @Inject constructor(
             ?: (data["e-mail"] as? String)
             ?: return null
 
-        val dob = (data["dateOfBirth"] as? String)?.let { dateString ->
-            try {
-                LocalDate.parse(dateString)
-            } catch (_: Exception) {
-                DEFAULT_DOB
-            }
-        } ?: DEFAULT_DOB
+        val dob = (data["dateOfBirth"] as? Timestamp)
+            ?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate()
+            ?: DEFAULT_DOB
 
         // Map role from Firestore, default to USER if not found
         val roleString = data["role"] as? String ?: "USER"

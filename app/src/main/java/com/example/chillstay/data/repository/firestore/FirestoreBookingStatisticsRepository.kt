@@ -4,8 +4,11 @@ import android.util.Log
 import com.example.chillstay.domain.model.Booking
 import com.example.chillstay.domain.model.BookingStatistics
 import com.example.chillstay.domain.model.BookingStatus
+import com.example.chillstay.domain.model.CustomerStatistics
+import com.example.chillstay.domain.model.CustomerStats
 import com.example.chillstay.domain.model.Hotel
 import com.example.chillstay.domain.model.HotelBookingStats
+import com.example.chillstay.domain.model.User
 import com.example.chillstay.domain.repository.BookingStatisticsRepository
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
@@ -27,6 +30,7 @@ class FirestoreBookingStatisticsRepository @Inject constructor(
 
     // Cache để tránh load lại hotels
     private val hotelCache = ConcurrentHashMap<String, Hotel>()
+    private val userCache = ConcurrentHashMap<String, User>()
 
     companion object {
         private const val TAG = "BookingStatsRepo"
@@ -771,4 +775,246 @@ class FirestoreBookingStatisticsRepository @Inject constructor(
         )
     }
 
+    override suspend fun getCustomerStatistics(
+        year: Int?,
+        quarter: Int?,
+        month: Int?
+    ): CustomerStatistics = withContext(Dispatchers.Default) {
+        try {
+            Log.d(TAG, "Loading customer statistics: year=$year, quarter=$quarter, month=$month")
+            val startTime = System.currentTimeMillis()
+
+            // Load all bookings
+            val bookings = withContext(Dispatchers.IO) { loadAllBookings() }
+            Log.d(TAG, "Loaded ${bookings.size} bookings")
+
+            if (bookings.isEmpty()) {
+                return@withContext createEmptyCustomerStatistics(year, quarter, month)
+            }
+
+            // Get unique userIds
+            val userIds = bookings.map { it.userId }.distinct()
+            Log.d(TAG, "Need to load ${userIds.size} unique users")
+
+            // Load users
+            val users = withContext(Dispatchers.IO) {
+                loadUsersOnDemand(userIds)
+            }
+            Log.d(TAG, "Loaded ${users.size} users")
+
+            // Filter bookings by date
+            val filteredBookings = filterBookingsByDate(bookings, year, quarter, month)
+            Log.d(TAG, "Filtered to ${filteredBookings.size} bookings")
+
+            if (filteredBookings.isEmpty()) {
+                return@withContext createEmptyCustomerStatistics(year, quarter, month)
+            }
+
+            // Calculate metrics
+            val metrics = calculateCustomerMetrics(filteredBookings, users)
+
+            // Generate period revenue
+            val (revenueMap, labels) = generatePeriodRevenue(filteredBookings, year, quarter, month)
+
+            val endTime = System.currentTimeMillis()
+            Log.d(TAG, "Completed in ${endTime - startTime}ms")
+
+            CustomerStatistics(
+                totalRevenue = metrics.totalRevenue,
+                totalBookings = metrics.totalBookings,
+                totalCustomers = metrics.customerStats.size,
+                bookingsByCustomer = metrics.customerStats,
+                periodRevenue = revenueMap,
+                periodLabels = labels
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading customer statistics", e)
+            createEmptyCustomerStatistics(year, quarter, month)
+        }
+    }
+
+    private suspend fun loadUsersOnDemand(userIds: List<String>): Map<String, User> {
+        if (userIds.isEmpty()) return emptyMap()
+        Log.d(TAG, "Loading users for ${userIds.size} user IDs")
+
+        val idsToFetch = userIds.filterNot { userCache.containsKey(it) }
+
+        if (idsToFetch.isEmpty()) {
+            Log.d(TAG, "All users in cache")
+            return userCache.filterKeys { it in userIds }
+        }
+
+        val chunks = idsToFetch.chunked(WHERE_IN_MAX)
+
+        supervisorScope {
+            chunks.map { chunk ->
+                async {
+                    try {
+                        val snapshot = firestore.collection("users")
+                            .whereIn(FieldPath.documentId(), chunk)
+                            .get()
+                            .await()
+
+                        snapshot.documents.forEach { doc ->
+                            val user = doc.toObject(User::class.java)?.copy(id = doc.id)
+                            if (user != null) {
+                                userCache[user.id] = user
+                                Log.d(TAG, "User: ${user.id} -> ${user.fullName}")
+                            } else {
+                                Log.w(TAG, "Failed to parse user: ${doc.id}")
+                            }
+                        }
+
+                        val returnedIds = snapshot.documents.map { it.id }.toSet()
+                        chunk.forEach { id ->
+                            if (!returnedIds.contains(id) && !userCache.containsKey(id)) {
+                                userCache[id] = User(
+                                    id = id,
+                                    fullName = "Unknown Customer",
+                                    email = ""
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error loading user chunk: ${e.message}")
+                        chunk.forEach { id ->
+                            if (!userCache.containsKey(id)) {
+                                userCache[id] = User(
+                                    id = id,
+                                    fullName = "Unknown Customer",
+                                    email = ""
+                                )
+                            }
+                        }
+                    }
+                }
+            }.forEach { it.await() }
+        }
+
+        return userCache.filterKeys { it in userIds }
+    }
+    private fun filterBookingsByDate(
+        bookings: List<Booking>,
+        year: Int?,
+        quarter: Int?,
+        month: Int?
+    ): List<Booking> {
+        if (bookings.isEmpty()) return emptyList()
+
+        val (startTime, endTime) = calculateDateRange(year, quarter, month)
+
+        return bookings.filter { booking ->
+            if (startTime != null && endTime != null) {
+                val bookingTime = booking.createdAt.seconds * 1000
+                bookingTime in startTime..endTime
+            } else {
+                true
+            }
+        }
+    }
+
+    private data class CustomerMetrics(
+        val totalRevenue: Double,
+        val totalBookings: Int,
+        val customerStats: Map<String, CustomerStats>
+    )
+
+    private data class MutableCustomerMetrics(
+        val userId: String,
+        var bookings: Int = 0,
+        var revenue: Double = 0.0
+    )
+
+    private fun calculateCustomerMetrics(
+        bookings: List<Booking>,
+        users: Map<String, User>
+    ): CustomerMetrics {
+        var totalRevenue = 0.0
+        val customerMetrics = ConcurrentHashMap<String, MutableCustomerMetrics>()
+
+        bookings.forEach { booking ->
+            val isCancelled = booking.status == BookingStatus.CANCELLED
+
+            if (!isCancelled) {
+                totalRevenue += booking.totalPrice
+            }
+
+            val customerMetric = customerMetrics.getOrPut(booking.userId) {
+                MutableCustomerMetrics(booking.userId)
+            }
+            customerMetric.bookings++
+            if (!isCancelled) {
+                customerMetric.revenue += booking.totalPrice
+            }
+        }
+
+        val customerStats = customerMetrics.mapValues { (userId, metrics) ->
+            val user = users[userId]
+            CustomerStats(
+                id = userId,
+                name = user?.fullName ?: "Unknown User",
+                totalBookings = metrics.bookings,
+                totalSpent = metrics.revenue
+            )
+        }
+
+        return CustomerMetrics(
+            totalRevenue = totalRevenue,
+            totalBookings = bookings.size,
+            customerStats = customerStats
+        )
+    }
+
+    private fun createEmptyCustomerStatistics(
+        year: Int?,
+        quarter: Int?,
+        month: Int?
+    ): CustomerStatistics {
+        val (emptyMap, labels) = when {
+            year == null -> {
+                val labels = listOf("2024", "2025", "2026")
+                labels.associateWith { 0.0 } to labels
+            }
+            quarter != null -> {
+                val labels = mutableListOf<String>()
+                val startMonth = (quarter - 1) * 3
+                val calendar = Calendar.getInstance()
+                calendar.set(year, startMonth, 1)
+                val monthFormat = getMonthFormat()
+                for (i in 0..2) {
+                    calendar.set(Calendar.MONTH, startMonth + i)
+                    labels.add(monthFormat.format(calendar.time))
+                }
+                labels.associateWith { 0.0 } to labels
+            }
+            month != null -> {
+                val calendar = Calendar.getInstance()
+                calendar.set(year, month - 1, 1)
+                val maxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+                val numWeeks = (maxDay + 6) / 7
+                val labels = (1..numWeeks).map { "Week $it" }
+                labels.associateWith { 0.0 } to labels
+            }
+            else -> {
+                val labels = mutableListOf<String>()
+                val calendar = Calendar.getInstance()
+                calendar.set(year, 0, 1)
+                val monthFormat = getMonthFormat()
+                for (m in 0..11) {
+                    calendar.set(Calendar.MONTH, m)
+                    labels.add(monthFormat.format(calendar.time))
+                }
+                labels.associateWith { 0.0 } to labels
+            }
+        }
+
+        return CustomerStatistics(
+            totalRevenue = 0.0,
+            totalBookings = 0,
+            totalCustomers = 0,
+            bookingsByCustomer = emptyMap(),
+            periodRevenue = emptyMap,
+            periodLabels = labels
+        )
+    }
 }

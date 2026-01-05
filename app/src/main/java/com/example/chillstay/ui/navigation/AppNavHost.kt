@@ -62,6 +62,7 @@ import com.example.chillstay.ui.admin.customer.customer_view.CustomerViewScreen
 import com.example.chillstay.ui.admin.customer.review_view.ReviewViewScreen
 import com.example.chillstay.ui.admin.statistics.accommodation_statistics.AccommodationStatisticsScreen
 import com.example.chillstay.ui.admin.statistics.accommodation_view.AccommodationViewScreen
+import com.example.chillstay.ui.admin.statistics.customer_statistics.CustomerStatisticsScreen
 import com.example.chillstay.ui.admin.statistics.room_view.RoomViewScreen
 import com.example.chillstay.ui.admin.voucher.voucher_apply.AccommodationSelectScreen
 import com.example.chillstay.ui.admin.voucher.voucher_edit.VoucherEditScreen
@@ -624,6 +625,13 @@ fun AppNavHost(
             )
         }
 
+        composable(Routes.ADMIN_CUSTOMER_STATISTICS) {
+            CustomerStatisticsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onViewCustomer = { customerId -> }
+
+            )
+        }
 
         searchRoute(
             onBackClick = {

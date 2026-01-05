@@ -9,13 +9,6 @@ data class BookingStatistics(
     val periodLabels: List<String> // Labels for chart
 )
 
-enum class StatisticsPeriod {
-    DAILY,      // Last 7 days
-    MONTHLY,    // Last 12 months
-    QUARTERLY,  // Last 4 quarters
-    YEARLY      // Last 5 years
-}
-
 data class HotelBookingStats(
     val hotelId: String,
     val hotelName: String,
@@ -25,8 +18,19 @@ data class HotelBookingStats(
 )
 
 data class CustomerStats(
+    val id: String = "",
+    val name: String? = "",
     val totalBookings: Int = 0,
     val totalSpent: Double = 0.0,
     val totalReviews: Int = 0,
     val memberSince: String = ""
+)
+
+data class CustomerStatistics(
+    val totalRevenue: Double,
+    val totalBookings: Int,
+    val totalCustomers: Int,
+    val bookingsByCustomer: Map<String, CustomerStats>,
+    val periodRevenue: Map<String, Double>,
+    val periodLabels: List<String>
 )

@@ -1,10 +1,7 @@
 package com.example.chillstay.domain.repository
 
-import com.example.chillstay.domain.model.Booking
 import com.example.chillstay.domain.model.BookingStatistics
-import com.example.chillstay.domain.model.Hotel
-import com.example.chillstay.domain.model.StatisticsPeriod
-
+import com.example.chillstay.domain.model.CustomerStatistics
 
 interface BookingStatisticsRepository {
     suspend fun getBookingStatistics(
@@ -14,6 +11,12 @@ interface BookingStatisticsRepository {
         quarter: Int? = null,
         month: Int? = null
     ): BookingStatistics
+
+    suspend fun getCustomerStatistics(
+        year: Int?,
+        quarter: Int?,
+        month: Int?
+    ): CustomerStatistics
 
     suspend fun getBookingStatisticsByDateRange(
         country: String?,
