@@ -3,9 +3,6 @@ package com.example.chillstay.data.image.dto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Response từ Cloudinary API khi upload thành công
- */
 @Serializable
 data class CloudinaryUploadResponse(
     @SerialName("public_id")

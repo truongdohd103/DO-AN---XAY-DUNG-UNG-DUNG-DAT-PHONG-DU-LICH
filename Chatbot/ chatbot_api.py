@@ -16,12 +16,27 @@ from langchain.tools import BaseTool
 from langchain_core.callbacks import CallbackManagerForToolRun
 import os
 
+import firebase_admin
+from firebase_admin import credentials, firestore
+from pathlib import Path
+
 app = Flask(__name__)
 CORS(app)
 
-# ==================== SETUP CHATBOT ====================
-# setx GOOGLE_API_KEY "xxx"  (Windows)
-GOOGLE_API_KEY = "AIzaSyD22V8HmqM7cX3AfIJW5yH-TkSqVY2mmjg"
+# FIREBASE SETUP 
+key_path = Path(__file__).parent / "firebase-key.json"
+print("Using key path:", key_path.resolve())
+
+if not key_path.exists():
+    raise FileNotFoundError(f"Không tìm thấy firebase key tại {key_path.resolve()}")
+
+cred = credentials.Certificate(str(key_path.resolve()))
+firebase_admin.initialize_app(cred)
+db = firestore.client()
+print("Firebase connected successfully")
+
+# SETUP CHATBOT 
+GOOGLE_API_KEY = "AIzaSyC8ifm4SoBGmQ_dbsq6_mMMZwjmCbrJGjg"
 TAVILY_API_KEY = "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"
 if not GOOGLE_API_KEY or not TAVILY_API_KEY:
     print("Warning: missing GOOGLE_API_KEY or TAVILY_API_KEY in environment variables")
@@ -34,7 +49,7 @@ llm = ChatGoogleGenerativeAI(
     max_tokens=None,
 )
 
-# Load documents (resolve relative to this file so cwd changes won't break it)
+# Load documents
 script_dir = os.path.dirname(os.path.abspath(__file__))
 documents = []
 for filename in os.listdir(script_dir):
@@ -51,7 +66,6 @@ for filename in os.listdir(script_dir):
                 )
             )
     except Exception as exc:
-        # Log and continue if one file fails to load
         print(f"Warning: could not load {filename}: {exc}")
 
 if not documents:
@@ -82,9 +96,6 @@ vectorstore = Chroma.from_documents(
     collection_name="chillstay_docs"
 )
 
-# Create retriever for fast RAG (không dùng agent)
-retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
-
 # Create prompt template for fast RAG
 system_prompt = """Bạn là trợ lý ảo của ứng dụng ChillStay - hệ thống đặt phòng khách sạn, homestay, căn hộ du lịch.
 Hãy trả lời câu hỏi của người dùng dựa trên thông tin được cung cấp.
@@ -96,11 +107,7 @@ prompt = ChatPromptTemplate.from_messages([
     ("human", "Context:\n{context}\n\nCâu hỏi: {input}")
 ])
 
-# Create fast RAG chain (không dùng agent, nhanh hơn nhiều)
-document_chain = create_stuff_documents_chain(llm, prompt)
-fast_rag_chain = create_retrieval_chain(retriever, document_chain)
-
-# ==================== TOOLS ====================
+#TOOLS
 
 class RetriveInput(BaseModel):
     query: str = Field("", description="Search query string entered by the user")
@@ -145,17 +152,86 @@ search_web_tool = TavilySearch(
     topic="general",
 )
 
-# --- Create agent using langchain.agents.create_agent (API mới)
+# --- Create agent 
 agent = create_agent(
     model=llm,
     tools=[chillstay_tool, search_web_tool],
-    # bạn có thể thêm response_format, max_iterations... nếu cần
 )
 
-# ==================== SESSION MANAGEMENT ====================
-chat_sessions = {}
+# FIREBASE HELPER FUNCTIONS
 
-# ==================== API ENDPOINTS ====================
+def get_chat_history(session_id: str, limit: int = 50):
+    """Lấy lịch sử chat từ Firebase"""
+    if not db:
+        return []
+    
+    try:
+        # Lấy messages từ Firestore, sắp xếp theo timestamp
+        messages_ref = db.collection('chat_sessions').document(session_id).collection('messages')
+        messages = messages_ref.order_by('timestamp').limit(limit).stream()
+        
+        history = []
+        for msg in messages:
+            data = msg.to_dict()
+            history.append({
+                "role": data.get("role"),
+                "content": data.get("content")
+            })
+        
+        return history
+    except Exception as e:
+        print(f"Error getting chat history: {e}")
+        return []
+
+def save_message(session_id: str, role: str, content: str):
+    """Lưu tin nhắn vào Firebase"""
+    if not db:
+        return False
+    
+    try:
+        # Lưu message vào subcollection
+        messages_ref = db.collection('chat_sessions').document(session_id).collection('messages')
+        messages_ref.add({
+            'role': role,
+            'content': content,
+            'timestamp': firestore.SERVER_TIMESTAMP
+        })
+        
+        # Cập nhật metadata của session
+        session_ref = db.collection('chat_sessions').document(session_id)
+        session_ref.set({
+            'last_updated': firestore.SERVER_TIMESTAMP,
+            'message_count': firestore.Increment(1)
+        }, merge=True)
+        
+        return True
+    except Exception as e:
+        print(f"Error saving message: {e}")
+        return False
+
+def clear_chat_history(session_id: str):
+    """Xóa lịch sử chat từ Firebase"""
+    if not db:
+        return False
+    
+    try:
+        # Xóa tất cả messages trong subcollection
+        messages_ref = db.collection('chat_sessions').document(session_id).collection('messages')
+        messages = messages_ref.stream()
+        
+        for msg in messages:
+            msg.reference.delete()
+        
+        # Xóa hoặc reset metadata
+        session_ref = db.collection('chat_sessions').document(session_id)
+        session_ref.delete()
+        
+        return True
+    except Exception as e:
+        print(f"Error clearing chat: {e}")
+        return False
+
+# API ENDPOINTS
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
@@ -170,36 +246,31 @@ def chat():
                 'status': 'error'
             }), 400
         
-        if session_id not in chat_sessions:
-            chat_sessions[session_id] = []
+        # Lấy lịch sử từ Firebase
+        history = get_chat_history(session_id)
         
-        history = chat_sessions[session_id]
-        
-        # messages định dạng theo LangChain: [{role, content}, ...]
+        # Tạo messages cho agent
         messages = history.copy()
         messages.append({"role": "user", "content": user_message})
         
-        # gọi agent: invoke với payload chứa "messages"
+        # Gọi agent
         result = agent.invoke({"messages": messages})
-        # result có thể chứa khóa "messages" (list) hoặc "structured_response"
+        
+        # Xử lý response
         bot_reply = None
         if isinstance(result, dict):
             msgs = result.get("messages") or result.get("response") or result.get("structured_response")
-            # nếu là list of dicts
             if isinstance(msgs, list) and len(msgs) > 0:
                 last = msgs[-1]
-                # last có thể là object Message hoặc dict
                 bot_reply = getattr(last, "content", None) or last.get("content", None) or str(last)
             else:
-                # fallback: convert result thành string
                 bot_reply = str(result)
         else:
             bot_reply = str(result)
         
-        # lưu history
-        history.append({"role": "user", "content": user_message})
-        history.append({"role": "assistant", "content": bot_reply})
-        chat_sessions[session_id] = history
+        # Lưu messages vào Firebase
+        save_message(session_id, "user", user_message)
+        save_message(session_id, "assistant", bot_reply)
         
         return jsonify({
             'response': bot_reply,
@@ -214,58 +285,14 @@ def chat():
             'status': 'error'
         }), 500
 
-@app.route('/api/chat/fast', methods=['POST'])
-def chat_fast():
-    """
-    Endpoint nhanh hơn: dùng RAG trực tiếp, không qua agent.
-    Phù hợp cho câu hỏi về ChillStay (hướng dẫn, chính sách, tính năng...)
-    """
-    try:
-        data = request.get_json(force=True, silent=True) or {}
-        user_message = data.get('message', '').strip()
-        session_id = data.get('session_id', 'default')
-        
-        if not user_message:
-            return jsonify({
-                'error': 'Message cannot be empty',
-                'status': 'error'
-            }), 400
-        
-        # Dùng RAG chain trực tiếp (nhanh hơn agent rất nhiều)
-        result = fast_rag_chain.invoke({"input": user_message})
-        bot_reply = result.get("answer", "Xin lỗi, tôi không thể trả lời câu hỏi này.")
-        
-        # Lưu history (tùy chọn, có thể bỏ để tiết kiệm memory)
-        if session_id not in chat_sessions:
-            chat_sessions[session_id] = []
-        history = chat_sessions[session_id]
-        history.append({"role": "user", "content": user_message})
-        history.append({"role": "assistant", "content": bot_reply})
-        # Giới hạn history để tránh quá dài (chỉ giữ 10 tin nhắn gần nhất)
-        if len(history) > 20:
-            chat_sessions[session_id] = history[-20:]
-        
-        return jsonify({
-            'response': bot_reply,
-            'session_id': session_id,
-            'status': 'success'
-        })
-    
-    except Exception as e:
-        print(f"Error in chat_fast: {str(e)}")
-        return jsonify({
-            'error': f'Internal server error: {str(e)}',
-            'status': 'error'
-        }), 500
-
 @app.route('/api/chat/clear', methods=['POST'])
 def clear_chat():
     try:
         data = request.get_json()
         session_id = data.get('session_id', 'default')
         
-        if session_id in chat_sessions:
-            del chat_sessions[session_id]
+        # Xóa lịch sử từ Firebase
+        clear_chat_history(session_id)
         
         return jsonify({
             'message': 'Chat history cleared',
@@ -283,13 +310,14 @@ def health():
     return jsonify({
         'status': 'healthy',
         'model': 'gemini-2.5-flash',
-        'tools': ['chillstay_knowledge_base', 'tavily_search']
+        'tools': ['chillstay_knowledge_base', 'tavily_search'],
+        'firebase_connected': db is not None
     })
 
 if __name__ == '__main__':
     print("Starting ChillStay Chatbot API...")
     print("Vector store initialized with documents")
-    print("Agent ready with tools: chillstay_knowledge_base, tavily_search")
+    print("Agent ready with tools")
+    print(f"Firebase status: {'✓ Connected' if db else '✗ Not connected'}")
     print("Server running on http://0.0.0.0:5000")
-    # debug=False cho môi trường ngoài dev
     app.run(host='0.0.0.0', port=5000, debug=False)
