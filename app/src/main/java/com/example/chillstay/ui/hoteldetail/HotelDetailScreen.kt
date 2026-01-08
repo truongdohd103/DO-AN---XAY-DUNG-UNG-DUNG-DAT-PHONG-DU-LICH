@@ -63,6 +63,11 @@ import com.example.chillstay.core.feature.IconRegistry
 import com.example.chillstay.domain.model.Policy
 import org.koin.compose.koinInject
 import java.time.format.TextStyle
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.auth.FirebaseAuth
+import java.text.Normalizer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -200,7 +205,9 @@ fun HotelDetailScreen(
 
             item {
                 // Contact property
-                ContactPropertySection()
+                ContactPropertySection(
+                    hotelName = uiState.hotel?.name.orEmpty()
+                )
             }
 
             item {
@@ -739,11 +746,26 @@ fun HotelPoliciesSection(policies: List<Policy>) {
 }
 
 @Composable
-fun ContactPropertySection() {
+fun ContactPropertySection(hotelName: String) {
+    val context = LocalContext.current
+    
+    // Format hotel name to email: remove accents, lowercase, remove spaces, add @chillstay.com
+    val hotelEmail = remember(hotelName) {
+        formatHotelNameToEmail(hotelName)
+    }
+    
+    // Get user email from FirebaseAuth, fallback to user1@chillstay.com
+    val userEmail = remember {
+        FirebaseAuth.getInstance().currentUser?.email ?: "user1@chillstay.com"
+    }
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 21.dp),
+            .padding(horizontal = 21.dp)
+            .clickable {
+                openGmail(context, hotelEmail, userEmail)
+            },
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFE0E0E0))
@@ -761,6 +783,78 @@ fun ContactPropertySection() {
                 fontWeight = FontWeight.Bold
             )
         }
+    }
+}
+
+/**
+ * Format hotel name to email format:
+ * - Remove Vietnamese accents/diacritics
+ * - Convert to lowercase
+ * - Remove spaces and special characters
+ * - Add @chillstay.com
+ * Example: "Khách Sạn ABC XYZ" -> "khachsanabcxyz@chillstay.com"
+ */
+private fun formatHotelNameToEmail(hotelName: String): String {
+    if (hotelName.isBlank()) return "hotel@chillstay.com"
+    
+    // Remove Vietnamese accents/diacritics
+    val normalized = Normalizer.normalize(hotelName, Normalizer.Form.NFD)
+        .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+    
+    // Convert to lowercase, remove spaces and special characters, keep only alphanumeric
+    val emailPart = normalized
+        .lowercase()
+        .replace("\\s+".toRegex(), "") // Remove spaces
+        .replace("[^a-z0-9]".toRegex(), "") // Remove special characters, keep only a-z and 0-9
+    
+    return if (emailPart.isBlank()) {
+        "hotel@chillstay.com"
+    } else {
+        "$emailPart@chillstay.com"
+    }
+}
+
+/**
+ * Open Gmail app with pre-filled recipient and sender email
+ */
+private fun openGmail(context: android.content.Context, recipientEmail: String, senderEmail: String) {
+    try {
+        val subject = Uri.encode("Booking Inquiry - ${System.currentTimeMillis()}")
+        val body = Uri.encode("Hello,\n\nI have a question regarding my booking.\n\nThank you.")
+        
+        val mailtoUri = Uri.parse("mailto:$recipientEmail?subject=$subject&body=$body")
+        
+        // Try to open Gmail app first
+        val gmailIntent = Intent(Intent.ACTION_SENDTO).apply {
+            data = mailtoUri
+            `package` = "com.google.android.gm"
+            putExtra(Intent.EXTRA_EMAIL, arrayOf(recipientEmail))
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, body)
+        }
+        
+        if (gmailIntent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(gmailIntent)
+            return
+        }
+        
+        // Fallback to any email app
+        val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+            data = mailtoUri
+            putExtra(Intent.EXTRA_EMAIL, arrayOf(recipientEmail))
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, body)
+        }
+        
+        if (emailIntent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(emailIntent)
+        } else {
+            // If no email app, open browser with mailto link
+            val browserIntent = Intent(Intent.ACTION_VIEW, mailtoUri)
+            context.startActivity(browserIntent)
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("ContactProperty", "Error opening email: ${e.message}")
     }
 }
 

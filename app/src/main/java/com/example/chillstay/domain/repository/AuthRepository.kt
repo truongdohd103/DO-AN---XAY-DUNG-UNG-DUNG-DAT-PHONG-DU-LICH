@@ -1,5 +1,8 @@
 package com.example.chillstay.domain.repository
 
+import com.example.chillstay.core.common.Result
+import kotlinx.coroutines.flow.Flow
+
 /**
  * Authentication gateway that exposes FirebaseAuth operations to the domain layer
  * without leaking any Android/Firebase specific APIs.
@@ -24,6 +27,11 @@ interface AuthRepository {
      * Returns the UID of the currently signed-in user, or null if no user is authenticated.
      */
     fun getCurrentUserId(): String?
+
+    /**
+     * Observes changes to the current user ID. Emits whenever the authentication state changes.
+     */
+    fun observeCurrentUserId(): Flow<Result<String?>>
 }
 
 

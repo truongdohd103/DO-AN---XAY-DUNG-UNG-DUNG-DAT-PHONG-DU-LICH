@@ -61,9 +61,25 @@ class HomeViewModel(
             getCurrentUserIdUseCase().collectLatest { result ->
                 when (result) {
                     is Result.Success -> {
-                        currentUserId = result.data
-                        val userId = result.data
+                        val newUserId = result.data
+                        val previousUserId = currentUserId
+                        
+                        // Nếu user thay đổi, clear dữ liệu cũ
+                        if (previousUserId != newUserId) {
+                            _state.update {
+                                it.copy(
+                                    bookmarkedHotels = emptySet(),
+                                    pendingBookings = emptyList(),
+                                    recentHotels = emptyList()
+                                )
+                            }
+                        }
+                        
+                        currentUserId = newUserId
+                        val userId = newUserId
+                        
                         if (userId.isNullOrBlank()) {
+                            // User đã đăng xuất, clear tất cả dữ liệu
                             _state.update {
                                 it.copy(
                                     bookmarkedHotels = emptySet(),
@@ -72,6 +88,7 @@ class HomeViewModel(
                                 )
                             }
                         } else {
+                            // User đã đăng nhập hoặc đổi user, load dữ liệu mới
                             loadBookmarks(userId)
                             loadUserSections(userId, force = true)
                         }

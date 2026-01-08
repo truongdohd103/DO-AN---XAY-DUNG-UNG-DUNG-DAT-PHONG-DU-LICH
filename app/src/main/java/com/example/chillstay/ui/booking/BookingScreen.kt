@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import org.koin.compose.koinInject
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import androidx.activity.compose.BackHandler
 import com.google.firebase.Timestamp
@@ -114,9 +116,17 @@ fun BookingScreen(
         return
     }
 
-    BackHandler(enabled = true) {
-        showCancelDialog = true
+    fun shouldAllowSaveDraft(): Boolean = uiState.datesUserSelected
+
+    fun handleBackPress() {
+        if (shouldAllowSaveDraft()) {
+            showCancelDialog = true
+        } else {
+            onBackClick()
+        }
     }
+
+    BackHandler(enabled = true) { handleBackPress() }
 
     LaunchedEffect(viewModel) {
         viewModel.effect.collect { eff ->
@@ -161,7 +171,7 @@ fun BookingScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { showCancelDialog = true }) {
+                    IconButton(onClick = { handleBackPress() }) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_arrow_back),
                             contentDescription = "Back",
@@ -196,8 +206,8 @@ fun BookingScreen(
                     rooms = uiState.rooms,
                     adults = uiState.adults,
                     children = uiState.children,
-                    dateFromDisplay = if (uiState.hasInitialDates || uiState.datesUserSelected) uiState.dateFrom.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) else "",
-                    dateToDisplay = if (uiState.hasInitialDates || uiState.datesUserSelected) uiState.dateTo.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) else "",
+                    dateFromDisplay = if (uiState.datesUserSelected) uiState.dateFrom.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) else "",
+                    dateToDisplay = if (uiState.datesUserSelected) uiState.dateTo.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) else "",
                     onRoomsChange = { viewModel.onEvent(BookingIntent.UpdateGuests(uiState.adults, uiState.children, it)) },
                     onAdultsChange = { viewModel.onEvent(BookingIntent.UpdateGuests(it, uiState.children, uiState.rooms)) },
                     onChildrenChange = { viewModel.onEvent(BookingIntent.UpdateGuests(uiState.adults, it, uiState.rooms)) },
@@ -341,6 +351,10 @@ fun BookingScreen(
             text = { Text("You can save this booking to continue later or cancel it.") },
             confirmButton = {
                 TextButton(onClick = {
+                    if (!shouldAllowSaveDraft()) {
+                        onBackClick()
+                        return@TextButton
+                    }
                     // Save to queue as PENDING booking draft
                     val userId = FirebaseAuth.getInstance().currentUser?.uid
                     val hotel = uiState.hotel
@@ -456,16 +470,24 @@ fun StayDetailsSection(
                                 .matchParentSize()
                                 .clickable {
                                     val initial = dateFrom
-                                    android.app.DatePickerDialog(
+                                    val today = LocalDate.now()
+                                    val dialog = android.app.DatePickerDialog(
                                         context,
                                         { _, year, month, dayOfMonth ->
-                                            val newDate = java.time.LocalDate.of(year, month + 1, dayOfMonth)
+                                            val newDate = LocalDate.of(year, month + 1, dayOfMonth)
                                             onDateFromChange(newDate)
                                         },
                                         initial.year,
                                         initial.monthValue - 1,
                                         initial.dayOfMonth
-                                    ).show()
+                                    )
+                                    // Không cho chọn ngày trong quá khứ
+                                    val minDateMillis = today
+                                        .atStartOfDay(ZoneId.systemDefault())
+                                        .toInstant()
+                                        .toEpochMilli()
+                                    dialog.datePicker.minDate = minDateMillis
+                                    dialog.show()
                                 }
                         )
                     }
@@ -501,17 +523,32 @@ fun StayDetailsSection(
                             modifier = Modifier
                                 .matchParentSize()
                                 .clickable {
+                                    // Chưa chọn check-in thì không cho chọn check-out
+                                    if (dateFromDisplay.isBlank()) return@clickable
+
                                     val initial = dateTo
-                                    android.app.DatePickerDialog(
+                                    val today = LocalDate.now()
+                                    // checkout tối thiểu là ngày sau check-in và cũng không được ở quá khứ
+                                    val minCheckOut = maxOf(today.plusDays(1), dateFrom.plusDays(1))
+
+                                    val dialog = android.app.DatePickerDialog(
                                         context2,
                                         { _, year, month, dayOfMonth ->
-                                            val newDate = java.time.LocalDate.of(year, month + 1, dayOfMonth)
+                                            val newDate = LocalDate.of(year, month + 1, dayOfMonth)
                                             onDateToChange(newDate)
                                         },
                                         initial.year,
                                         initial.monthValue - 1,
                                         initial.dayOfMonth
-                                    ).show()
+                                    )
+
+                                    val minDateMillis = minCheckOut
+                                        .atStartOfDay(ZoneId.systemDefault())
+                                        .toInstant()
+                                        .toEpochMilli()
+                                    dialog.datePicker.minDate = minDateMillis
+
+                                    dialog.show()
                                 }
                         )
                     }

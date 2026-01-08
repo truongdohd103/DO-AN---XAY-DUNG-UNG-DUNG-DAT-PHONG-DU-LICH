@@ -48,20 +48,12 @@ fun RoomScreen(
                             modifier = Modifier.size(16.dp)
                         )
                         
-                        Column {
-                            Text(
-                                text = uiState.hotelName ?: "",
-                                color = Color(0xFF212121),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            
-                            Text(
-                                text = "Sep 21 - Sep 22, 3 guests",
-                                color = Color(0xFF757575),
-                                fontSize = 12.sp
-                            )
-                        }
+                        Text(
+                            text = uiState.hotelName ?: "",
+                            color = Color(0xFF212121),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 },
                 navigationIcon = {
@@ -89,32 +81,19 @@ fun RoomScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
-            item {
-                // Filter section
-                FilterSection()
-            }
-            
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-            
             items(uiState.rooms.size) { index ->
                 val room = uiState.rooms[index]
-                val roomId = null
                 RoomCard(
                     roomId = room.id,
                     name = room.name,
-                    imageUrl = room.gallery?.thisRoom[0],
+                    imageUrl = room.gallery?.thisRoom?.firstOrNull(),
                     area = room.area.let { "${it.toInt()} m²" },
                     maxAdults = "Max ${room.capacity} adults",
-                    doubleBed = room.doubleBed,
-                    singleBed = room.singleBed,
+                    roomType = room.status.name.lowercase().replaceFirstChar { c -> c.uppercase() },
                     amenities = room.feature,
-                    breakfastPrice = room.breakfastPrice.toInt(),
-                    originalPrice = room.price.toInt(),
-                    discount = room.discount.toInt(),
                     finalPrice = room.price.toInt(),
-                    roomsLeft = roomLeft(room.id, "2025-12-25", "2025-12-28"),
+                    roomsLeft = room.availableCount, // Sử dụng availableCount từ room
+                    isSoldOut = room.availableCount <= 0,
                     imagesCount = (room.gallery?.totalCount ?: 1),
                     onBookNowClick = { roomId, dateFrom, dateTo, _ ->
                         onBookNowClick(hotelId, roomId, dateFrom, dateTo)
@@ -137,9 +116,7 @@ fun RoomScreen(
     }
 }
 
-private fun roomLeft(roomId: String, dateFrom: String, dateTo: String): Int {
-    return 4
-}
+// Hàm này không còn cần thiết vì đã sử dụng room.availableCount trực tiếp
 
 @Composable
 fun FilterSection() {
@@ -226,12 +203,8 @@ fun RoomCard(
     imageUrl: String?,
     area: String,
     maxAdults: String,
-    doubleBed: Int,
-    singleBed: Int,
+    roomType: String,
     amenities: List<String>,
-    breakfastPrice: Int? = null,
-    originalPrice: Int,
-    discount: Int,
     finalPrice: Int,
     roomsLeft: Int,
     isSoldOut: Boolean = false,
@@ -247,11 +220,12 @@ fun RoomCard(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
+        val displayName = name.ifBlank { "Room" }
         Column(
             modifier = Modifier.padding(20.dp)
         ) {
             Text(
-                text = name,
+                text = displayName,
                 color = Color(0xFF212121),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
@@ -349,7 +323,8 @@ fun RoomCard(
             // Room details
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = area,
@@ -364,41 +339,38 @@ fun RoomCard(
                 )
                 
                 Text(
-                    text = doubleBed.toString(),
+                    text = roomType,
                     color = Color(0xFF212121),
-                    fontSize = 14.sp
-                )
-
-                Text(
-                    text = singleBed.toString(),
-                    color = Color(0xFF212121),
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
             
             Spacer(modifier = Modifier.height(16.dp))
             
             // Amenities
-            Column {
-                Text(
-                    text = "Facilities",
-                    color = Color(0xFF212121),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                amenities.forEach { amenity ->
+            if (amenities.isNotEmpty()) {
+                Column {
                     Text(
-                        text = amenity,
-                        color = Color(0xFF757575),
-                        fontSize = 13.sp
+                        text = "Facilities",
+                        color = Color(0xFF212121),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    amenities.forEach { amenity ->
+                        Text(
+                            text = amenity,
+                            color = Color(0xFF757575),
+                            fontSize = 13.sp
+                        )
+                    }
                 }
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Booking info - always show for consistency
+            // Price and action
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
@@ -407,69 +379,13 @@ fun RoomCard(
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    if (breakfastPrice != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_check),
-                                contentDescription = "Breakfast",
-                                tint = Color(0xFF1AB65C),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = breakfastPrice.toString(),
-                                color = Color(0xFF1AB65C),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            if (originalPrice > 0) {
-                                Text(
-                                    text = "$$originalPrice",
-                                    color = Color(0xFF757575),
-                                    fontSize = 12.sp,
-                                    textDecoration = TextDecoration.LineThrough
-                                )
-                            }
-                            
-                            if (discount > 0) {
-                                Text(
-                                    text = "-$discount%",
-                                    color = Color(0xFFFF5722),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                        
-                        Text(
-                            text = "$$finalPrice",
-                            color = Color(0xFFFF5722),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    
-                    // Only show booking section if not sold out
-                    if (!isSoldOut) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
+                            if (roomsLeft > 0) {
                                 Text(
                                     text = "Rooms left: $roomsLeft",
                                     color = Color(0xFF212121),
@@ -484,8 +400,32 @@ fun RoomCard(
                                         fontWeight = FontWeight.Medium
                                     )
                                 }
+                            } else {
+                                Text(
+                                    text = "Sold out",
+                                    color = Color(0xFFFF5722),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
-                            
+                        }
+                        
+                        Text(
+                            text = "$$finalPrice",
+                            color = Color(0xFFFF5722),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    
+                    if (!isSoldOut) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Button(
                                 onClick = { 
                                     onBookNowClick(roomId, "2024-12-25", "2024-12-28", "2024-12-30")
