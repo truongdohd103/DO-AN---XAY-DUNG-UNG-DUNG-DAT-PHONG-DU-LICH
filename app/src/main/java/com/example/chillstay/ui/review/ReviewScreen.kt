@@ -2,6 +2,7 @@ package com.example.chillstay.ui.review
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -10,11 +11,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -153,34 +157,12 @@ fun ReviewScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp)
                 ) {
-                    // Hotel info
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Booking ID: $bookingId",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF333333)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = uiState.hotel?.name ?: "",
-                                fontSize = 14.sp,
-                                color = Color(0xFF666666)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = if (uiState.isEligible) "Eligible to review" else "Not eligible: Complete a stay to review",
-                                fontSize = 12.sp,
-                                color = if (uiState.isEligible) Color(0xFF1AB6B6) else Color(0xFFFF4444)
-                            )
-                        }
-                    }
+                    // Booking info card
+                    BookingInfoCard(
+                        booking = uiState.booking,
+                        hotel = uiState.hotel,
+                        isEligible = uiState.isEligible
+                    )
                     
                     Spacer(modifier = Modifier.height(24.dp))
                     
@@ -272,6 +254,111 @@ fun ReviewScreen(
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BookingInfoCard(
+    booking: com.example.chillstay.domain.model.Booking?,
+    hotel: com.example.chillstay.domain.model.Hotel?,
+    isEligible: Boolean
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            // Hotel image
+            val imageUrl = hotel?.imageUrl?.firstOrNull() ?: ""
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = hotel?.name ?: "Hotel",
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Booking details
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // Hotel name
+                Text(
+                    text = hotel?.name ?: "Unknown Hotel",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF212121),
+                    maxLines = 2
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // Room name (if available)
+                booking?.room?.let { room ->
+                    Text(
+                        text = room.name,
+                        fontSize = 13.sp,
+                        color = Color(0xFF666666),
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                
+                // Dates
+                booking?.let {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "📅 ${it.dateFrom} - ${it.dateTo}",
+                            fontSize = 12.sp,
+                            color = Color(0xFF757575)
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    // Guests and rooms
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "👥 ${it.guests} guests",
+                            fontSize = 12.sp,
+                            color = Color(0xFF757575)
+                        )
+                        if (it.rooms > 1) {
+                            Text(
+                                text = " • ${it.rooms} rooms",
+                                fontSize = 12.sp,
+                                color = Color(0xFF757575)
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(6.dp))
+                
+                // Eligibility status
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isEligible) "✓ Eligible to review" else "✗ Not eligible",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (isEligible) Color(0xFF1AB6B6) else Color(0xFFFF4444)
+                    )
                 }
             }
         }

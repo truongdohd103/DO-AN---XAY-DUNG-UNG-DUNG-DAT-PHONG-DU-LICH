@@ -30,6 +30,7 @@ import com.example.chillstay.ui.admin.customer.review_view.ReviewViewViewModel
 import com.example.chillstay.ui.admin.voucher.voucher_apply.VoucherApplyViewModel
 import com.example.chillstay.ui.admin.voucher.voucher_edit.VoucherEditViewModel
 import com.example.chillstay.ui.admin.voucher.voucher_manage.VoucherManageViewModel
+import com.example.chillstay.ui.admin.notification.AdminNotificationViewModel
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
@@ -109,4 +110,6 @@ val viewModelModule = module {
     viewModel { VoucherManageViewModel(get(), get(), get()) }
     viewModel { VoucherEditViewModel(get(), get(), get(), get()) }
     viewModel { VoucherApplyViewModel(get(), get(), get(), get()) }
+
+    viewModel { AdminNotificationViewModel(get(), get()) }
 }

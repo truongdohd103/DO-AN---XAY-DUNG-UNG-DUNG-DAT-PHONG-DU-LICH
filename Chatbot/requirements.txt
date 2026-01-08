@@ -1,0 +1,12 @@
+flask
+flask-cors
+langchain
+langchain-core
+langchain-community
+langchain-google-genai
+langchain-chroma
+langchain-huggingface
+langchain-tavily
+langchain-classic
+pydantic
+chromadb

@@ -106,7 +106,8 @@ class BookingViewModel(
                     dateTo = dateTo,
                     availableVouchers = vouchers,
                     priceBreakdown = priceBreakdown,
-                    hasInitialDates = true
+                    hasInitialDates = true,
+                    datesUserSelected = false
                 )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
@@ -170,7 +171,8 @@ class BookingViewModel(
                             availableVouchers = vouchers,
                             appliedVouchers = appliedVouchers,
                             priceBreakdown = priceBreakdown,
-                            hasInitialDates = true
+                            hasInitialDates = true,
+                            datesUserSelected = false
                         )
                     }
                     is Result.Error -> {

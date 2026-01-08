@@ -40,7 +40,7 @@ class BillViewModel(
         
         viewModelScope.launch {
             try {
-                when (val bookingResult = getBookingById(bookingId)) {
+                when (val bookingResult = getBookingById(bookingId).first()) {
                     is Result.Success -> {
                         val booking = bookingResult.data
                         if (booking != null) {

@@ -143,8 +143,13 @@ fun BookmarkHotelCard(
                     .heightIn(min = 120.dp, max = 200.dp)
                     .aspectRatio(16f / 9f) // Maintain aspect ratio
             ) {
+                // Safely get first image URL if available to avoid IndexOutOfBoundsException
+                val firstImageUrl = remember(hotel.imageUrl) {
+                    hotel.imageUrl.firstOrNull()
+                }
+
                 AsyncImage(
-                    model = hotel.imageUrl[0],
+                    model = firstImageUrl ?: "",
                     contentDescription = hotel.name,
                     modifier = Modifier
                         .fillMaxSize()

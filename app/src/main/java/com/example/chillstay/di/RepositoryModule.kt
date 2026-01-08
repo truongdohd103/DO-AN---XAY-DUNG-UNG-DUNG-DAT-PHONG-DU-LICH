@@ -16,6 +16,7 @@ import com.example.chillstay.data.repository.firestore.FirestoreRoomRepository
 import com.example.chillstay.data.repository.firestore.FirestoreUserRepository
 import com.example.chillstay.data.repository.firestore.FirestoreVipStatusRepository
 import com.example.chillstay.data.repository.firestore.FirestoreVoucherRepository
+import com.example.chillstay.data.repository.firestore.FirestoreNotificationRepository
 import com.example.chillstay.data.repository.image.ImageUploadRepositoryImpl
 import com.example.chillstay.domain.repository.ActivityRepository
 import com.example.chillstay.domain.repository.AuthRepository
@@ -25,6 +26,7 @@ import com.example.chillstay.domain.repository.BookingSummaryRepository
 import com.example.chillstay.domain.repository.BookmarkRepository
 import com.example.chillstay.domain.repository.HotelRepository
 import com.example.chillstay.domain.repository.ImageUploadRepository
+import com.example.chillstay.domain.repository.NotificationRepository
 import com.example.chillstay.domain.repository.ReviewRepository
 import com.example.chillstay.domain.repository.RoomRepository
 import com.example.chillstay.domain.repository.UserRepository
@@ -66,6 +68,7 @@ val repositoryModule = module {
     single<VipStatusRepository> { FirestoreVipStatusRepository(get()) }
     single<ActivityRepository> { FirestoreActivityRepository(get()) }
     single<BookingSummaryRepository> { FirestoreBookingSummaryRepository(get()) }
+    single<NotificationRepository> { FirestoreNotificationRepository(get()) }
     single<ChillStayApi> { FirebaseChillStayApi(get()) }
 
     // Shared Ktor HttpClient (dùng cho image-service và các repository khác nếu cần)
