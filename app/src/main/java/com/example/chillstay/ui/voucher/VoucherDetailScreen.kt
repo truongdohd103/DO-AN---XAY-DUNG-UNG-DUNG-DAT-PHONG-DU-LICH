@@ -33,9 +33,17 @@ fun VoucherDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentUser = FirebaseAuth.getInstance().currentUser
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(voucherId) {
         viewModel.onEvent(VoucherDetailIntent.LoadVoucherDetail(voucherId))
+    }
+
+    LaunchedEffect(voucherId, currentUser?.uid) {
+        val userId = currentUser?.uid
+        if (!userId.isNullOrBlank()) {
+            viewModel.onEvent(VoucherDetailIntent.CheckClaimEligibility(voucherId, userId))
+        }
     }
 
     LaunchedEffect(uiState.error) {
@@ -46,6 +54,7 @@ fun VoucherDetailScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -133,10 +142,15 @@ fun VoucherDetailScreen(
                                 voucher = uiState.voucher!!,
                                 isClaimed = uiState.isClaimed,
                                 isClaiming = uiState.isClaiming,
-                                isEligible = uiState.isEligible,
-                                eligibilityMessage = uiState.eligibilityMessage,
+                                isEligible = currentUser != null && uiState.isEligible,
+                                eligibilityMessage = if (currentUser == null) {
+                                    "Please sign in to claim this voucher"
+                                } else {
+                                    uiState.eligibilityMessage
+                                },
                                 onClaimClick = {
-                                    currentUser?.uid?.let { userId ->
+                                    val userId = currentUser?.uid
+                                    if (!userId.isNullOrBlank()) {
                                         viewModel.onEvent(VoucherDetailIntent.ClaimVoucher(voucherId, userId))
                                     }
                                 }
