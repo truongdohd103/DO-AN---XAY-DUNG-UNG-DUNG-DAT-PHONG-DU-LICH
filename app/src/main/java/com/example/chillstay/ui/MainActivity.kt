@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
+import com.example.chillstay.ui.chat.ChatViewModel
 import com.example.chillstay.ui.home.HomeViewModel
 import com.example.chillstay.ui.navigation.AppNavHost
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -16,6 +17,7 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 class MainActivity : ComponentActivity() {
 
     private val homeViewModel: HomeViewModel by viewModel()
+    private val chatViewModel: ChatViewModel by viewModel()
     
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,6 +45,11 @@ class MainActivity : ComponentActivity() {
                 AppNavHost(navController = navController, homeViewModel = homeViewModel)
             }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        chatViewModel.clearChat()
     }
 }
 
