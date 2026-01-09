@@ -8,6 +8,7 @@ data class Room(
     val doubleBed : Int = 0,
     val singleBed : Int = 0,
     val quantity : Int = 0,
+    val availableCount: Int = 0, // Số phòng còn lại có thể đặt
     val feature: List<String> = emptyList(),
     val breakfastPrice: Double = 0.0,
     val price: Double = 0.0,
@@ -25,6 +26,7 @@ data class Room(
         doubleBed = 0,
         singleBed = 0,
         quantity = 0,
+        availableCount = 0,
         feature = emptyList(),
         breakfastPrice = 0.0,
         price = 0.0,

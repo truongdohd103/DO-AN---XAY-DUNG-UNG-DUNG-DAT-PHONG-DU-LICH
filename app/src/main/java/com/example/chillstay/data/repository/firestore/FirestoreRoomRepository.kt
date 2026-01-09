@@ -2,6 +2,8 @@ package com.example.chillstay.data.repository.firestore
 
 import android.util.Log
 import com.example.chillstay.domain.model.Room
+import com.example.chillstay.domain.model.RoomGallery
+import com.example.chillstay.domain.model.RoomStatus
 import com.example.chillstay.domain.repository.RoomRepository
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -34,7 +36,91 @@ class FirestoreRoomRepository @Inject constructor(
             val snapshot = query.get().await()
 
             snapshot.documents.mapNotNull { document ->
-                document.toObject(Room::class.java)?.copy(id = document.id)
+                val data = document.data ?: return@mapNotNull null
+
+                // Một số field có thể nằm trong map "detail"
+                val detail = data["detail"] as? Map<*, *>
+
+                // Map các field từ Firestore (tên field có thể khác với model)
+                val name = (data["name"] as? String)
+                    ?: (detail?.get("name") as? String)
+                    ?: ""
+
+                val area = (data["size"] as? Number)?.toDouble()
+                    ?: (detail?.get("size") as? Number)?.toDouble()
+                    ?: (data["area"] as? Number)?.toDouble()
+                    ?: 0.0
+
+                val capacity = (data["capacity"] as? Number)?.toInt()
+                    ?: (detail?.get("capacity") as? Number)?.toInt()
+                    ?: 0
+
+                val price = (data["price"] as? Number)?.toDouble()
+                    ?: (detail?.get("price") as? Number)?.toDouble()
+                    ?: 0.0
+
+                val availableCount = (data["availableCount"] as? Number)?.toInt()
+                    ?: (data["quantity"] as? Number)?.toInt()
+                    ?: 0
+
+                // Map facilities (Firestore dùng "facilities", model dùng "feature")
+                val facilities = (data["facilities"] as? List<*>)?.mapNotNull { it as? String }
+                    ?: (detail?.get("facilities") as? List<*>)?.mapNotNull { it as? String }
+                    ?: emptyList()
+
+                // Map gallery
+                val galleryMap = data["gallery"] as? Map<*, *>
+                val gallery = galleryMap?.let {
+                    RoomGallery(
+                        exteriorView = (it["exteriorView"] as? List<*>)?.mapNotNull { url -> url as? String }
+                            ?: emptyList(),
+                        dining = (it["dining"] as? List<*>)?.mapNotNull { url -> url as? String }
+                            ?: emptyList(),
+                        thisRoom = (it["thisRoom"] as? List<*>)?.mapNotNull { url -> url as? String }
+                            ?: emptyList()
+                    )
+                }
+
+                // Map các field khác
+                val doubleBed = (data["doubleBed"] as? Number)?.toInt()
+                    ?: (detail?.get("doubleBed") as? Number)?.toInt()
+                    ?: 0
+
+                val singleBed = (data["singleBed"] as? Number)?.toInt()
+                    ?: (detail?.get("singleBed") as? Number)?.toInt()
+                    ?: 0
+
+                val quantity = (data["quantity"] as? Number)?.toInt() ?: 0
+                val breakfastPrice = (data["breakfastPrice"] as? Number)?.toDouble()
+                    ?: (detail?.get("breakfastPrice") as? Number)?.toDouble()
+                    ?: 0.0
+
+                val discount = (data["discount"] as? Number)?.toDouble()
+                    ?: (detail?.get("discount") as? Number)?.toDouble()
+                    ?: 0.0
+
+                val status = when ((data["status"] as? String)?.uppercase()) {
+                    "INACTIVE" -> RoomStatus.INACTIVE
+                    else -> RoomStatus.ACTIVE
+                }
+
+                Room(
+                    id = document.id,
+                    hotelId = data["hotelId"] as? String ?: "",
+                    name = name,
+                    area = area,
+                    doubleBed = doubleBed,
+                    singleBed = singleBed,
+                    quantity = quantity,
+                    availableCount = availableCount,
+                    feature = facilities,
+                    breakfastPrice = breakfastPrice,
+                    price = price,
+                    discount = discount,
+                    capacity = capacity,
+                    gallery = gallery,
+                    status = status
+                )
             }
         } catch (_: Exception) {
             emptyList()
@@ -48,7 +134,86 @@ class FirestoreRoomRepository @Inject constructor(
                 .get()
                 .await()
             if (document.exists()) {
-                document.toObject(Room::class.java)?.copy(id = document.id)
+                val data = document.data ?: return null
+
+                val detail = data["detail"] as? Map<*, *>
+
+                val name = (data["name"] as? String)
+                    ?: (detail?.get("name") as? String)
+                    ?: ""
+
+                val area = (data["size"] as? Number)?.toDouble()
+                    ?: (detail?.get("size") as? Number)?.toDouble()
+                    ?: (data["area"] as? Number)?.toDouble()
+                    ?: 0.0
+
+                val capacity = (data["capacity"] as? Number)?.toInt()
+                    ?: (detail?.get("capacity") as? Number)?.toInt()
+                    ?: 0
+
+                val price = (data["price"] as? Number)?.toDouble()
+                    ?: (detail?.get("price") as? Number)?.toDouble()
+                    ?: 0.0
+
+                val availableCount = (data["availableCount"] as? Number)?.toInt()
+                    ?: (data["quantity"] as? Number)?.toInt()
+                    ?: 0
+
+                val facilities = (data["facilities"] as? List<*>)?.mapNotNull { it as? String }
+                    ?: (detail?.get("facilities") as? List<*>)?.mapNotNull { it as? String }
+                    ?: emptyList()
+
+                val galleryMap = data["gallery"] as? Map<*, *>
+                val gallery = galleryMap?.let {
+                    RoomGallery(
+                        exteriorView = (it["exteriorView"] as? List<*>)?.mapNotNull { url -> url as? String }
+                            ?: emptyList(),
+                        dining = (it["dining"] as? List<*>)?.mapNotNull { url -> url as? String }
+                            ?: emptyList(),
+                        thisRoom = (it["thisRoom"] as? List<*>)?.mapNotNull { url -> url as? String }
+                            ?: emptyList()
+                    )
+                }
+
+                val doubleBed = (data["doubleBed"] as? Number)?.toInt()
+                    ?: (detail?.get("doubleBed") as? Number)?.toInt()
+                    ?: 0
+
+                val singleBed = (data["singleBed"] as? Number)?.toInt()
+                    ?: (detail?.get("singleBed") as? Number)?.toInt()
+                    ?: 0
+
+                val quantity = (data["quantity"] as? Number)?.toInt() ?: 0
+                val breakfastPrice = (data["breakfastPrice"] as? Number)?.toDouble()
+                    ?: (detail?.get("breakfastPrice") as? Number)?.toDouble()
+                    ?: 0.0
+
+                val discount = (data["discount"] as? Number)?.toDouble()
+                    ?: (detail?.get("discount") as? Number)?.toDouble()
+                    ?: 0.0
+
+                val status = when ((data["status"] as? String)?.uppercase()) {
+                    "INACTIVE" -> RoomStatus.INACTIVE
+                    else -> RoomStatus.ACTIVE
+                }
+
+                Room(
+                    id = document.id,
+                    hotelId = data["hotelId"] as? String ?: "",
+                    name = name,
+                    area = area,
+                    doubleBed = doubleBed,
+                    singleBed = singleBed,
+                    quantity = quantity,
+                    availableCount = availableCount,
+                    feature = facilities,
+                    breakfastPrice = breakfastPrice,
+                    price = price,
+                    discount = discount,
+                    capacity = capacity,
+                    gallery = gallery,
+                    status = status
+                )
             } else {
                 null
             }
@@ -136,6 +301,9 @@ class FirestoreRoomRepository @Inject constructor(
             data["hotelId"] = room.hotelId
             // optionally set id field in room doc if you store it there
             data["id"] = newRoomId
+            // Khi tạo room mới, availableCount = quantity (tất cả phòng đều available)
+            data["availableCount"] = room.quantity
+            data["isAvailable"] = room.quantity > 0
 
             // run transaction: create room doc and update hotel's roomIds + minPrice
             firestore.runTransaction { transaction ->
@@ -198,7 +366,7 @@ class FirestoreRoomRepository @Inject constructor(
             val hotelRef = firestore.collection("hotels").document(room.hotelId)
 
             // Prepare map to write (similar to your previous roomToMap)
-            val data = roomToMap(room)
+            val data = roomToMap(room).toMutableMap()
 
             // We'll track whether we need to recompute minPrice after transaction
             var needRecomputeMinAfterTxn = false
@@ -209,6 +377,25 @@ class FirestoreRoomRepository @Inject constructor(
                 // Read the existing room (may throw if not exists)
                 val oldRoomSnap = transaction.get(roomRef)
                 val oldPrice = oldRoomSnap.getDouble("price")
+                val oldQuantity = oldRoomSnap.getLong("quantity")?.toInt() ?: 0
+                val oldAvailableCount = oldRoomSnap.getLong("availableCount")?.toInt() ?: oldQuantity
+
+                // Nếu quantity thay đổi, cần điều chỉnh availableCount
+                val newQuantity = room.quantity
+                val newAvailableCount = if (newQuantity != oldQuantity) {
+                    // Nếu quantity tăng, tăng availableCount tương ứng
+                    // Nếu quantity giảm, giảm availableCount nhưng không được < 0
+                    val diff = newQuantity - oldQuantity
+                    val adjusted = oldAvailableCount + diff
+                    maxOf(0, minOf(adjusted, newQuantity))
+                } else {
+                    // Giữ nguyên availableCount nếu quantity không đổi
+                    room.availableCount
+                }
+                
+                // Cập nhật availableCount trong data
+                data["availableCount"] = newAvailableCount
+                data["isAvailable"] = newAvailableCount > 0
 
                 // Update the room (merge semantics)
                 // Transaction.set with SetOptions.merge is allowed
@@ -272,14 +459,15 @@ class FirestoreRoomRepository @Inject constructor(
             "doubleBed" to room.doubleBed,
             "singleBed" to room.singleBed,
             "quantity" to room.quantity,
+            "availableCount" to room.availableCount,
             "features" to room.feature,
             "breakfastPrice" to room.breakfastPrice,
             "price" to room.price,
             "discount" to room.discount,
-            "quantity" to room.quantity,
             "capacity" to room.capacity,
             "gallery" to gallery,
-            "status" to room.status.name
+            "status" to room.status.name,
+            "isAvailable" to (room.availableCount > 0)
         )
     }
 }

@@ -20,7 +20,6 @@ import com.example.chillstay.ui.allreviews.AllReviewsViewModel
 import com.example.chillstay.ui.admin.home.AdminHomeViewModel
 import com.example.chillstay.ui.admin.accommodation.accommodation_manage.AccommodationManageViewModel
 import com.example.chillstay.ui.admin.accommodation.accommodation_edit.AccommodationEditViewModel
-import com.example.chillstay.ui.admin.statistics.accommodation_statistics.AccommodationStatisticsViewModel
 import com.example.chillstay.ui.admin.accommodation.room_manage.RoomManageViewModel
 import com.example.chillstay.ui.admin.accommodation.room_edit.RoomEditViewModel
 import com.example.chillstay.ui.admin.booking.booking_manage.BookingManageViewModel
@@ -28,6 +27,8 @@ import com.example.chillstay.ui.admin.booking.booking_view.BookingViewViewModel
 import com.example.chillstay.ui.admin.customer.customer_manage.CustomerManageViewModel
 import com.example.chillstay.ui.admin.customer.customer_view.CustomerViewViewModel
 import com.example.chillstay.ui.admin.customer.review_view.ReviewViewViewModel
+import com.example.chillstay.ui.admin.notification.AdminNotificationViewModel
+import com.example.chillstay.ui.admin.statistics.accommodation_statistics.AccommodationStatisticsViewModel
 import com.example.chillstay.ui.admin.statistics.accommodation_view.AccommodationViewViewModel
 import com.example.chillstay.ui.admin.statistics.customer_statistics.CustomerStatisticsViewModel
 import com.example.chillstay.ui.admin.statistics.room_view.RoomViewViewModel
@@ -113,9 +114,10 @@ val viewModelModule = module {
     viewModel { VoucherManageViewModel(get(), get(), get()) }
     viewModel { VoucherEditViewModel(get(), get(), get(), get()) }
     viewModel { VoucherApplyViewModel(get(), get(), get(), get()) }
-
+    viewModel { AdminNotificationViewModel(get(), get()) }
     viewModel { AccommodationStatisticsViewModel(get(), get()) }
     viewModel { AccommodationViewViewModel(get(), get(), get()) }
     viewModel { RoomViewViewModel(get(), get(), get(), get(), get()) }
     viewModel { CustomerStatisticsViewModel(get()) }
+
 }

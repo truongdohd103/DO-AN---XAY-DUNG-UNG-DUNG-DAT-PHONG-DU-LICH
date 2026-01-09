@@ -61,6 +61,7 @@ import org.koin.dsl.module
 import com.example.chillstay.domain.repository.AuthRepository
 import com.example.chillstay.domain.repository.HotelRepository
 import com.example.chillstay.domain.repository.ImageUploadRepository
+import com.example.chillstay.domain.repository.NotificationRepository
 import com.example.chillstay.domain.repository.ReviewRepository
 import com.example.chillstay.domain.repository.UserRepository
 import com.example.chillstay.domain.usecase.booking.GetAllBookingSummariesUseCase
@@ -86,6 +87,8 @@ import com.example.chillstay.domain.usecase.voucher.GetAllVouchersUseCase
 import com.example.chillstay.domain.usecase.voucher.GetApplicableHotelsUseCase
 import com.example.chillstay.domain.usecase.voucher.UpdateVoucherStatusUseCase
 import com.example.chillstay.domain.usecase.voucher.UpdateVoucherUseCase
+import com.example.chillstay.domain.usecase.notification.GetAllNotificationsUseCase
+import com.example.chillstay.domain.usecase.notification.CreateNotificationUseCase
 
 val useCaseModule = module {
     // Sample use cases removed
@@ -171,4 +174,8 @@ val useCaseModule = module {
     factory { AddVipStatusHistoryUseCase(get<VipStatusRepository>()) }
     factory { ApplyVoucherToHotelsUseCase(get<VoucherRepository>()) }
     factory { GetApplicableHotelsUseCase(get<VoucherRepository>(), get<HotelRepository>()) }
+
+    // Notification use cases
+    factory { GetAllNotificationsUseCase(get<NotificationRepository>()) }
+    factory { CreateNotificationUseCase(get<NotificationRepository>()) }
 }

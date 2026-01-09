@@ -57,6 +57,10 @@ dependencies {
 
     // Kotlinx Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    
+    // Kotlinx Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     // Compose (versioned by BOM). Avoid mixed versions that can break K2 analysis.
     implementation(platform(libs.androidx.compose.bom))
