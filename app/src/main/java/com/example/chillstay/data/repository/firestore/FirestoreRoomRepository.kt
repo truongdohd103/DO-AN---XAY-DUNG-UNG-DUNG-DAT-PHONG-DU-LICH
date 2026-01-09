@@ -376,6 +376,8 @@ class FirestoreRoomRepository @Inject constructor(
             firestore.runTransaction { transaction ->
                 // Read the existing room (may throw if not exists)
                 val oldRoomSnap = transaction.get(roomRef)
+                // Read hotel
+                val hotelSnap = transaction.get(hotelRef)
                 val oldPrice = oldRoomSnap.getDouble("price")
                 val oldQuantity = oldRoomSnap.getLong("quantity")?.toInt() ?: 0
                 val oldAvailableCount = oldRoomSnap.getLong("availableCount")?.toInt() ?: oldQuantity
@@ -401,8 +403,6 @@ class FirestoreRoomRepository @Inject constructor(
                 // Transaction.set with SetOptions.merge is allowed
                 transaction.set(roomRef, data, SetOptions.merge())
 
-                // Read hotel
-                val hotelSnap = transaction.get(hotelRef)
                 val currentMin = hotelSnap.getDouble("minPrice")
 
                 val newPrice = room.price

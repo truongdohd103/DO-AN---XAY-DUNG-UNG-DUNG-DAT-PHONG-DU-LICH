@@ -222,7 +222,7 @@ def clear_chat_history(session_id: str):
         for msg in messages:
             msg.reference.delete()
         
-        # Xóa hoặc reset metadata
+        # Xóa metadata
         session_ref = db.collection('chat_sessions').document(session_id)
         session_ref.delete()
         
@@ -256,17 +256,42 @@ def chat():
         # Gọi agent
         result = agent.invoke({"messages": messages})
         
-        # Xử lý response
-        bot_reply = None
-        if isinstance(result, dict):
-            msgs = result.get("messages") or result.get("response") or result.get("structured_response")
-            if isinstance(msgs, list) and len(msgs) > 0:
-                last = msgs[-1]
-                bot_reply = getattr(last, "content", None) or last.get("content", None) or str(last)
+        # Xử lý response từ agent - IMPROVED VERSION
+        bot_reply = ""
+        
+        try:
+            # Trường hợp 1: Result là dict với key 'messages'
+            if isinstance(result, dict) and "messages" in result:
+                messages_list = result["messages"]
+                if isinstance(messages_list, list) and len(messages_list) > 0:
+                    # Lấy message cuối cùng (response của AI)
+                    last_message = messages_list[-1]
+                    
+                    # Xử lý nếu là object có attribute 'content'
+                    if hasattr(last_message, 'content'):
+                        bot_reply = str(last_message.content)
+                    # Xử lý nếu là dict
+                    elif isinstance(last_message, dict):
+                        bot_reply = last_message.get('content', str(last_message))
+                    else:
+                        bot_reply = str(last_message)
+            
+            # Trường hợp 2: Result có key 'output' hoặc 'response'
+            elif isinstance(result, dict):
+                bot_reply = result.get('output') or result.get('response') or str(result)
+            
+            # Trường hợp 3: Result là string hoặc object khác
             else:
                 bot_reply = str(result)
-        else:
-            bot_reply = str(result)
+            
+            # Đảm bảo luôn có response, không để trống
+            if not bot_reply or bot_reply.strip() == "":
+                bot_reply = "Xin lỗi, tôi không thể tạo câu trả lời phù hợp. Vui lòng thử lại."
+                
+        except Exception as parse_error:
+            print(f"Error parsing agent response: {parse_error}")
+            print(f"Raw result: {result}")
+            bot_reply = "Đã xảy ra lỗi khi xử lý câu trả lời. Vui lòng thử lại."
         
         # Lưu messages vào Firebase
         save_message(session_id, "user", user_message)
@@ -280,6 +305,8 @@ def chat():
     
     except Exception as e:
         print(f"Error: {str(e)}")
+        import traceback
+        traceback.print_exc()  # In full traceback để debug
         return jsonify({
             'error': f'Internal server error: {str(e)}',
             'status': 'error'
@@ -307,11 +334,74 @@ def clear_chat():
 
 @app.route('/api/health', methods=['GET'])
 def health():
+    """Enhanced health check với thông tin chi tiết về RAG system"""
+    
+    # documents
+    doc_info = {
+        'total_documents_loaded': len(documents),
+        'document_sources': [doc.metadata.get('source') for doc in documents],
+        'total_characters': sum(len(doc.page_content) for doc in documents)
+    }
+    
+    # chunking
+    chunk_info = {
+        'total_chunks': len(all_splits),
+        'chunk_size': 1200,
+        'chunk_overlap': 200,
+        'avg_chunk_length': sum(len(chunk.page_content) for chunk in all_splits) // len(all_splits) if all_splits else 0,
+        'min_chunk_length': min(len(chunk.page_content) for chunk in all_splits) if all_splits else 0,
+        'max_chunk_length': max(len(chunk.page_content) for chunk in all_splits) if all_splits else 0
+    }
+    
+    # vector store
+    vector_info = {
+        'vector_count': vectorstore._collection.count(),
+        'embedding_model': model_name,
+        'embedding_dimension': 768,
+        'collection_name': 'chillstay_docs',
+        'device': model_kwargs['device']
+    }
+    
+    # ✅ FIX: Thêm retrieval_info bị thiếu
+    retrieval_info = {
+        'retrieval_k': 4,
+        'similarity_metric': 'cosine'
+    }
+    
+    # tools
+    tools_info = {
+        'available_tools': [
+            {
+                'name': 'chillstay_knowledge_base',
+                'type': 'retrieval',
+                'status': 'active'
+            },
+            {
+                'name': 'tavily_search',
+                'type': 'web_search',
+                'status': 'active' if TAVILY_API_KEY else 'inactive'
+            }
+        ]
+    }
+    
     return jsonify({
         'status': 'healthy',
-        'model': 'gemini-2.5-flash',
-        'tools': ['chillstay_knowledge_base', 'tavily_search'],
-        'firebase_connected': db is not None
+        'model': {
+            'llm': 'gemini-2.5-flash',
+            'temperature': 0
+        },
+        'rag_system': {
+            'documents': doc_info,
+            'chunking': chunk_info,
+            'vector_store': vector_info,
+            'retrieval': retrieval_info
+        },
+        'tools': tools_info,
+        'firebase_connected': db is not None,
+        'server': {
+            'host': '0.0.0.0',
+            'port': 5000
+        }
     })
 
 if __name__ == '__main__':
